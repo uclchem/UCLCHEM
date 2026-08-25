@@ -64,6 +64,7 @@ via methods like :meth:`~uclchem.model.AbstractModel.create_abundance_plot`.
 
 """
 
+from . import style as style
 from .compositions import create_abundance_plot, plot_rate_summary, plot_rates_deepdive
 from .panels import (
     draw_panel_abundances,

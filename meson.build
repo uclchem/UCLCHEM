@@ -179,7 +179,6 @@ py.install_sources([
   usource / 'tests.py',
   usource / 'utils.py',
   usource / 'py.typed',
-  usource / 'style.py'
   # advanced.py replaced by advanced package modules
 ], subdir:'uclchem')
 
@@ -200,6 +199,7 @@ py.install_sources([
 py.install_sources([
   usource / 'plot' / '__init__.py',
   usource / 'plot' / '_helpers.py',
+  usource / 'plot' / 'style.py',
   usource / 'plot' / 'panels.py',
   usource / 'plot' / 'compositions.py',
 ], subdir: 'uclchem' / 'plot')

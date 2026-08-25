@@ -2333,17 +2333,17 @@ class AbstractModel(ABC):
         else:
             # Lower case (and conveniently copy so we don't edit) the user's dictionary
             # This is key to UCLCHEM's "case insensitivity"
-            new_param_dict = get_lowercase_copy(param_dict)
+            param_dict = get_lowercase_copy(param_dict)
 
             # Convert all Paths to strings, because Fortran cannot accept Paths
-            for key, value in new_param_dict.items():
+            for key, value in param_dict.items():
                 if isinstance(value, Path):
-                    new_param_dict[key] = str(value)
+                    param_dict[key] = str(value)
 
             # Handle deprecated endAtFinalDensity parameter (after lowercasing)
-            new_param_dict = _convert_legacy_stopping_param(new_param_dict)
+            param_dict = _convert_legacy_stopping_param(param_dict)
 
-            self._param_dict = {**default_param_dictionary, **new_param_dict}
+            self._param_dict = {**default_param_dictionary, **param_dict}
 
         # Check the merged dict, not the defaults, to preserve user-provided values
         self._param_dict = remove_keys_with_none(self._param_dict)
