@@ -66,7 +66,6 @@ import pandas as pd
 UCLCHEM_ROOT_DIR: Path = Path(__file__).parent.resolve().absolute()
 """UCLCHEM root directory"""
 
-
 MISSING_VALUE_INTEGER: int = -1
 """Integer to indicate a missing value"""
 
@@ -646,7 +645,6 @@ class SuccessFlag(enum.IntEnum):
 
         return member
 
-    # Zen line two: Explicit is better than implicit.
     SUCCESS = 0, "Model ran successfully"
     PARAMETER_READ_ERROR = -1, "Parameter read failed."
     PHYSICS_INIT_ERROR = -2, "Physics initialization failed."
