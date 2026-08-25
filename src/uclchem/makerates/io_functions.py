@@ -1090,9 +1090,9 @@ def build_ode_string(
         # TODO(TobiasDijkhuis): GETYDOT cannot be pure, because we are currently modifying
         # REACTIONRATE. It would be better to just rewrite the calculation of REACTIONRATE
         # into a different (also pure) function, or rewrite GETYDOT to still be pure.
-        pure = " "
+        pure = ""
     else:
-        pure = "pure"
+        pure = "pure "
     # 10 August 2026, Tobias Dijkhuis:
     #    safeMantle = MAX(MIN_ABUND, sum(Y(surfaceList))) # ruff: ignore[commented-out-code]
     # could be replaced with
