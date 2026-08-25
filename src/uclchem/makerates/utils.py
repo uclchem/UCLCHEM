@@ -28,14 +28,33 @@ def normalize_species_name(name: str) -> str:
 
     Examples
     --------
-    'o-H2'   -> 'o-H2'
-    'O-H2'   -> 'o-H2'   (case-normalized prefix)
-    '#o-H2'  -> '#o-H2'
-    'C-'     -> 'C-'     (negative ion: len==2, not a prefix)
-    'E-'     -> 'E-'     (electron: same rule)
-    'H2O'    -> 'H2O'
-    ''       -> ''       (empty string)
-    None     -> 'NAN'    (falsy non-string value)
+    >>> normalize_species_name('H2O')
+    'H2O'
+    >>> normalize_species_name('o-H2')
+    'o-H2'
+    >>> # Elements are uppercased
+    >>> normalize_species_name('o-h2')
+    'o-H2'
+    >>> # Prefix is lowercased
+    >>> normalize_species_name('O-H2')
+    'o-H2'
+    >>> # Phase indications are kept
+    >>> normalize_species_name('#o-H2')
+    '#o-H2'
+
+    >>> # Negative ion: len==2, not a prefix
+    >>> normalize_species_name('C-')
+    'C-'
+    >>> # Same for electrons
+    >>> normalize_species_name('E-')
+    'E-'
+
+    >>> # Empty string is kept
+    >>> normalize_species_name('')
+    ''
+    >>> # Falsy non-string value is turned into 'NAN'
+    >>> normalize_species_name(None)
+    'NAN'
 
     """
     # Preserve empty strings; convert other falsy values to "NAN"
@@ -175,7 +194,6 @@ def strip_comments_from_row(row: list[str], comment_char: str = "!") -> list[str
     """
     if comment_char in row[-1]:
         row[-1] = row[-1].split(comment_char)[0].strip()
-
     return row
 
 
@@ -253,7 +271,6 @@ def truncate_line(input_string: str, line_length: int = FORTRAN_LINE_LENGTH) -> 
     """
     result = ""
     i = 0
-    j = 0
     # we only want to split at operators to make it look nice
     splits = ["*", "+", ",", '"']
     while len(input_string[i:]) > line_length:
