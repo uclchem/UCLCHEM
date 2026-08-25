@@ -19,8 +19,8 @@ importing to suppress auto-apply.
     >>> import matplotlib.pyplot as plt
     >>> fig, ax = plt.subplots()
     >>> _ = ax.set_xlabel(uclchem.plot.style.format_chemical_formula("HCO+"))
-    >>> uclchem.style.reset()      # restore matplotlib defaults
-    >>> uclchem.style.apply()      # re-apply UCLCHEM style
+    >>> uclchem.plot.style.reset()      # restore matplotlib defaults
+    >>> uclchem.plot.style.apply()      # re-apply UCLCHEM style
 
 """
 
