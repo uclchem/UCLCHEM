@@ -2020,7 +2020,7 @@ class AbstractModel(ABC):
                 )
                 raise ValueError(msg)
 
-        if species_cols_from_file != list(get_species_names()):
+        if species_cols_from_file != get_species_names():
             msg = (
                 f"INCOMPATIBLE LEGACY FILE: Species list mismatch.\n\n"
                 f"The file you are loading has a different species network than the currently installed UCLCHEM.\n"
@@ -2060,7 +2060,7 @@ class AbstractModel(ABC):
                 ),
             },
             coords={
-                "physics_values": PHYSICAL_PARAMETERS,
+                "physics_values": list(PHYSICAL_PARAMETERS),
                 "chemical_abun_values": get_species_names(),
                 "time_step": np.arange(self.physics_array.shape[0]),
                 "point": np.arange(self._param_dict["points"]),

@@ -12,8 +12,6 @@ from copy import deepcopy
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from numpy import any as np_any
-
 from uclchem.makerates.heating import convert_to_erg, set_custom_exothermicities
 
 from .reaction import (
@@ -1242,8 +1240,7 @@ class NetworkBuilder:
         they have different temperature ranges.
 
         """
-        logger.info("\tPossible duplicate reactions for manual removal:")
-        duplicates_found = False
+        logger.info("\tChecking for possible duplicate reactions for manual removal")
 
         # We could also pass `self.network.reactions.values()` to check_duplcicate_reactions,
         # but that would lead to n_reac*(n_reac-1)/2 comparisons,
@@ -1254,7 +1251,6 @@ class NetworkBuilder:
             reactions = self.network.get_reactions_by_types(reaction_type)
             duplicates, duplicates_umist = get_duplicate_reactions(reactions)
             for duplicate in duplicates:
-                duplicates_found = True
                 reaction1 = reactions[duplicate[0]]
                 reaction2 = reactions[duplicate[1]]
                 logger.warning(
@@ -1275,10 +1271,8 @@ class NetworkBuilder:
             for duplicate in duplicates_umist:
                 reaction1 = reactions[duplicate[0]]
                 logger.info(
-                    f"Detected overlapping UMIST reaction {reaction1}. This is done in UMIST to provide better rates. "
+                    f"Detected overlapping UMIST reaction {reaction1}. This is done in UMIST to provide better rates."
                 )
-        if not duplicates_found:
-            logger.info("\tNone")
 
     def _index_important_reactions(self) -> None:
         """We have a whole bunch of important reactions and we want to store.
@@ -1365,7 +1359,7 @@ class NetworkBuilder:
                         raise RuntimeError(msg)
                     self.network.important_reactions[key] = i + 1
 
-        if np_any([value is None for value in self.network.important_reactions.values()]):
+        if any(value is None for value in self.network.important_reactions.values()):
             logger.debug(self.network.important_reactions)
             missing_reac_error = "Input reaction file is missing mandatory reactions"
             missing_reac_error += (
@@ -1377,7 +1371,8 @@ class NetworkBuilder:
     def _index_important_species(self) -> None:
         """Obtain the indices for all the important reactions."""
         self.network.species_indices = {}
-        names = [species.get_name() for species in self.network.get_species_list()]
+        names = list(self.network.species.keys())
+        dummy_species_index = len(names) + 1
         for element in [
             "C+",
             "H+",
@@ -1404,18 +1399,17 @@ class NetworkBuilder:
             "#N",
             "#O",
             "#OH",
-            "SURFACE",
-            "BULK",
+            "Surface",
+            "Bulk",
             *elementList,
         ]:
             try:
-                species_index = names.index(element) + 1
+                species_index = names.index(element.upper()) + 1
             except ValueError:
                 # TODO(Tobias Dijkhuis): The dummy value is currently SURFACE/BULK; https://github.com/uclchem/UCLCHEM/issues/205
                 # We could handle this better somehow
                 logger.info(f"\t{element} not in network, adding dummy index")
-                species_index = len(self.network.get_species_list()) + 1
-            name = "n" + element.lower().replace("+", "x").replace("e-", "elec").replace(
-                "#", "g"
-            )
+                species_index = dummy_species_index
+
+            name = f"n{element.replace('+', 'x').replace('E-', 'Elec').replace('#', 'G')}"
             self.network.species_indices[name] = species_index

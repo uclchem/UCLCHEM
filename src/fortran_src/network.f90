@@ -7,11 +7,11 @@ module network
 
     public
 
-integer, parameter :: ncx=10,nhx=2,nh2=3,nhe=6,nhex=7,nn=15,nnx=16,no=25,nox=26&
-    &,nc=9,nsix=57,nsx=84,nh2o=32,nch3oh=79,ncl=95,nclx=96,nco=50,nmg=38,nmgx=39&
-    &,ngh=167,ngh2=168,ngn=173,ngo=178,ngoh=180,nsurface=335,nbulk=334,nh=1,nd=336&
-    &,nf=336,np=336,ns=83,nli=336,nna=336,nsi=56,npah=336,n15n=336,n13c=336,n18o=336&
-    &,nelec=333,nfe=336
+integer, parameter :: nCx=10,nHx=2,nH2=3,nHE=6,nHEx=7,nN=15,nNx=16,nO=25,nOx=26&
+    &,nC=9,nSIx=57,nSx=84,nH2O=32,nCH3OH=79,nCL=95,nCLx=96,nCO=50,nMG=38,nMGx=39&
+    &,nGH=167,nGH2=168,nGN=173,nGO=178,nGOH=180,nSurface=335,nBulk=334,nH=1,nD=336&
+    &,nF=336,nP=336,nS=83,nLI=336,nNA=336,nSI=56,nPAH=336,n15N=336,n13C=336,n18O=336&
+    &,nElec=333,nFE=336
 logical, parameter :: THREE_PHASE = .true.
 character(LEN=7), parameter :: specname (nSpec)=(/"H      ","H+     ","H2     ",&
     &"H2+    ","H3+    ","HE     ","HE+    ","HEH+   ","C      ","C+     ","CH     ",&

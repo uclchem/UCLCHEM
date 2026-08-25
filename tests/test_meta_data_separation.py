@@ -175,7 +175,7 @@ def test_physical_parameters_always_from_global():
     # Both should use the same global constant (can't be modified per-instance)
     from uclchem.constants import PHYSICAL_PARAMETERS as CONST
 
-    assert PHYSICAL_PARAMETERS == [
+    assert PHYSICAL_PARAMETERS == (
         "Time",
         "Density",
         "gasTemp",
@@ -187,7 +187,7 @@ def test_physical_parameters_always_from_global():
         "parcel_radius",
         "av_internal",
         "radfield_internal",
-    ], "PHYSICAL_PARAMETERS constant has been modified!"
+    ), "PHYSICAL_PARAMETERS constant has been modified!"
     assert list(PHYSICAL_PARAMETERS) == list(CONST), "PHYSICAL_PARAMETERS mismatch"
     assert len(PHYSICAL_PARAMETERS) >= 8, (
         "UCLCHEM having less than 8 physical parameters is suspicious"
