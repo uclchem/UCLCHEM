@@ -2346,7 +2346,7 @@ class AbstractModel(ABC):
             self._param_dict = {**default_param_dictionary, **new_param_dict}
 
         # Check the merged dict, not the defaults, to preserve user-provided values
-        remove_keys_with_none(self._param_dict)
+        self._param_dict = remove_keys_with_none(self._param_dict)
 
         # Still set these, because the fortran at this point still requires them.
         self.out_species = ""
