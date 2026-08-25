@@ -37,7 +37,6 @@ from uclchem.makerates.utils import (
     pad_to_max_length,
     replace_value_with_name,
     separate_common_terms,
-    strip_comments_from_row,
     truncate_line,
 )
 from uclchem.utils import (
@@ -45,6 +44,7 @@ from uclchem.utils import (
     MISSING_VALUE_INTEGER,
     NO_REACTANT_OR_PRODUCT,
     UCLCHEM_ROOT_DIR,
+    strip_comment,
 )
 
 logger = logging.getLogger(__name__)
@@ -122,7 +122,7 @@ def read_species_file(
         for idx, row in enumerate(reader):
             try:
                 if row[0] != "NAME" and "!" not in row[0]:
-                    row = strip_comments_from_row(row)
+                    row[-1] = strip_comment(row[-1])
                     if "@" in row[0]:
                         user_defined_bulk.append(Species(cast("list[str | float]", row)))
                     else:
@@ -179,7 +179,7 @@ def read_reaction_file(
             for row in reader:
                 if row[0].startswith("#") or row[0].startswith("!"):
                     continue
-                row = strip_comments_from_row(row)
+                row[-1] = strip_comment(row[-1])
                 reaction_row = [*row[2:4], "", *row[4:8], *row[9:14], ""]
                 if check_reaction(reaction_row, keep_list):
                     reactions.append(
@@ -193,7 +193,7 @@ def read_reaction_file(
             reader = csv.reader(f, delimiter=",", quotechar="|")
             for row in reader:
                 if (len(row) > 1) and (row[0][0] != "!"):
-                    row = strip_comments_from_row(row)
+                    row[-1] = strip_comment(row[-1])
                     if check_reaction(row, keep_list):
                         reactions.append(
                             Reaction(

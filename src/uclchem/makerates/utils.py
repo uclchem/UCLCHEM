@@ -174,29 +174,6 @@ def get_default_coolants() -> list[dict[str, str]]:
     ]
 
 
-def strip_comments_from_row(row: list[str], comment_char: str = "!") -> list[str]:
-    """Strip comments from a separated line.
-
-    Parameters
-    ----------
-    row : list[str]
-        List of strings.
-    comment_char : str
-        Character indicating the beginning of a comment.
-        Default = "!".
-
-    Returns
-    -------
-    row : list[str]
-        List of strings, with the final string adjusted by
-        removing everything after `comment_char` (and any whitespace).
-
-    """
-    if comment_char in row[-1]:
-        row[-1] = row[-1].split(comment_char)[0].strip()
-    return row
-
-
 def check_reaction(reaction_row: list[Any], keep_list: list[str]) -> bool:
     """Check a row parsed from a reaction file and checks it only contains acceptable things.
 

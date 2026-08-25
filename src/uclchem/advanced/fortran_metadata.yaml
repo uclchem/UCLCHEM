@@ -6,10 +6,11 @@ fortran_parameters:
   - ckhion
   - ckldiss
   - cklion
+  - k_max
+  - nw
   - tdsub
   - wave1
   - wave2
-  - k_max
   network:
   - atomcounts
   - bulklist
@@ -32,7 +33,7 @@ fortran_parameters:
   - erreacs
   - exrelaxreacs
   - exsolidreacs
-  - extrapolaterates
+  - extrapolaterateconstants
   - freezepartners
   - freezereacs
   - garparams
@@ -52,15 +53,15 @@ fortran_parameters:
   - n13c
   - n15n
   - n18o
-  - n_elem_tracked
-  - n_ice_species
-  - n_surface_species
   - n_bulk_species
+  - n_elem_tracked
+  - n_erdes_reactions
   - n_freeze_partners
   - n_gar_params
   - n_gar_species
+  - n_ice_species
   - n_lhdes_reactions
-  - n_erdes_reactions
+  - n_surface_species
   - nbulk
   - nc
   - nch3oh
@@ -116,6 +117,7 @@ fortran_parameters:
   - p2
   - p3
   - p4
+  - partnerindices
   - photonreacs
   - re1
   - re2
@@ -132,12 +134,26 @@ fortran_parameters:
   - twobodyreacs
   - volcanicfractions
   heating:
+  - aconsts
+  - alpha
+  - bconsts
+  - c
+  - c0
+  - c1
+  - c2
+  - c3
+  - c4
+  - c5
+  - c6
   - coolinglabels
+  - d
   - heatinglabels
   - max_line_solve_attempts
   - ncooling
   - nheating
   - nheatingterms
+  - num_fit_constants
+  - phi_pah
   cshock_mod:
   - bt
   - grainradius
@@ -151,6 +167,7 @@ fortran_parameters:
   - maxconsecutivefailures
   - maxloops
   rates:
+  - beta
   - h2stickingtemp
   - h2stickingzero
   - hstickingtemp
@@ -158,9 +175,14 @@ fortran_parameters:
   photoreactions:
   - dimco
   - dimh2
+  - fosc
+  - fpara
   - max_num_lambda
+  - nn
   sputtering:
+  - jmax
   - n_projectiles
+  - tolerance
   - vaporize_speed
   io:
   - abundloadid

@@ -1011,3 +1011,34 @@ def pad_to_length(array: np.ndarray, length: int, **kwargs) -> np.ndarray:
         msg = f"Tried padding array, but already had length ({len(array)}) larger than desired padded length ({length})"
         raise ValueError(msg)
     return np.pad(array, (0, length - len(array)), **kwargs)
+
+
+def strip_comment(line: str, comment_char: str = "!") -> str:
+    """Remove Fortran inline comment (everything from ``!`` onward).
+
+    Parameters
+    ----------
+    line : str
+        A single line of Fortran source code.
+    comment_char : str
+        Character that indicates the beginning of a comment. Default = "!".
+
+    Returns
+    -------
+    str
+        Line with comments stripped, respecting character literals.
+
+    """
+    # Respect character literals by scanning manually
+    in_str = False
+    quote = ""
+    for i, ch in enumerate(line):
+        if in_str:
+            if ch == quote:
+                in_str = False
+        elif ch in {"'", '"'}:
+            in_str = True
+            quote = ch
+        elif ch == comment_char:
+            return line[:i]
+    return line
