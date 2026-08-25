@@ -22,7 +22,7 @@ from .reaction import (
     TUNNELING_REACTION_TYPES,
     CoupledReaction,
     Reaction,
-    check_duplicate_reactions,
+    get_duplicate_reactions,
 )
 from .species import Species, elementList
 
@@ -1252,7 +1252,7 @@ class NetworkBuilder:
         # So, fewer comparisons are necessary, so this is much faster.
         for reaction_type in REACTION_TYPES:
             reactions = self.network.get_reactions_by_types(reaction_type)
-            duplicates, duplicates_umist = check_duplicate_reactions(reactions)
+            duplicates, duplicates_umist = get_duplicate_reactions(reactions)
             for duplicate in duplicates:
                 duplicates_found = True
                 reaction1 = reactions[duplicate[0]]

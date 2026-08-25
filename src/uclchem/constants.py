@@ -16,6 +16,8 @@ reinstall UCLCHEM for these constants to update:
 from types import MappingProxyType
 
 # Import canonical values from compiled Fortran module
+from types import MappingProxyType
+
 from uclchemwrap import constants, f2py_constants
 
 # Read canonical values from Fortran
@@ -31,7 +33,7 @@ ZETA_0 = float(constants.zeta_0)  # Standard cosmic ray ionization rate (1.3e-17
 
 # Canonical definition of physical parameters
 # This list defines the physical parameter array passed to Fortran
-PHYSICAL_PARAMETERS = [
+PHYSICAL_PARAMETERS = (
     "Time",
     "Density",
     "gasTemp",
@@ -43,7 +45,7 @@ PHYSICAL_PARAMETERS = [
     "parcel_radius",
     "av_internal",
     "radfield_internal",
-]
+)
 
 
 CENTIMETERS_PER_PARSEC = 3.086e18  # parsec in cgs
@@ -59,7 +61,7 @@ GRAVITATIONAL_CONSTANT_CGS = 6.67e-8  # gravitational constant in cgs
 # DVODE solver statistics names
 # Note: Stats are now written for EVERY solver attempt (including retries)
 # TRAJECTORY_INDEX links solver stats to trajectory timesteps
-DVODE_STAT_NAMES = [
+DVODE_STAT_NAMES = (
     "TRAJECTORY_INDEX",  # Links to trajectory timestep (dtime)
     "ISTATE",
     "HU",
@@ -79,18 +81,19 @@ DVODE_STAT_NAMES = [
     "NCFN",
     "NETF",
     "CPU_TIME",
-]
+)
 
 # SE solver statistics names (per coolant: convergence flag, iterations, max relative change)
-SE_STAT_NAMES = []
+_se_stat_names_list = []
 for i in range(NCOOLANTS):
-    SE_STAT_NAMES.extend(
+    _se_stat_names_list.extend(
         [
             f"COOLANT_{i:02d}_CONVERGED",
             f"COOLANT_{i:02d}_ITERATIONS",
             f"COOLANT_{i:02d}_MAX_REL_CHANGE",
         ]
     )
+SE_STAT_NAMES = tuple(_se_stat_names_list)
 
 # Validate consistency
 if len(PHYSICAL_PARAMETERS) != N_PHYSICAL_PARAMETERS:

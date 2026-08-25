@@ -25,7 +25,7 @@ def test_get_total_elemental_abundance():
     columns = [name.decode("utf-8").strip() for name in uclchemwrap.network.specname]
     abundances_df = pd.DataFrame([abundances], columns=columns)
 
-    elemental_abundances_fortran = uclchemwrap.chemistry.get_total_elemental_abundances(
+    elemental_abundances_fortran = uclchemwrap.chemistry.calculate_elemental_abundances(
         abundances
     )
     for idx, element in enumerate(uclchemwrap.network.elem_names):

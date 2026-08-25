@@ -23,7 +23,7 @@ from types import ModuleType
 import numpy as np
 from uclchemwrap import network as network_module
 
-from uclchem.makerates.reaction import Reaction, reaction_header
+from uclchem.makerates.reaction import REACTION_HEADER, Reaction
 from uclchem.makerates.species import Species
 from uclchem.utils import UCLCHEM_ROOT_DIR, get_reaction_table, get_species_table
 
@@ -488,7 +488,7 @@ class NetworkState:
 
         for _, row in self._reactions_df.iterrows():
             # Create Reaction object from CSV row
-            reaction_row = [row[field_name] for field_name in reaction_header]
+            reaction_row = [row[field_name] for field_name in REACTION_HEADER]
             reaction = Reaction(reaction_row)
             self.reaction_list.append(reaction)
 

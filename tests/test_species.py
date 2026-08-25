@@ -6,8 +6,8 @@ import pytest
 
 from uclchem.makerates.species import (
     Species,
+    calculate_element_counts_per_species,
     determine_molecular_mass,
-    get_element_counts_per_species,
 )
 from uclchem.utils import get_species_table
 
@@ -105,7 +105,7 @@ element_counts_data = [
 )
 def test_get_element_counts_per_species(species_list, expected_elements, expected_counts):
 
-    elements, counts = get_element_counts_per_species(species_list)
+    elements, counts = calculate_element_counts_per_species(species_list)
     assert elements == expected_elements
     assert np.all(counts == expected_counts)
 
