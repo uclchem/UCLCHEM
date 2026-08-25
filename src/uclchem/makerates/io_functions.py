@@ -1086,6 +1086,13 @@ def build_ode_string(
 
     total_swap = separate_common_terms(total_swap[1:], "ratioSurfaceToBulk")
 
+    if enable_rates_storage:
+        # TODO(TobiasDijkhuis): GETYDOT cannot be pure, because we are currently modifying
+        # REACTIONRATE. It would be better to just rewrite the calculation of REACTIONRATE
+        # into a different (also pure) function, or rewrite GETYDOT to still be pure.
+        pure = " "
+    else:
+        pure = "pure"
     # 10 August 2026, Tobias Dijkhuis:
     #    safeMantle = MAX(MIN_ABUND, sum(Y(surfaceList))) # ruff: ignore[commented-out-code]
     # could be replaced with
@@ -1093,7 +1100,7 @@ def build_ode_string(
     # and same for bulk, but if I did that, I suddenly got conservation errors for hotcore models.
     # Probably because then safeMantle is the same as some surface species abunds because it is
     # clamped twice (also in Y_safe, which is passed here in chemistry.f90).
-    ode_string = dedent("""    module ODES
+    ode_string = dedent(f"""    module ODES
         use constants, only: dp, MIN_ABUND
         use f2py_constants, only: nReac, nSpec
         use network, only: refractoryList, bulkList, surfaceList, REACTIONRATE, &
@@ -1104,7 +1111,7 @@ def build_ode_string(
 
         public
     contains
-        pure subroutine GETYDOT(RATE_CONSTANTS, Y, surfaceCoverage, D, YDOT, surfGrowthUncorrected)
+        {pure}subroutine GETYDOT(RATE_CONSTANTS, Y, surfaceCoverage, D, YDOT, surfGrowthUncorrected)
             real(dp), intent(in) :: RATE_CONSTANTS(nReac), Y(nSpec+2)
             real(dp), intent(in) :: D
             real(dp), intent(in) :: surfaceCoverage
