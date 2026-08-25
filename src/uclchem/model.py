@@ -2276,7 +2276,7 @@ class AbstractModel(ABC):
                 if len(self._data.coords["physics_values"]) != phys_len:
                     if len(PHYSICAL_PARAMETERS) == phys_len:
                         self._data = self._data.assign_coords(
-                            {"physics_values": PHYSICAL_PARAMETERS}
+                            {"physics_values": list(PHYSICAL_PARAMETERS)}
                         )
                     else:
                         # fallback to numeric indices if dimensions don't match
@@ -2285,7 +2285,7 @@ class AbstractModel(ABC):
                         )
             elif len(PHYSICAL_PARAMETERS) == phys_len:
                 self._data = self._data.assign_coords(
-                    {"physics_values": PHYSICAL_PARAMETERS}
+                    {"physics_values": list(PHYSICAL_PARAMETERS)}
                 )
             else:
                 self._data = self._data.assign_coords(
