@@ -779,3 +779,5 @@ database_reaction_type: "UMIST12"
             value = getattr(self, field_name)
             if value != field_info.default:  # Only log non-default values
                 _logger.info(f"  {field_name}: {value}")
+            else:
+                _logger.debug(f"  {field_name}: {value} (default)")
