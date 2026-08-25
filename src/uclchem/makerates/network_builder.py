@@ -1258,7 +1258,7 @@ class NetworkBuilder:
                 reaction1 = reactions[duplicate[0]]
                 reaction2 = reactions[duplicate[1]]
                 logger.warning(
-                    "\tFound reactions that are possile duplicates\n\t\t"
+                    "\tFound reactions that are possible duplicates\n\t\t"
                     + str(reaction1)
                     + f" with temperature range [{reaction1.get_templow()}, {reaction1.get_temphigh()}] and source {reaction1.get_source()}"
                     + "\n\t\t"
