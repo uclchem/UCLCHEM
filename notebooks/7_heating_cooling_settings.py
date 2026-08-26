@@ -25,7 +25,8 @@
 # This is useful for understanding which physical processes drive the thermal evolution in your model.
 
 # %%
-import os
+
+import pathlib
 
 import matplotlib.pyplot as plt
 
@@ -33,7 +34,7 @@ import uclchem
 from uclchem import advanced
 
 # Ensure output directory exists
-os.makedirs("../examples/test-output", exist_ok=True)
+pathlib.Path("../examples/test-output").mkdir(exist_ok=True, parents=True)
 
 # %% [markdown]
 # ## Step 1: Run Baseline Model with All Mechanisms
@@ -57,8 +58,8 @@ print("Running baseline model with all heating/cooling mechanisms enabled...")
 cloud_full = uclchem.model.Cloud(param_dict=param_dict)
 
 # Extract all data from the model object in one call
-physics_full, abundances_full, rate_constants_full, heating_full = cloud_full.get_dataframes(
-    joined=False, with_rate_constants=True, with_heating=True
+physics_full, abundances_full, rate_constants_full, heating_full = (
+    cloud_full.get_separate_dataframes(with_rate_constants=True, with_heating=True)
 )
 start_abund = cloud_full.next_starting_chemistry_array
 flag_full = 0 if cloud_full.has_attr("_data") else -1
@@ -78,6 +79,8 @@ else:
 # Let's analyze the heating DataFrame to determine which heating and cooling mechanisms contribute the most.
 
 # %%
+import operator
+
 # Extract heating and cooling columns
 heating_cols = [col for col in heating_full.columns if col.endswith("Heating")]
 cooling_cols = [col for col in heating_full.columns if col.endswith("Cooling")]
@@ -99,8 +102,12 @@ for col in cooling_cols:
     cooling_importance[col] = total_contribution
 
 # Sort by importance
-heating_sorted = sorted(heating_importance.items(), key=lambda x: x[1], reverse=True)
-cooling_sorted = sorted(cooling_importance.items(), key=lambda x: x[1], reverse=True)
+heating_sorted = sorted(
+    heating_importance.items(), key=operator.itemgetter(1), reverse=True
+)
+cooling_sorted = sorted(
+    cooling_importance.items(), key=operator.itemgetter(1), reverse=True
+)
 
 # Display top 5 heating processes
 print("\n" + "=" * 70)
@@ -147,7 +154,7 @@ axes[0].set_xscale("log")
 axes[0].set_yscale("symlog", linthresh=1e-30)
 axes[0].set_title("Top 5 Heating Processes", fontsize=14, fontweight="bold")
 axes[0].legend(fontsize=10, loc="best")
-axes[0].grid(True, alpha=0.3)
+axes[0].grid(visible=True, alpha=0.3)
 
 # Plot top 5 cooling processes
 axes[1].axhline(y=0, color="k", linestyle="-", linewidth=0.5, alpha=0.3)
@@ -161,7 +168,7 @@ axes[1].set_xscale("log")
 axes[1].set_yscale("symlog", linthresh=1e-30)
 axes[1].set_title("Top 5 Cooling Processes", fontsize=14, fontweight="bold")
 axes[1].legend(fontsize=10, loc="best")
-axes[1].grid(True, alpha=0.3)
+axes[1].grid(visible=True, alpha=0.3)
 
 plt.tight_layout()
 plt.show()
@@ -210,11 +217,11 @@ print("Disabling dominant heating and cooling mechanisms...")
 print("=" * 70)
 
 # Disable H2 formation heating (often important)
-settings.set_heating_mechanism(settings.H2_FORMATION, False)
+settings.set_heating_mechanism(settings.H2_FORMATION, enabled=False)
 print("✗ Disabled: H2 Formation Heating")
 
 # Disable line cooling (dominant cooling in molecular clouds)
-settings.set_cooling_mechanism(settings.MOLECULAR_LINE_COOLING, False)
+settings.set_cooling_mechanism(settings.MOLECULAR_LINE_COOLING, enabled=False)
 print("✗ Disabled: CO Line Cooling")
 
 
@@ -237,7 +244,7 @@ cloud_limited = uclchem.model.Cloud(param_dict=param_dict)
 
 # Extract all data in one call
 physics_limited, abundances_limited, rate_constants_limited, heating_limited = (
-    cloud_limited.get_dataframes(joined=False, with_rate_constants=True, with_heating=True)
+    cloud_limited.get_separate_dataframes(with_rate_constants=True, with_heating=True)
 )
 flag_limited = 0 if cloud_limited.has_attr("_data") else -1
 
@@ -287,7 +294,7 @@ ax.set_title(
     fontweight="bold",
 )
 ax.legend(fontsize=11, loc="best")
-ax.grid(True, alpha=0.3)
+ax.grid(visible=True, alpha=0.3)
 
 plt.tight_layout()
 plt.show()
@@ -350,7 +357,7 @@ for idx, species in enumerate(key_species):
         axes[idx].set_yscale("log")
         axes[idx].set_title(f"{species} Abundance", fontsize=13, fontweight="bold")
         axes[idx].legend(fontsize=9)
-        axes[idx].grid(True, alpha=0.3)
+        axes[idx].grid(visible=True, alpha=0.3)
 
 plt.tight_layout()
 plt.show()
@@ -389,12 +396,8 @@ cooling_cols_full = [col for col in heating_full.columns if col.endswith("Coolin
 total_heating_full = heating_full[heating_cols_full].sum(axis=1)
 total_cooling_full = heating_full[cooling_cols_full].sum(axis=1)
 
-heating_cols_limited = [
-    col for col in heating_limited.columns if col.endswith("Heating")
-]
-cooling_cols_limited = [
-    col for col in heating_limited.columns if col.endswith("Cooling")
-]
+heating_cols_limited = [col for col in heating_limited.columns if col.endswith("Heating")]
+cooling_cols_limited = [col for col in heating_limited.columns if col.endswith("Cooling")]
 
 total_heating_limited = heating_limited[heating_cols_limited].sum(axis=1)
 total_cooling_limited = heating_limited[cooling_cols_limited].sum(axis=1)
@@ -425,7 +428,7 @@ axes[0].set_xscale("log")
 axes[0].set_yscale("symlog", linthresh=1e-30)
 axes[0].set_title("Total Heating Rate Comparison", fontsize=14, fontweight="bold")
 axes[0].legend(fontsize=11)
-axes[0].grid(True, alpha=0.3)
+axes[0].grid(visible=True, alpha=0.3)
 
 # Total cooling comparison
 axes[1].plot(
@@ -450,7 +453,7 @@ axes[1].set_xscale("log")
 axes[1].set_yscale("symlog", linthresh=1e-30)
 axes[1].set_title("Total Cooling Rate Comparison", fontsize=14, fontweight="bold")
 axes[1].legend(fontsize=11)
-axes[1].grid(True, alpha=0.3)
+axes[1].grid(visible=True, alpha=0.3)
 
 plt.tight_layout()
 plt.show()

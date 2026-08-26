@@ -40,8 +40,6 @@ dev = [
 docs = ["pydoc-markdown", "jupyter", "jupyter_contrib_nbextensions", "notebook<7"]
 
 [tool.ruff]
-# Exclude notebooks directory from most checks since they're generated from .ipynb
-extend-exclude = ["notebooks/*.py"]
 line-length = 90
 
 [tool.ruff.lint]
@@ -86,10 +84,16 @@ extend-ignore = [
 pycodestyle.max-doc-length = 100
 pydocstyle.convention = 'numpy'
 preview = true
+allowed-confusables = ['α'] # Alpha, to indicate for example Lyman-α
 
 [tool.ruff.lint.per-file-ignores]
-# E402: Module level import not at top of file - normal for notebook-derived files
-"notebooks/*.py" = ["E402"]
+"notebooks/*.py" = [
+    "E402", # Module level import not at top of file - normal for notebook-derived files
+    "ERA", # Many false positives for metadata necessary for conversion to notebooks
+    "D100", # No docstrings at the top of notebooks
+    "W505", # Long comments are converted to wrapped text in notebook viewing
+    "B018", # "Useless expressions" at the end of a cell print the result
+]
 "*/__init__.py" = ["F401"]
 "tests/*" = ["ANN001", "ANN201", "D", "ARG001", "PLR6301", "ARG002", "DOC", "S101", "B011", "PLC", "PLR"]
 # Physics/math symbol and domain-acronym names that intentionally deviate from
@@ -163,11 +167,6 @@ atct = "atct"
 ATcT = "ATcT"
 # Physics variable name (inner radius) used in Fortran and Python sources.
 rin = "rin"
-
-[tool.mypy]
-# Notebooks are generated from .ipynb sources; type-check the library, not the
-# generated example scripts.
-exclude = ["^notebooks/"]
 
 [[tool.mypy.overrides]]
 module = ["yaml", "uclchemwrap", "h5py", "nbconvert.*", "nbformat", "pytest", "matplotlib", "matplotlib.*", "bs4", "pydantic", "uclchem._project_root"]

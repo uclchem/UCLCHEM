@@ -24,17 +24,16 @@
 #
 # We'll use an example from work that was published in 2022 [Energizing Star Formation: The Cosmic-Ray Ionization Rate in NGC 253 Derived from ALCHEMI Measurements of H3O+ and SO](https://ui.adsabs.harvard.edu/abs/2022ApJ...931...89H/abstract) to demonstrate the use of the rates coming out of UCLCHEM and how it can be used to draw conclusions about the most important reactions in a network for a given species/behaviour.
 
-import os
+
+import pathlib
 
 import pandas as pd
 
 import uclchem
 
-import uclchem
-
 # Ensure output directory exists
-if not os.path.exists("./output_4"):
-    os.makedirs("./output_4")
+if not pathlib.Path("./output_4").exists():
+    pathlib.Path("./output_4").mkdir(parents=True)
 
 # ## H3O+ and SO
 #
@@ -69,22 +68,25 @@ temperatures = [50, 250]
 densities = [1e4, 1e6]
 zetas = [1e1, 1e4]
 
-grid_runner = uclchem.model.GridRunner("Cloud", full_parameters = {
-    "param_dict": {
-        "baseAv": 10,
-        "freefall": False, 
-        "finalTime": 1e6, 
-        "initialTemp": temperatures,
-        "initialDens": densities,
-        "zeta": zetas, 
-        # Specify some custom tolerance since Silicon chemistry at 50K is tough to solve
-        "abstol_factor": 1e-6,
-        "reltol": 1e-6,
-        "abstol_min": 5e-20,
-    }},
-    grid_file ="output_4/analysis.h5",
+grid_runner = uclchem.model.GridRunner(
+    "Cloud",
+    full_parameters={
+        "param_dict": {
+            "baseAv": 10,
+            "freefall": False,
+            "finalTime": 1e6,
+            "initialTemp": temperatures,
+            "initialDens": densities,
+            "zeta": zetas,
+            # Specify some custom tolerance since Silicon chemistry at 50K is tough to solve
+            "abstol_factor": 1e-6,
+            "reltol": 1e-6,
+            "abstol_min": 5e-20,
+        }
+    },
+    grid_file="output_4/analysis.h5",
     model_name_prefix="model_",
-    max_workers = 10,
+    max_workers=10,
 )
 
 # -
@@ -94,8 +96,8 @@ grid_runner = uclchem.model.GridRunner("Cloud", full_parameters = {
 results = {}
 for model in grid_runner.models:
     name = model["Model"]
-    cloud =  uclchem.model.load_model(file="output_4/analysis.h5", name=name)
-    phys, abun, rates = cloud.get_dataframes(joined=False, with_rate_constants=True)
+    cloud = uclchem.model.load_model(file="output_4/analysis.h5", name=name)
+    phys, abun, rates = cloud.get_separate_dataframes(with_rate_constants=True)
     final_abundances = cloud.next_starting_chemistry_array
     success_flag = 0 if cloud.has_attr("_data") else -1
     results[name] = (phys, abun, rates, final_abundances, success_flag)
@@ -169,7 +171,9 @@ from uclchem.analysis import rate_constants_to_dy_and_rates
 from uclchem.makerates.network import Network
 
 network = Network.from_csv()
-dy, flux = rate_constants_to_dy_and_rates(physics, abundances, rate_constants, network=network)
+dy, flux = rate_constants_to_dy_and_rates(
+    physics, abundances, rate_constants, network=network
+)
 # -
 
 # We can then inspect the RHS of the differential equation per reaction. This informs us that the only relevant term is actually the destruction of the molecule via its reaction with HCS and $\text{H}_2\text{S}$. Explaining the small decrease at 1 million years.
@@ -201,7 +205,7 @@ plot_rate_summary(production, destruction, -10, "flux")
 # H3O+ + SIO -> SIOH+ + H2O : 0.33%
 # ```
 #
-# What this shows is the reactions that cause 99.9% of the formation and 99.9% of the destruction of $\text{H}_3\text{O}^+$ at a time step. The total rate of formation and destruction in units of $\text{s}^{-1}$ is  given as well the percentage of the total that each reaction contributes. 
+# What this shows is the reactions that cause 99.9% of the formation and 99.9% of the destruction of $\text{H}_3\text{O}^+$ at a time step. The total rate of formation and destruction in units of $\text{s}^{-1}$ is  given as well the percentage of the total that each reaction contributes.
 #
 # What we need to find is a pattern in these reactions which holds across time and across different densities and temperatures. It actually turns out that the reactions printed above are the dominate formation and destruction routes of $\text{H}_3\text{O}^+$ for all parameters for all times. For example, at high temperature, high density and high zeta, we get:
 #
@@ -305,5 +309,3 @@ plot_rate_summary(production, destruction, -10, "flux")
 # `uclchem.analysis.analysis()` looks at a snapshot of the gas and calculates the instantaneous rate of change of important reactions. However, over the course of a time step, abundances change and reactions rise and fall in importance. More importantly, complex interplay between reactions can contribute to an outcome. This is ultimately a simple, first order look at what is happening in the network but in many cases, a deeper view will be required.
 #
 # If you struggle to find an explanation that fits all time steps in your outputs and is true across a range of parameters, then it is best not to report simple conclusions about the chemistry and to look for other ways to understand the network.
-
-#

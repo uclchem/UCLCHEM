@@ -1198,9 +1198,60 @@ class AbstractModel(ABC):
             with_se_stats=with_se_stats,
         )
         # joined=True always returns a single DataFrame
-        if isinstance(result, pd.DataFrame):
-            return result
-        return result[0]
+        return result  # type: ignore[return-value, ty:invalid-return-type]
+
+    def get_separate_dataframes(
+        self,
+        point: int | None = None,
+        *,
+        with_rate_constants: bool = False,
+        with_heating: bool = False,
+        with_stats: bool = False,
+        with_level_populations: bool = False,
+        with_se_stats: bool = False,
+    ) -> tuple[pd.DataFrame, ...]:
+        """Return all model data as a separate DataFrames.
+
+        Convenience wrapper around :meth:`get_dataframes` with ``joined=False``.
+
+        Parameters
+        ----------
+        point : int | None
+            Integer referring to which point of the UCLCHEM model to return.
+            If None, returns data for all points with a 'Point' column. Defaults to None.
+        with_rate_constants : bool
+            Flag on whether to include reaction rate constants in the joined dataframe.
+            Defaults to False.
+        with_heating : bool
+            Flag on whether to include heating/cooling rates in the joined dataframe.
+            Defaults to False.
+        with_stats : bool
+            Flag on whether to include DVODE solver statistics in the joined dataframe.
+            Defaults to False.
+        with_level_populations : bool
+            Flag on whether to include coolant level populations in the joined dataframe.
+            Defaults to False.
+        with_se_stats : bool
+            Flag on whether to include SE solver statistics in the joined dataframe.
+            Defaults to False.
+
+        Returns
+        -------
+        result : tuple[pd.DataFrame, ...]
+            Tuple of DataFrames with physics, abundances, and any optional columns.
+
+        """
+        result = self.get_dataframes(
+            point=point,
+            joined=False,
+            with_rate_constants=with_rate_constants,
+            with_heating=with_heating,
+            with_stats=with_stats,
+            with_level_populations=with_level_populations,
+            with_se_stats=with_se_stats,
+        )
+        # joined=False always returns a tuple of DataFrames
+        return result  # type: ignore[return-value, ty:invalid-return-type]
 
     def _get_single_point_dataframes(
         self,
