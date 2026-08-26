@@ -130,9 +130,7 @@ save_file = Path("output_2c/models.h5")
 # We begin by loading the prestellar core model. We will check the conservation of elements, as well as the success flag and plot it as was done in tutorial 2b.
 
 # %%
-loaded_p_core = uclchem.model.load_model(
-    file=save_file, name="prestellar_core"
-)
+loaded_p_core = uclchem.model.load_model(file=save_file, name="prestellar_core")
 print(f"Success Flag = {loaded_p_core.success_flag}")
 loaded_p_core.check_conservation()
 

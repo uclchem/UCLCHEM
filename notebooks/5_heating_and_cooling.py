@@ -66,23 +66,20 @@ param_dict_heating = {
 cloud = uclchem.model.Cloud(param_dict=param_dict_heating)
 
 # Extract data from the model object
-physics, abundances = cloud.get_dataframes(joined=False)
-_, _, rate_constants = cloud.get_dataframes(joined=False, with_rate_constants=True)
-_, _, heating = cloud.get_dataframes(joined=False, with_heating=True)
+physics, abundances, rate_constants, heating = cloud.get_separate_dataframes(
+    with_rate_constants=True, with_heating=True
+)
 start_abund = cloud.next_starting_chemistry_array
-flag = 0 if cloud.has_attr("_data") else -1
 
-print(f"Model completed with flag: {flag}")
-if flag < 0:
-    print("Error: Model failed to complete")
-else:
-    print("Success! Model completed.")
-    print(
-        f"\nTemperature range: {physics['gasTemp'].min():.2f} - {physics['gasTemp'].max():.2f} K"
-    )
-    print(
-        f"Density range: {physics['Density'].min():.2e} - {physics['Density'].max():.2e} cm^-3"
-    )
+print(f"Model completed with flag: {cloud.success_flag}")
+cloud.check_error()
+
+print(
+    f"\nTemperature range: {physics['gasTemp'].min():.2f} - {physics['gasTemp'].max():.2f} K"
+)
+print(
+    f"Density range: {physics['Density'].min():.2e} - {physics['Density'].max():.2e} cm^-3"
+)
 
 # %% [markdown]
 # ### Visualizing Temperature Evolution
@@ -97,7 +94,7 @@ ax.set_xlabel("Time (years)", fontsize=12)
 ax.set_ylabel("Gas Temperature (K)", fontsize=12)
 ax.set_xscale("log")
 ax.set_title("Gas Temperature Evolution with Heating/Cooling", fontsize=14)
-ax.grid(True, alpha=0.3)
+ax.grid(visible=True, alpha=0.3)
 plt.tight_layout()
 plt.show()
 
@@ -114,12 +111,11 @@ param_dict_no_heating["heatingFlag"] = False
 cloud_no_heat = uclchem.model.Cloud(param_dict=param_dict_no_heating)
 
 # Extract data
-physics_no_heat, abundances_no_heat = cloud_no_heat.get_dataframes(joined=False)
-_, _, rate_constants_no_heat = cloud_no_heat.get_dataframes(joined=False, with_rate_constants=True)
-_, _, heating_no_heat = cloud_no_heat.get_dataframes(joined=False, with_heating=True)
-flag_no_heat = 0 if cloud_no_heat.has_attr("_data") else -1
+physics_no_heat, abundances_no_heat, rate_constants_no_heat, heating_no_heat = (
+    cloud_no_heat.get_separate_dataframes(with_rate_constants=True, with_heating=True)
+)
 
-print(f"No heating model completed with flag: {flag_no_heat}")
+print(f"No heating model completed with flag: {cloud_no_heat.success_flag}")
 
 # Compare the two runs
 fig, axes = plt.subplots(1, 2, figsize=(14, 5))
@@ -138,7 +134,7 @@ axes[0].set_ylabel("Gas Temperature (K)", fontsize=12)
 axes[0].set_xscale("log")
 axes[0].set_title("Temperature Evolution", fontsize=14)
 axes[0].legend()
-axes[0].grid(True, alpha=0.3)
+axes[0].grid(visible=True, alpha=0.3)
 
 # Compare a key chemical species (CO)
 axes[1].plot(physics["Time"], abundances["H2O"], label="Heating ON", linewidth=2)
@@ -155,7 +151,7 @@ axes[1].set_xscale("log")
 axes[1].set_yscale("log")
 axes[1].set_title("CO Abundance Evolution", fontsize=14)
 axes[1].legend()
-axes[1].grid(True, alpha=0.3)
+axes[1].grid(visible=True, alpha=0.3)
 
 plt.tight_layout()
 plt.show()
@@ -204,7 +200,9 @@ time = physics["Time"]
 for col in heating_cols:
     # Only plot processes with significant contribution
     max_val = heating[col].abs().max()
-    if max_val > 1e-30:  # Filter out negligible contributions
+    if (
+        max_val > 1e-30  # ruff: ignore[magic-value-comparison]
+    ):  # Filter out negligible contributions
         label = col.replace("_heating", "").replace("_", " ")
         axes[0].plot(time, heating[col], label=label, linewidth=2, alpha=0.7)
 
@@ -214,12 +212,12 @@ axes[0].set_xscale("log")
 axes[0].set_yscale("symlog", linthresh=1e-30)
 axes[0].set_title("Heating Processes", fontsize=14)
 axes[0].legend(fontsize=8, loc="best")
-axes[0].grid(True, alpha=0.3)
+axes[0].grid(visible=True, alpha=0.3)
 
 # Plot cooling processes (select major ones to avoid cluttering)
 for col in cooling_cols:
     max_val = heating[col].abs().max()
-    if max_val > 1e-40:
+    if max_val > 1e-40:  # ruff: ignore[magic-value-comparison]
         label = col.replace("_cooling", "").replace("_", " ")
         axes[1].plot(time, heating[col], label=label, linewidth=2, alpha=0.7)
 
@@ -229,7 +227,7 @@ axes[1].set_xscale("log")
 axes[1].set_yscale("symlog", linthresh=1e-30)
 axes[1].set_title("Major Cooling Processes", fontsize=14)
 axes[1].legend(fontsize=8, loc="best")
-axes[1].grid(True, alpha=0.3)
+axes[1].grid(visible=True, alpha=0.3)
 
 plt.tight_layout()
 plt.show()
@@ -295,19 +293,19 @@ param_warm_cloud = {
 # Run both models
 print("Running cold core model...")
 cloud_cold = uclchem.model.Cloud(param_dict=param_cold_core)
-phys_cold, abund_cold = cloud_cold.get_dataframes(joined=False)
-_, _, rate_constants_cold = cloud_cold.get_dataframes(joined=False, with_rate_constants=True)
-_, _, heating_cold = cloud_cold.get_dataframes(joined=False, with_heating=True)
-flag_cold = 0 if cloud_cold.has_attr("_data") else -1
+phys_cold, abund_cold, rate_constants_cold, heating_cold = (
+    cloud_cold.get_separate_dataframes(with_rate_constants=True, with_heating=True)
+)
 
 print("Running warm cloud model...")
 cloud_warm = uclchem.model.Cloud(param_dict=param_warm_cloud)
-phys_warm, abund_warm = cloud_warm.get_dataframes(joined=False)
-_, _, rate_constants_warm = cloud_warm.get_dataframes(joined=False, with_rate_constants=True)
-_, _, heating_warm = cloud_warm.get_dataframes(joined=False, with_heating=True)
-flag_warm = 0 if cloud_warm.has_attr("_data") else -1
+phys_warm, abund_warm, rate_constants_warm, heating_warm = (
+    cloud_warm.get_separate_dataframes(with_rate_constants=True, with_heating=True)
+)
 
-print(f"\nCold core flag: {flag_cold}, Warm cloud flag: {flag_warm}")
+print(
+    f"\nCold core flag: {cloud_cold.success_flag}, Warm cloud flag: {cloud_warm.success_flag}"
+)
 
 # Compare temperature evolution
 fig, axes = plt.subplots(1, 2, figsize=(14, 5))
@@ -329,7 +327,7 @@ axes[0].set_ylabel("Gas Temperature (K)", fontsize=12)
 axes[0].set_xscale("log")
 axes[0].set_title("Temperature Evolution", fontsize=14)
 axes[0].legend()
-axes[0].grid(True, alpha=0.3)
+axes[0].grid(visible=True, alpha=0.3)
 
 # Compare CO abundance
 axes[1].plot(phys_cold["Time"], abund_cold["CO"], label="Dense Core", linewidth=2)
@@ -340,7 +338,7 @@ axes[1].set_xscale("log")
 axes[1].set_yscale("log")
 axes[1].set_title("CO Abundance", fontsize=14)
 axes[1].legend()
-axes[1].grid(True, alpha=0.3)
+axes[1].grid(visible=True, alpha=0.3)
 
 plt.tight_layout()
 plt.show()

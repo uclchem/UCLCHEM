@@ -68,19 +68,22 @@ temperatures = [50, 250]
 densities = [1e4, 1e6]
 zetas = [1e1, 1e4]
 
-grid_runner = uclchem.model.GridRunner("Cloud", full_parameters={
-    "param_dict": {
-        "baseAv": 10,
-        "freefall": False,
-        "finalTime": 1e6,
-        "initialTemp": temperatures,
-        "initialDens": densities,
-        "zeta": zetas,
-        # Specify some custom tolerance since Silicon chemistry at 50K is tough to solve
-        "abstol_factor": 1e-6,
-        "reltol": 1e-6,
-        "abstol_min": 5e-20,
-    }},
+grid_runner = uclchem.model.GridRunner(
+    "Cloud",
+    full_parameters={
+        "param_dict": {
+            "baseAv": 10,
+            "freefall": False,
+            "finalTime": 1e6,
+            "initialTemp": temperatures,
+            "initialDens": densities,
+            "zeta": zetas,
+            # Specify some custom tolerance since Silicon chemistry at 50K is tough to solve
+            "abstol_factor": 1e-6,
+            "reltol": 1e-6,
+            "abstol_min": 5e-20,
+        }
+    },
     grid_file="output_4/analysis.h5",
     model_name_prefix="model_",
     max_workers=10,
@@ -94,7 +97,7 @@ results = {}
 for model in grid_runner.models:
     name = model["Model"]
     cloud = uclchem.model.load_model(file="output_4/analysis.h5", name=name)
-    phys, abun, rates = cloud.get_dataframes(joined=False, with_rate_constants=True)
+    phys, abun, rates = cloud.get_separate_dataframes(with_rate_constants=True)
     final_abundances = cloud.next_starting_chemistry_array
     success_flag = 0 if cloud.has_attr("_data") else -1
     results[name] = (phys, abun, rates, final_abundances, success_flag)
@@ -168,7 +171,9 @@ from uclchem.analysis import rate_constants_to_dy_and_rates
 from uclchem.makerates.network import Network
 
 network = Network.from_csv()
-dy, flux = rate_constants_to_dy_and_rates(physics, abundances, rate_constants, network=network)
+dy, flux = rate_constants_to_dy_and_rates(
+    physics, abundances, rate_constants, network=network
+)
 # -
 
 # We can then inspect the RHS of the differential equation per reaction. This informs us that the only relevant term is actually the destruction of the molecule via its reaction with HCS and $\text{H}_2\text{S}$. Explaining the small decrease at 1 million years.

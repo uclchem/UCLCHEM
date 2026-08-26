@@ -40,7 +40,6 @@ params = {
     "initialTemp": 10.0,
     "finalTime": 3e6,
     "writetimestep": True,
-
 }
 
 model = uclchem.model.Cloud(param_dict=params)
@@ -56,7 +55,7 @@ print(f"Model completed with flag: {model.success_flag}")
 df = model.get_joined_dataframes(with_stats=True)
 print(f"DataFrame shape: {df.shape}")
 print(f"\nSolver stat columns: {uclchem.constants.DVODE_STAT_NAMES}")
-df[["Time"] + uclchem.constants.DVODE_STAT_NAMES].head(10)
+df["Time", *uclchem.constants.DVODE_STAT_NAMES].head(10)
 
 # %% [markdown]
 # ## Plotting Solver Effort Over Time

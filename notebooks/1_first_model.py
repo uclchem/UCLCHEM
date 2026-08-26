@@ -52,7 +52,7 @@ cloud.get_joined_dataframes().head()
 
 # Alternatively, we can get each dataframe type (i.e. physical parameters, chemical parameters, rate constants etc) separately.
 
-for dataframe in cloud.get_dataframes(joined=False):
+for dataframe in cloud.get_separate_dataframes():
     dataframe.head()
 
 # We can also test whether the model run went well by checking for element conservation. We do this because integrator errors often show up as a failure to conserve elemental abundances.
