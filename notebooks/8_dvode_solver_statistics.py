@@ -55,7 +55,7 @@ print(f"Model completed with flag: {model.success_flag}")
 df = model.get_joined_dataframes(with_stats=True)
 print(f"DataFrame shape: {df.shape}")
 print(f"\nSolver stat columns: {uclchem.constants.DVODE_STAT_NAMES}")
-df["Time", *uclchem.constants.DVODE_STAT_NAMES].head(10)
+df[["Time", *uclchem.constants.DVODE_STAT_NAMES]].head(10)
 
 # %% [markdown]
 # ## Plotting Solver Effort Over Time
@@ -146,7 +146,7 @@ ax.set_xlabel("Time (years)")
 ax.set_ylabel("Function Evaluations (NFE)")
 ax.set_xscale("log")
 ax.set_yscale("log")
-ax.set_title("Solver Effort: Static vs Freefall")
+ax.set_title("Solver Effort: 10 vs 50 K")
 ax.legend()
 plt.tight_layout()
 plt.show()
