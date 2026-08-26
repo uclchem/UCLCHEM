@@ -1013,12 +1013,12 @@ def pad_to_length(array: np.ndarray, length: int, **kwargs) -> np.ndarray:
     return np.pad(array, (0, length - len(array)), **kwargs)
 
 
-def strip_comment(line: str, comment_char: str = "!") -> str:
+def strip_comment(string: str, comment_char: str = "!") -> str:
     """Remove Fortran inline comment (everything from ``!`` onward).
 
     Parameters
     ----------
-    line : str
+    string : str
         A single line of Fortran source code.
     comment_char : str
         Character that indicates the beginning of a comment. Default = "!".
@@ -1028,11 +1028,21 @@ def strip_comment(line: str, comment_char: str = "!") -> str:
     str
         Line with comments stripped, respecting character literals.
 
+    Examples
+    --------
+    >>> strip_comment('This is code ! This is a comment')
+    'This is code '
+    >>> # Returns the string unchanged if there is no comment
+    >>> strip_comment('This does not have a comment')
+    'This does not have a comment'
+    >>> # Ensures that string literal comment chars are not comments
+    >>> strip_comment('This "!" is not a comment')
+    'This "!" is not a comment'
+
     """
-    # Respect character literals by scanning manually
     in_str = False
     quote = ""
-    for i, ch in enumerate(line):
+    for i, ch in enumerate(string):
         if in_str:
             if ch == quote:
                 in_str = False
@@ -1040,5 +1050,5 @@ def strip_comment(line: str, comment_char: str = "!") -> str:
             in_str = True
             quote = ch
         elif ch == comment_char:
-            return line[:i]
-    return line
+            return string[:i]
+    return string

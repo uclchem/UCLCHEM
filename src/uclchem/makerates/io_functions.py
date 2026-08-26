@@ -120,13 +120,14 @@ def read_species_file(
     with Path(file_name).open() as f:
         reader = csv.reader(f, delimiter=",", quotechar="|")
         for idx, row in enumerate(reader):
+            if row[0] == "NAME" or "!" in row[0]:
+                continue
             try:
-                if row[0] != "NAME" and "!" not in row[0]:
-                    row[-1] = strip_comment(row[-1])
-                    if "@" in row[0]:
-                        user_defined_bulk.append(Species(cast("list[str | float]", row)))
-                    else:
-                        species_list.append(Species(cast("list[str | float]", row)))
+                row[-1] = strip_comment(row[-1])
+                if "@" in row[0]:
+                    user_defined_bulk.append(Species(cast("list[str | float]", row)))
+                else:
+                    species_list.append(Species(cast("list[str | float]", row)))
             except IndexError as exc:
                 print(f"Error reading species file {file_name} at line {idx}")
                 raise exc
@@ -655,9 +656,6 @@ def write_outputs(
         for p in tmp_paths:
             if p.exists():
                 p.unlink()
-    # Note: constants.py now reads directly from f2py_constants module,
-    # so we no longer need to write it during MakeRates.
-    # After running MakeRates, just reinstall to update the Python constants.
 
 
 def write_f90_constants(

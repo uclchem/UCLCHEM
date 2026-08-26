@@ -13,12 +13,10 @@ reinstall UCLCHEM for these constants to update:
 
 """
 
-# Import canonical values from compiled Fortran module
 from types import MappingProxyType
 
 from uclchemwrap import constants, f2py_constants
 
-# Read canonical values from Fortran
 n_species = int(f2py_constants.nspec)
 n_reactions = int(f2py_constants.nreac)
 N_PHYSICAL_PARAMETERS = int(f2py_constants.n_physics_params)

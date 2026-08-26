@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-elementList = [
+elementList = (
     "H",
     "D",
     "HE",
@@ -47,8 +47,8 @@ elementList = [
     "18O",
     "E-",
     "FE",
-]
-elementMass = [
+)
+elementMass = (
     1,
     2,
     4,
@@ -69,8 +69,8 @@ elementMass = [
     18,
     0,
     56,
-]
-IGNORED_SPECIES_PARSING_SYMBOLS = ["#", "@", "*", "+", "-", "(", ")"]
+)
+IGNORED_SPECIES_PARSING_SYMBOLS = frozenset({"#", "@", "*", "+", "-", "(", ")"})
 
 
 SPECIES_HEADER = (
