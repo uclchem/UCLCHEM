@@ -100,7 +100,7 @@ TUNNELING_REACTION_TYPES = LH_REACTION_TYPES | ER_REACTION_TYPES
 
 BULK_REACTION_TYPES = frozenset({"CRP", "CRPHOT", "PHOTON", "LH", "EXSOLID", "EXRELAX"})
 
-REACTION_HEADER = [
+REACTION_HEADER = (
     "REACTANT 1",
     "REACTANT 2",
     "REACTANT 3",
@@ -116,7 +116,7 @@ REACTION_HEADER = [
     "REDUCED_MASS",
     "EXTRAPOLATE",
     "EXOTHERMICITY",
-]
+)
 
 
 def _infer_reaction_type(reactants: list[str]) -> str:
@@ -169,6 +169,59 @@ def get_duplicate_reactions(
             overlapping.append((i, j))
             duplicates[i], duplicates[j] = True, True
     return overlapping, overlapping_umist
+
+
+def get_body_count(n_reactants: int, reaction_type: str) -> int:
+    """Get the body count of a reaction.
+
+    A reactions body count is the number of factors of density to include in ODE.
+
+    Parameters
+    ----------
+    n_reactants : int
+        Number of reactants
+    reaction_type : str
+        Reaction type (e.g. "LH", "FREEZE", etc)
+
+    Returns
+    -------
+    body_count : int
+        Number of times the rate constant should be multiplied with the
+        density to get the rate constant.
+
+    Raises
+    ------
+    ValueError
+        If `reaction_type` is not a valid reaction type, i.e. is not in :data:`REACTION_TYPES`.
+
+    Notes
+    -----
+    We drop a factor of density from both the LHS and RHS of ODES because we work in
+    terms of abundances wrt hydrogen. So, reactions with 1 body have no factors of density.
+
+    Examples
+    --------
+    >>> get_body_count(2, "TWOBODY")
+    1
+    >>> get_body_count(2, "LH")
+    0
+    >>> get_body_count(1, "FREEZE")
+    1
+
+    """
+    if reaction_type not in REACTION_TYPES:
+        msg = f"Unknown reaction type '{reaction_type}'. Valid options are {REACTION_TYPES}."
+        raise ValueError(msg)
+
+    body_count = -1
+    # For each reactant, it should be multiplied with the density
+    body_count += n_reactants
+
+    if reaction_type in LH_REACTION_TYPES:
+        body_count -= 1
+    elif reaction_type in {"DESOH2", "FREEZE"}:
+        body_count += 1
+    return body_count
 
 
 class Reaction:
@@ -252,20 +305,11 @@ class Reaction:
 
         self.duplicate = False
         self.source = reaction_source  # The source of the reaction, e.g. UMIST, KIDA or user defined
-        self._reaction_type = _infer_reaction_type(self.get_reactants())
 
-        # body_count is the number of factors of density to include in ODE
-        # we drop a factor of density from both the LHS and RHS of ODES
-        # So reactions with 1 body have no factors of density
-        # which we manage by counting from -1
-        self.body_count = -1
-        for reactant in self.get_reactants():
-            if (reactant not in REACTION_TYPES) and reactant != "NAN":
-                self.body_count += 1
-            if reactant in {"DESOH2", "FREEZE"}:
-                self.body_count += 1
-            if reactant in LH_REACTION_TYPES:
-                self.body_count -= 1
+        self._reaction_type: str  # Making mypy happy
+        self.body_count = get_body_count(
+            len(self.get_pure_reactants()), self._reaction_type
+        )
 
         if (self.get_reaction_type() == "FREEZE") and (
             self.get_reactants()[0][-1] == "+"
@@ -329,7 +373,12 @@ class Reaction:
 
         """
         self._reactants = reactants
-        self._reaction_type = _infer_reaction_type(reactants)
+        reaction_type = _infer_reaction_type(reactants)
+        if hasattr(self, "_reaction_type") and reaction_type != self._reaction_type:
+            logger.info(
+                f"Reaction type {reaction_type} for reaction '{self}' changed, was '{self._reaction_type}'."
+            )
+        self._reaction_type = reaction_type
         # Store a sorted version for comparisons
         self._sorted_reactants = sorted(self._reactants)
 
@@ -668,10 +717,7 @@ class Reaction:
     # C
 
     def get_reaction_type(self) -> str:
-        """Get the type of a reaction from the reactants.
-
-        First check the third reactant for a reaction type, then the second. If there are none
-        in there, it will be regarded as a two body reaction.
+        """Get the type of the reaction.
 
         Returns
         -------
