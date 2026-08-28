@@ -34,8 +34,8 @@ def plot_species(
         An axis object to plot on
     df : pd.DataFrame
         A dataframe created by
-        ``uclchem.analysis.read_output_file``, ``uclchem.model.load_model`` or
-        ``uclchem.model.Model.get_dataframes``.
+        :func:`uclchem.analysis.read_output_file`, :func:`uclchem.model.load_model` or
+        :meth:`uclchem.model.Model.get_joined_dataframes`.
     species : list[str]
         A list of species names to be plotted.
         If species name starts with "$" instead of "#" or "@",

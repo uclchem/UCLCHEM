@@ -6,12 +6,11 @@ Deprecated
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
-    import pandas as pd
 
 import uclchem
 <<<<<<< HEAD
@@ -67,9 +66,9 @@ def test_ode_conservation(
     model = uclchem.model.Cloud(param_dict)
     model.check_error()
 
-    _physics_df, abundances_df = model.get_dataframes(joined=False)
+    _physics_df, abundances_df = model.get_split_dataframes()
     result = uclchem.analysis.check_element_conservation(
-        cast("pd.DataFrame", abundances_df),
+        abundances_df,
         element_list=element_list,
         percent=False,
     )

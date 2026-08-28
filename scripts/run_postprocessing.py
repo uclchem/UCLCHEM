@@ -49,10 +49,7 @@ if __name__ == "__main__":
         )
         model_nocoldens.check_error(only_error=True)
 
-        _dfs_nocoldens = model_nocoldens.get_dataframes(joined=False)
-        if not isinstance(_dfs_nocoldens, tuple):
-            msg = "Expected tuple from get_dataframes(joined=False)"
-            raise TypeError(msg)
+        _dfs_nocoldens = model_nocoldens.get_split_dataframes()
         physics_df_nocoldens, abundances_df_nocoldens = (
             pd.DataFrame(_dfs_nocoldens[0]),
             pd.DataFrame(_dfs_nocoldens[1]),
@@ -80,10 +77,7 @@ if __name__ == "__main__":
             coldens_C_array=np.array([0.0]),
         )
         model_coldens.check_error(only_error=False)
-        _dfs_coldens = model_coldens.get_dataframes(joined=False)
-        if not isinstance(_dfs_coldens, tuple):
-            msg = "Expected tuple from get_dataframes(joined=False)"
-            raise TypeError(msg)
+        _dfs_coldens = model_coldens.get_split_dataframes()
         physics_df_coldens, abundances_df_coldens = (
             pd.DataFrame(_dfs_coldens[0]),
             pd.DataFrame(_dfs_coldens[1]),

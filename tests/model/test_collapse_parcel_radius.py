@@ -122,7 +122,7 @@ def test_model_stops_end_at_final_density():
             "freefall": True,
         }
     )
-    phys_df, _ = model.get_dataframes(joined=False)
+    phys_df, _ = model.get_split_dataframes()
 
     # The model should terminate before it reaches finalTime.
     assert phys_df["Time"].iloc[-1] < finalTime
@@ -144,7 +144,7 @@ def test_model_continues_not_end_at_final_density():
             "freefall": True,
         }
     )
-    phys_df, _ = model.get_dataframes(joined=False)
+    phys_df, _ = model.get_split_dataframes()
 
     # The model should reach the finalTime.
     assert phys_df["Time"].iloc[-1] == finalTime
@@ -174,7 +174,7 @@ def test_end_at_final_density_stops_close_to_target():
             "freefall": True,
         }
     )
-    phys_df, _ = model.get_dataframes(joined=False)
+    phys_df, _ = model.get_split_dataframes()
 
     final_density = phys_df["Density"].iloc[-1]
 

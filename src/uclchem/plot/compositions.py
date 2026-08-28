@@ -36,8 +36,8 @@ def create_abundance_plot(
     ----------
     df : pd.DataFrame
         Pandas dataframe containing the UCLCHEM output, see
-        ``uclchem.analysis.read_output_file``, ``uclchem.model.load_model`` or
-        ``uclchem.model.Model.get_dataframes``.
+        :func:`uclchem.analysis.read_output_file`, :func:`uclchem.model.load_model` or
+        :meth:`uclchem.model.Model.get_joined_dataframes`.
     species : list[str]
         list of strings containing species names.
         Using a $ instead of # or @ will plot the sum of surface and bulk abundances.
@@ -48,7 +48,7 @@ def create_abundance_plot(
         Path to file where figure will be saved.
         If None, figure is not saved. Defaults to None.
     plot_kwargs : dict[str, Any] | None
-        keyword arguments passed to ``ax.plot``.
+        keyword arguments passed to :meth:`matplotlib.pyplot.Axes.plot`.
         Default = None.
 
     Returns
@@ -151,18 +151,21 @@ def plot_rates_deepdive(
         UCLCHEM species name to analyze, e.g. ``"HCO+"``.
     physics_df : pd.DataFrame
         Physics DataFrame from
-        :meth:`~uclchem.model.AbstractModel.get_dataframes`.
+        :meth:`~uclchem.model.AbstractModel.get_separate_dataframes`.
     chemistry_df : pd.DataFrame
-        Chemistry (abundance) DataFrame.
+        Chemistry (abundance) DataFrame from
+        :meth:`~uclchem.model.AbstractModel.get_separate_dataframes`.
     rate_constants_df : pd.DataFrame
-        Rate-constants DataFrame (``with_rate_constants=True``).
+        Rate-constants DataFrame from
+        :meth:`~uclchem.model.AbstractModel.get_separate_dataframes`
+        ``with_rate_constants=True``.
     network : Network | None
         Pre-loaded :class:`~uclchem.makerates.network.Network`. If
         ``None`` the default network is loaded via
         :meth:`~uclchem.makerates.network.Network.from_csv`.
     filter_threshold : float
         Reactions whose rate never exceeds this fraction of the per-step
-        maximum within *filter_window* are excluded. Default: ``0.01``.
+        maximum within `filter_window` are excluded. Default: ``0.01``.
     filter_window : tuple[float, float]
         ``(t_min, t_max)`` in years used for reaction filtering and
         ranking.  Default: ``(1e4, 1e6)``.

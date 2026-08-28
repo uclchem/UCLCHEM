@@ -3,11 +3,6 @@
 Runs a cloud model and verifies the new physics produces different/better results.
 """
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    import pandas as pd
-
 import uclchem
 
 
@@ -41,7 +36,7 @@ def test_ice_dependent_desorption_changes_chemistry() -> None:
     result.check_error()
 
     # Get dataframe
-    df: pd.DataFrame = result.get_dataframes(joined=True)  # type: ignore[assignment, ty:invalid-assignment]
+    df = result.get_joined_dataframes()
     assert len(df) > 0, "No output produced"
 
     # Verify ice buildup (SURFACE + BULK = total ice)
@@ -116,7 +111,7 @@ def test_high_temp_CO_should_be_low() -> None:  # ruff: ignore[invalid-function-
     result.check_error()
 
     # Get dataframe
-    df: pd.DataFrame = result.get_dataframes(joined=True)  # type: ignore[assignment, ty:invalid-assignment]
+    df = result.get_joined_dataframes()
 
     H2O_ice = df["#H2O"].iloc[-1] + df["@H2O"].iloc[-1]  # ruff: ignore[non-lowercase-variable-in-function]
     CO_ice = df["#CO"].iloc[-1] + df["@CO"].iloc[-1]  # ruff: ignore[non-lowercase-variable-in-function]

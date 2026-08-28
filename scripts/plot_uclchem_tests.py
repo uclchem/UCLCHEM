@@ -55,7 +55,7 @@ if __name__ == "__main__":
     test_data: dict[str, pd.DataFrame] = {}
     for model in ["phase1", "phase2", "static"]:
         loaded = uclchem.model.load_model(file=str(save_file), name=model)
-        test_data[model] = cast("pd.DataFrame", loaded.get_dataframes())
+        test_data[model] = loaded.get_joined_dataframes()
         for spec in ["#SI", "@SI"]:
             if spec not in test_data[model]:
                 test_data[model][spec] = 1.0e-30

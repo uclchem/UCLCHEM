@@ -66,7 +66,7 @@ param_dict_heating = {
 cloud = uclchem.model.Cloud(param_dict=param_dict_heating)
 
 # Extract data from the model object
-physics, abundances, rate_constants, heating = cloud.get_separate_dataframes(
+physics, abundances, rate_constants, heating = cloud.get_split_dataframes(
     with_rate_constants=True, with_heating=True
 )
 start_abund = cloud.next_starting_chemistry_array
@@ -112,7 +112,7 @@ cloud_no_heat = uclchem.model.Cloud(param_dict=param_dict_no_heating)
 
 # Extract data
 physics_no_heat, abundances_no_heat, rate_constants_no_heat, heating_no_heat = (
-    cloud_no_heat.get_separate_dataframes(with_rate_constants=True, with_heating=True)
+    cloud_no_heat.get_split_dataframes(with_rate_constants=True, with_heating=True)
 )
 
 print(f"No heating model completed with flag: {cloud_no_heat.success_flag}")
@@ -294,13 +294,13 @@ param_warm_cloud = {
 print("Running cold core model...")
 cloud_cold = uclchem.model.Cloud(param_dict=param_cold_core)
 phys_cold, abund_cold, rate_constants_cold, heating_cold = (
-    cloud_cold.get_separate_dataframes(with_rate_constants=True, with_heating=True)
+    cloud_cold.get_split_dataframes(with_rate_constants=True, with_heating=True)
 )
 
 print("Running warm cloud model...")
 cloud_warm = uclchem.model.Cloud(param_dict=param_warm_cloud)
 phys_warm, abund_warm, rate_constants_warm, heating_warm = (
-    cloud_warm.get_separate_dataframes(with_rate_constants=True, with_heating=True)
+    cloud_warm.get_split_dataframes(with_rate_constants=True, with_heating=True)
 )
 
 print(

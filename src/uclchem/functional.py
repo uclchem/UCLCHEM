@@ -76,21 +76,15 @@ Usage Patterns
 
 """
 
-<<<<<<< HEAD
 from collections.abc import Iterable
-=======
 from collections.abc import Sequence
->>>>>>> 327bba7 (Many more linting rules.)
 from typing import Any, cast
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
-<<<<<<< HEAD
 from uclchem.constants import DEFAULT_ELEMENTS_TO_CHECK, TIMEPOINTS
-=======
-from uclchem.constants import ELEMENTS_TO_CHECK, TIMEPOINTS
->>>>>>> 327bba7 (Many more linting rules.)
 from uclchem.model import (
     AbstractModel,
     Cloud,
@@ -160,11 +154,7 @@ def __validate_functional_api_params__(
 def _write_column_file(
     model_object: AbstractModel,
     original_param_dict: dict | None,
-<<<<<<< HEAD
-    out_species: Iterable[str] | None,
-=======
     out_species: Sequence[str] | None,
->>>>>>> 327bba7 (Many more linting rules.)
 ) -> None:
 
     if original_param_dict is None:
@@ -187,17 +177,13 @@ def _write_column_file(
 
 def __functional_return__(
     model_object: AbstractModel,
-    out_species: Sequence[str] | None = ELEMENTS_TO_CHECK,
+    out_species: Sequence[str] = DEFAULT_ELEMENTS_TO_CHECK,
     *,
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
-<<<<<<< HEAD
-    out_species: Iterable[str] | None = None,
-=======
->>>>>>> 327bba7 (Many more linting rules.)
 ) -> tuple:
     """Return function that takes in the object that was modeled and returns the values.
 
@@ -208,9 +194,9 @@ def __functional_return__(
     model_object : AbstractModel
         model_object of a class that inherited from AbstractModel,
         from which the results should be returned.
-    out_species : Sequence[str] | None
+    out_species : Sequence[str]
         List of species names to return abundances for.
-        Default = :data:`ELEMENTS_TO_CHECK`.
+        Default = :data:`DEFAULT_ELEMENTS_TO_CHECK`.
     return_array : bool
         A boolean on whether a np.array should be returned to a user.
         If both return_array and return_dataframe are false, the function will return
@@ -229,11 +215,6 @@ def __functional_return__(
         should be returned to a user. (Default value = False)
     return_stats : bool
         Whether DVODE statistics should be returned. Default = False.
-<<<<<<< HEAD
-    out_species : Iterable[str] | None
-        List of species names to return abundances for. (Default value = None)
-=======
->>>>>>> 327bba7 (Many more linting rules.)
 
     Returns
     -------
@@ -295,9 +276,8 @@ def __functional_return__(
             heating_list: list[pd.DataFrame] = []
             stats_list: list[pd.DataFrame] = []
             for pt in range(points):
-                res: tuple[pd.DataFrame, ...] = model_object.get_dataframes(  # type: ignore[assignment, ty:invalid-assignment]
+                res = model_object.get_split_dataframes(
                     point=pt,
-                    joined=False,
                     with_rate_constants=return_rate_constants,
                     with_heating=return_heating,
                     with_stats=return_stats,
@@ -335,14 +315,13 @@ def __functional_return__(
             stats_df = pd.concat(stats_list, ignore_index=True) if stats_list else None
         else:
             # Single point: behave as before but include a Point column
-            result_dfs: tuple[pd.DataFrame | None, ...] = model_object.get_dataframes(  # type: ignore[assignment, ty:invalid-assignment]
-                joined=False,
+            result_dfs = model_object.get_split_dataframes(
                 with_rate_constants=return_rate_constants,
                 with_heating=return_heating,
                 with_stats=return_stats,
             )
-            phys_df = cast("pd.DataFrame", result_dfs[0])
-            chem_df = cast("pd.DataFrame", result_dfs[1])
+            phys_df = result_dfs[0]
+            chem_df = result_dfs[1]
             idx = 2
             if return_rate_constants and len(result_dfs) > idx:
                 rate_constants_df = cast("pd.DataFrame", result_dfs[idx])
@@ -393,14 +372,10 @@ def __functional_return__(
 
 def __cloud__(
     param_dict: dict | None = None,
-<<<<<<< HEAD
-    out_species: Iterable[str] | None = None,
-=======
-    out_species: Sequence[str] | None = ELEMENTS_TO_CHECK,
+    out_species: Sequence[str] | None = DEFAULT_ELEMENTS_TO_CHECK,
     starting_chemistry: np.ndarray | None = None,
     timepoints: int = TIMEPOINTS,
     *,
->>>>>>> 327bba7 (Many more linting rules.)
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rate_constants: bool = False,
@@ -414,14 +389,10 @@ def __cloud__(
     param_dict : dict | None
         A dictionary of parameters where keys are any of the variables in
         `defaultparameters.f90` and values are value for current run.
-<<<<<<< HEAD
-    out_species : Iterable[str] | None
-=======
     out_species : Sequence[str] | None
->>>>>>> 327bba7 (Many more linting rules.)
         A list of species for which final abundance will be returned.
         If None, no abundances will be returned.
-        Defaults to `uclchem.constants.ELEMENTS_TO_CHECK`.
+        Defaults to :data:`uclchem.constants.DEFAULT_ELEMENTS_TO_CHECK`.
     starting_chemistry : np.ndarray | None
         Array containing the starting chemical abundances
         needed by uclchem. (Default value = None)
@@ -482,12 +453,6 @@ def __cloud__(
                 Can be passed to `uclchem.utils.check_error()` to see more details.
 
     """
-<<<<<<< HEAD
-    if out_species is None:
-        out_species = DEFAULT_ELEMENTS_TO_CHECK
-
-=======
->>>>>>> 327bba7 (Many more linting rules.)
     # Validate functional API constraints
     __validate_functional_api_params__(
         param_dict=param_dict,
@@ -520,14 +485,10 @@ def __cloud__(
 def __collapse__(
     collapse: str,
     param_dict: dict | None = None,
-<<<<<<< HEAD
-    out_species: Iterable[str] | None = None,
-=======
     out_species: Sequence[str] | None = ELEMENTS_TO_CHECK,
     starting_chemistry: np.ndarray | None = None,
     timepoints: int = TIMEPOINTS,
     *,
->>>>>>> 327bba7 (Many more linting rules.)
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rate_constants: bool = False,
@@ -544,11 +505,7 @@ def __collapse__(
     param_dict : dict | None
         A dictionary of parameters where keys are any of the variables in
         `defaultparameters.f90` and values are value for current run.
-<<<<<<< HEAD
-    out_species : Iterable[str] | None
-=======
     out_species : Sequence[str] | None
->>>>>>> 327bba7 (Many more linting rules.)
         A list of species for which final abundance will be returned.
         If None, no abundances will be returned.
         Defaults to `uclchem.constants.ELEMENTS_TO_CHECK`.
@@ -612,12 +569,6 @@ def __collapse__(
                 Can be passed to `uclchem.utils.check_error()` to see more details.
 
     """
-<<<<<<< HEAD
-    if out_species is None:
-        out_species = DEFAULT_ELEMENTS_TO_CHECK
-
-=======
->>>>>>> 327bba7 (Many more linting rules.)
     __validate_functional_api_params__(
         param_dict,
         return_array=return_array,
@@ -651,14 +602,10 @@ def __prestellar_core__(
     temp_index: int = 1,
     max_temperature: float = 300.0,
     param_dict: dict | None = None,
-<<<<<<< HEAD
-    out_species: Iterable[str] | None = None,
-=======
     out_species: Sequence[str] | None = ELEMENTS_TO_CHECK,
     starting_chemistry: np.ndarray | None = None,
     timepoints: int = TIMEPOINTS,
     *,
->>>>>>> 327bba7 (Many more linting rules.)
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rate_constants: bool = False,
@@ -679,11 +626,7 @@ def __prestellar_core__(
     param_dict : dict | None
         A dictionary of parameters where keys are any of the variables
         in `defaultparameters.f90` and values are value for current run.
-<<<<<<< HEAD
-    out_species : Iterable[str] | None
-=======
     out_species : Sequence[str] | None
->>>>>>> 327bba7 (Many more linting rules.)
         A list of species for which final abundance will be returned.
         If None, no abundances will be returned.
         Defaults to `uclchem.constants.ELEMENTS_TO_CHECK`.
@@ -747,12 +690,6 @@ def __prestellar_core__(
                 Can be passed to `uclchem.utils.check_error()` to see more details.
 
     """
-<<<<<<< HEAD
-    if out_species is None:
-        out_species = DEFAULT_ELEMENTS_TO_CHECK
-
-=======
->>>>>>> 327bba7 (Many more linting rules.)
     __validate_functional_api_params__(
         param_dict,
         return_array=return_array,
@@ -788,14 +725,10 @@ def __cshock__(
     timestep_factor: float = 0.01,
     minimum_temperature: float = 0.0,
     param_dict: dict | None = None,
-<<<<<<< HEAD
-    out_species: Iterable[str] | None = DEFAULT_ELEMENTS_TO_CHECK,
-=======
     out_species: Sequence[str] | None = ELEMENTS_TO_CHECK,
     starting_chemistry: np.ndarray | None = None,
     timepoints: int = TIMEPOINTS,
     *,
->>>>>>> 327bba7 (Many more linting rules.)
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rate_constants: bool = False,
@@ -818,11 +751,7 @@ def __cshock__(
     param_dict : dict | None
         A dictionary of parameters where keys are any of the variables
         in `defaultparameters.f90` and values are value for current run.
-<<<<<<< HEAD
-    out_species : Iterable[str] | None
-=======
     out_species : Sequence[str] | None
->>>>>>> 327bba7 (Many more linting rules.)
         A list of species for which final
         abundance will be returned. If None, no abundances will be returned.
         Default = `uclchem.constants.ELEMENTS_TO_CHECK`.
@@ -886,12 +815,6 @@ def __cshock__(
                 Can be passed to `uclchem.utils.check_error()` to see more details.
 
     """
-<<<<<<< HEAD
-    if out_species is None:
-        out_species = DEFAULT_ELEMENTS_TO_CHECK
-
-=======
->>>>>>> 327bba7 (Many more linting rules.)
     __validate_functional_api_params__(
         param_dict,
         return_array=return_array,
@@ -926,14 +849,10 @@ def __cshock__(
 def __jshock__(
     shock_vel: float,
     param_dict: dict | None = None,
-<<<<<<< HEAD
-    out_species: Iterable[str] | None = DEFAULT_ELEMENTS_TO_CHECK,
-=======
     out_species: Sequence[str] | None = ELEMENTS_TO_CHECK,
     starting_chemistry: np.ndarray | None = None,
     timepoints: int = TIMEPOINTS,
     *,
->>>>>>> 327bba7 (Many more linting rules.)
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rate_constants: bool = False,
@@ -949,11 +868,7 @@ def __jshock__(
     param_dict : dict | None
         A dictionary of parameters where keys are any of the variables in
         `defaultparameters.f90` and values are value for current run.
-<<<<<<< HEAD
-    out_species : Iterable[str] | None
-=======
     out_species : Sequence[str] | None
->>>>>>> 327bba7 (Many more linting rules.)
         A list of species for which final abundance will be returned.
         If None, no abundances will be returned.
         Default = :data:`uclchem.constants.ELEMENTS_TO_CHECK`.
@@ -1018,12 +933,6 @@ def __jshock__(
                 Can be passed to `uclchem.utils.check_error()` to see more details.
 
     """
-<<<<<<< HEAD
-    if out_species is None:
-        out_species = DEFAULT_ELEMENTS_TO_CHECK
-
-=======
->>>>>>> 327bba7 (Many more linting rules.)
     __validate_functional_api_params__(
         param_dict,
         return_array=return_array,
