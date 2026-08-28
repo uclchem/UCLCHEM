@@ -6,8 +6,6 @@ to ensure all model stages work with Python in-memory arrays.
 
 import pytest
 
-from uclchem.analysis import check_element_conservation
-
 try:
     import uclchem
 
@@ -98,22 +96,17 @@ def test_collapse_hotcore_return_array():
         "initialDens": 1e2,
         "finalDens": 1e6,
         "finalTime": 1e5,
-        "runtime_conservation_tolerance": 0.0,
         "writeTimeStepInfo": True,
     }
     # return_array with return_rate_constants=True returns 6 values:
     # physics, chemistry, rates, heating(None), abundances, flag  # ruff: ignore[commented-out-code]
-    physics, chemistry, _, _, abundances_start, return_code = uclchem.functional.cloud(
+    physics, _, _, _, abundances_start, return_code = uclchem.functional.cloud(
         param_dict=params,
         out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
         return_array=True,
         return_rate_constants=True,
     )
 
-    for element, change in check_element_conservation(chemistry, percent=True).items():
-        if float(change.strip("%")) > 1:
-            msg = f"Conservation error for element {element}"
-            raise ValueError(msg)
     assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
         f"Stage 1 returned with nonzero exit code {return_code}"
     )

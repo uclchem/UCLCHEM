@@ -38,8 +38,8 @@ if __name__ == "__main__":
     physics_df: pd.DataFrame
     chemistry_df: pd.DataFrame
     rate_constants_df: pd.DataFrame
-    physics_df, chemistry_df, rate_constants_df = model.get_dataframes(  # type: ignore[assignment]
-        with_rate_constants=True, joined=False
+    physics_df, chemistry_df, rate_constants_df = model.get_split_dataframes(
+        with_rate_constants=True,
     )
 
     # A loaded network is needed to convert rate constants to actual rates.
@@ -101,8 +101,7 @@ if __name__ == "__main__":
     #    committing to a full deepdive.
     # ---------------------------------------------------------------------------
 
-    rates: pd.DataFrame
-    _, rates = uclchem.analysis.rate_constants_to_dy_and_rates(  # type: ignore[assignment]
+    _, rates = uclchem.analysis.rate_constants_to_dy_and_rates(
         physics_df, chemistry_df, rate_constants_df, network=network
     )
     production_df, destruction_df = uclchem.analysis.get_production_and_destruction(

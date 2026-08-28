@@ -77,7 +77,7 @@ Usage Patterns
 """
 
 from collections.abc import Sequence
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -274,9 +274,8 @@ def __functional_return__(
             heating_list = []
             stats_list = []
             for pt in range(points):
-                res: tuple[pd.DataFrame, ...] = model_object.get_dataframes(  # type: ignore[assignment, ty:invalid-assignment]
+                res = model_object.get_split_dataframes(
                     point=pt,
-                    joined=False,
                     with_rate_constants=return_rate_constants,
                     with_heating=return_heating,
                     with_stats=return_stats,
@@ -310,14 +309,13 @@ def __functional_return__(
             stats_df = pd.concat(stats_list, ignore_index=True) if stats_list else None
         else:
             # Single point: behave as before but include a Point column
-            result_dfs: tuple[pd.DataFrame | None, ...] = model_object.get_dataframes(  # type: ignore[assignment, ty:invalid-assignment]
-                joined=False,
+            result_dfs = model_object.get_split_dataframes(
                 with_rate_constants=return_rate_constants,
                 with_heating=return_heating,
                 with_stats=return_stats,
             )
-            phys_df = cast("pd.DataFrame", result_dfs[0])
-            chem_df = cast("pd.DataFrame", result_dfs[1])
+            phys_df = result_dfs[0]
+            chem_df = result_dfs[1]
             idx = 2
             if return_rate_constants and len(result_dfs) > idx:
                 rate_constants_df = result_dfs[idx]

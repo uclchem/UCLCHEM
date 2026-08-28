@@ -493,7 +493,7 @@ class TestOOCloud1D:
         assert model.physics_array.shape[1] == base_1d_params["points"]
 
     def test_oo_cloud_1d_dataframe_output(self, base_1d_params):
-        """Test that get_dataframes works properly for 1D models."""
+        """Test that get_separate_dataframes works properly for 1D models."""
         model = uclchem.model.Cloud(
             param_dict=base_1d_params,
             timepoints=2500,
@@ -502,7 +502,7 @@ class TestOOCloud1D:
         model.check_error()
 
         # Get DataFrames
-        phys_df, chem_df = model.get_dataframes(joined=False)
+        phys_df, chem_df = model.get_split_dataframes()
 
         # Check Point column exists
         assert "Point" in phys_df.columns
@@ -527,7 +527,7 @@ class TestOOCloud1D:
         model.check_error()
 
         # Get data for first point only
-        phys_df_pt0, _chem_df_pt0 = model.get_dataframes(point=0, joined=False)
+        phys_df_pt0, _chem_df_pt0 = model.get_split_dataframes(point=0)
 
         # Should only have data for one point
         assert phys_df_pt0["Point"].nunique() == 1
@@ -535,7 +535,7 @@ class TestOOCloud1D:
 
         # Get data for last point
         last_pt = base_1d_params["points"] - 1
-        phys_df_last, _chem_df_last = model.get_dataframes(point=last_pt, joined=False)
+        phys_df_last, _chem_df_last = model.get_split_dataframes(point=last_pt)
 
         assert (phys_df_last["Point"] == base_1d_params["points"]).all()
 
@@ -554,7 +554,7 @@ class TestOOCloud1D:
         model.check_error()
 
         # Get DataFrames with stats
-        result = model.get_dataframes(joined=False, with_stats=True)
+        result = model.get_split_dataframes(with_stats=True)
 
         # Should return: phys, chem, stats
         assert len(result) == 3
@@ -661,7 +661,7 @@ class TestOOHotcore1D:
         assert model.success_flag == uclchem.utils.SuccessFlag.SUCCESS
 
         # Get final temperatures at each point
-        phys_df = model.get_dataframes(joined=False)[0]
+        phys_df = model.get_split_dataframes()[0]
         final_time = phys_df["Time"].max()
         final_temps = (
             phys_df[phys_df["Time"] == final_time].sort_values("Point")["gasTemp"].values
@@ -714,7 +714,7 @@ class TestOOModelSavingLoading1D:
         model2 = uclchem.model.Cloud.from_file(str(save_file))
 
         # Get DataFrames from loaded model
-        phys_df, _chem_df = model2.get_dataframes(joined=False)
+        phys_df, _chem_df = model2.get_separate_dataframes()
 
         # Point column should exist
         assert "Point" in phys_df.columns
@@ -749,7 +749,7 @@ class TestOOModelChaining1D:
         model2.check_error()
 
         # Verify time continuity
-        phys_df2 = model2.get_dataframes(joined=False)[0]
+        phys_df2 = model2.get_split_dataframes()[0]
         assert phys_df2["Time"].iloc[-1] >= 5.0e4
 
         # Verify handoff: next_starting_chemistry_array is what drives phase 2 and
@@ -814,7 +814,7 @@ class TestEndAtFinalDensity:
         model.check_error()
 
         # Get final density
-        phys_df = model.get_dataframes(joined=False)[0]
+        phys_df = model.get_split_dataframes()[0]
         final_density = phys_df["Density"].iloc[-1]
 
         # Should have stopped at or before finalDens
@@ -841,7 +841,7 @@ class TestEndAtFinalDensity:
         model.check_error()
 
         # Get final time
-        phys_df = model.get_dataframes(joined=False)[0]
+        phys_df = model.get_split_dataframes()[0]
         final_time = phys_df["Time"].iloc[-1]
 
         # Should have run to finalTime

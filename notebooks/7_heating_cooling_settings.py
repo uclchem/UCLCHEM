@@ -59,7 +59,7 @@ cloud_full = uclchem.model.Cloud(param_dict=param_dict)
 
 # Extract all data from the model object in one call
 physics_full, abundances_full, rate_constants_full, heating_full = (
-    cloud_full.get_separate_dataframes(with_rate_constants=True, with_heating=True)
+    cloud_full.get_split_dataframes(with_rate_constants=True, with_heating=True)
 )
 start_abund = cloud_full.next_starting_chemistry_array
 flag_full = 0 if cloud_full.has_attr("_data") else -1
@@ -244,7 +244,7 @@ cloud_limited = uclchem.model.Cloud(param_dict=param_dict)
 
 # Extract all data in one call
 physics_limited, abundances_limited, rate_constants_limited, heating_limited = (
-    cloud_limited.get_separate_dataframes(with_rate_constants=True, with_heating=True)
+    cloud_limited.get_split_dataframes(with_rate_constants=True, with_heating=True)
 )
 flag_limited = 0 if cloud_limited.has_attr("_data") else -1
 

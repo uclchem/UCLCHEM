@@ -600,10 +600,7 @@ def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
         msg = f"model must be a Collapse instance, got {type(model).__name__}"
         raise TypeError(msg)
 
-    df_result = model.get_dataframes(point=point)
-    # get_dataframes with joined=True returns a single DataFrame (the return type
-    # annotation is overly broad; cast to narrow for mypy)
-    df: pd.DataFrame = df_result  # type: ignore[assignment]
+    df = model.get_joined_dataframes(point=point)
     t_yr: np.ndarray = np.asarray(df["Time"].values)
     r_pc: np.ndarray = np.asarray(df["parcel_radius"].values)
     mode = model.collapse  # CollapseMode

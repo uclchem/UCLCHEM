@@ -18,7 +18,7 @@ def test_get_final_abundances_for_species():
 
     assert len(final_abundances) == len(species)
 
-    _phys_df, chem_df = model.get_dataframes(joined=False)
+    _phys_df, chem_df = model.get_split_dataframes()
     final_abundances_from_df = [chem_df[spec].iloc[-1] for spec in species]
     assert np.all(final_abundances_from_df == final_abundances)
 

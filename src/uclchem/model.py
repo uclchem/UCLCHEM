@@ -956,20 +956,20 @@ class AbstractModel(ABC):
                 print(
                     f"Element conservation report for point {i + 1} of {self._param_dict['points']}"
                 )
-                df_i = self.get_dataframes(i)
+                df_i = self.get_joined_dataframes(i)
                 print(
                     check_element_conservation(
-                        df_i if isinstance(df_i, pd.DataFrame) else df_i[0],
+                        df_i,
                         element_list=element_list,
                         percent=percent,
                     )
                 )
         else:
             print("Element conservation report")
-            df_0 = self.get_dataframes(0)
+            df_0 = self.get_joined_dataframes(0)
             print(
                 check_element_conservation(
-                    df_0 if isinstance(df_0, pd.DataFrame) else df_0[0],
+                    df_0,
                     element_list=element_list,
                     percent=percent,
                 )
@@ -1032,10 +1032,8 @@ class AbstractModel(ABC):
         if point > self._param_dict["points"]:
             msg = "'point' must be less than number of modeled points."
             raise ValueError(msg)
-        df = self.get_dataframes(point)
-        return create_abundance_plot(
-            df if isinstance(df, pd.DataFrame) else df[0], species, figsize, plot_file
-        )
+        df = self.get_joined_dataframes(point)
+        return create_abundance_plot(df, species, figsize, plot_file)
 
     def get_dataframes(
         self,
@@ -1200,7 +1198,7 @@ class AbstractModel(ABC):
         # joined=True always returns a single DataFrame
         return result  # type: ignore[return-value, ty:invalid-return-type]
 
-    def get_separate_dataframes(
+    def get_split_dataframes(
         self,
         point: int | None = None,
         *,
@@ -1576,10 +1574,10 @@ class AbstractModel(ABC):
             Modified input axis is returned
 
         """
-        df = self.get_dataframes(point)
+        df = self.get_joined_dataframes(point)
         return plot_species(
             ax,
-            df if isinstance(df, pd.DataFrame) else df[0],
+            df,
             species,
             legend=legend,
             **plot_kwargs,
@@ -4300,21 +4298,19 @@ class SequentialRunner:
             conserve_dicts: list[dict[str, str]] = []
             if model["Model"]._param_dict["points"] > 1:
                 for pt in range(model["Model"]._param_dict["points"]):
-                    df = model["Model"].get_dataframes(pt)
-                    if isinstance(df, pd.DataFrame):
-                        conserve_dicts += [
-                            check_element_conservation(
-                                df, element_list=element_list, percent=percent
-                            )
-                        ]
-            else:
-                df = model["Model"].get_dataframes(0)
-                if isinstance(df, pd.DataFrame):
+                    df = model["Model"].get_joined_dataframes(pt)
                     conserve_dicts += [
                         check_element_conservation(
                             df, element_list=element_list, percent=percent
                         )
                     ]
+            else:
+                df = model["Model"].get_joined_dataframes(0)
+                conserve_dicts += [
+                    check_element_conservation(
+                        df, element_list=element_list, percent=percent
+                    )
+                ]
             conserved = True
             for conserve_dict in conserve_dicts:
                 conserved = all(float(x[:1]) < 1 for x in conserve_dict.values())
@@ -4860,21 +4856,19 @@ class GridRunner:
             conserve_dicts: list[dict[str, str]] = []
             if tmp_model._param_dict["points"] > 1:
                 for pt in range(tmp_model._param_dict["points"]):
-                    df = tmp_model.get_dataframes(pt)
-                    if isinstance(df, pd.DataFrame):
-                        conserve_dicts += [
-                            check_element_conservation(
-                                df, element_list=element_list, percent=percent
-                            )
-                        ]
-            else:
-                df = tmp_model.get_dataframes(0)
-                if isinstance(df, pd.DataFrame):
+                    df = tmp_model.get_joined_dataframes(pt)
                     conserve_dicts += [
                         check_element_conservation(
                             df, element_list=element_list, percent=percent
                         )
                     ]
+            else:
+                df = tmp_model.get_joined_dataframes(0)
+                conserve_dicts += [
+                    check_element_conservation(
+                        df, element_list=element_list, percent=percent
+                    )
+                ]
             conserved = True
             for conserve_dict in conserve_dicts:
                 conserved = all(float(x[:1]) < 1 for x in conserve_dict.values())
