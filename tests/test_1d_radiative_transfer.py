@@ -493,7 +493,7 @@ class TestOOCloud1D:
         assert model.physics_array.shape[1] == base_1d_params["points"]
 
     def test_oo_cloud_1d_dataframe_output(self, base_1d_params):
-        """Test that get_separate_dataframes works properly for 1D models."""
+        """Test that get_split_dataframes works properly for 1D models."""
         model = uclchem.model.Cloud(
             param_dict=base_1d_params,
             timepoints=2500,
@@ -714,7 +714,7 @@ class TestOOModelSavingLoading1D:
         model2 = uclchem.model.Cloud.from_file(str(save_file))
 
         # Get DataFrames from loaded model
-        phys_df, _chem_df = model2.get_separate_dataframes()
+        phys_df, _chem_df = model2.get_split_dataframes()
 
         # Point column should exist
         assert "Point" in phys_df.columns

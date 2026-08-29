@@ -58,7 +58,7 @@ def test_stats_array_populated():
 
 
 def test_stats_dataframe_columns():
-    """Test that get_joined/separate_dataframes with_stats returns correct columns."""
+    """Test that get_joined/split_dataframes with_stats returns correct columns."""
     params = {
         "endAtFinalDensity": False,
         "freefall": False,
@@ -75,7 +75,7 @@ def test_stats_dataframe_columns():
             f"Column {stat_name} should be in joined DataFrame"
         )
 
-    # Test separate DataFrames
+    # Test split DataFrames
     result = model.get_split_dataframes(with_stats=True)
     stats_df = result[-1]  # stats_df is the last element when with_stats=True
     expected_columns = ["Point", *DVODE_STAT_NAMES]

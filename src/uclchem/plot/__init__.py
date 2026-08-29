@@ -20,7 +20,7 @@ chemical abundances and reaction rates from UCLCHEM models.
     >>> model.check_error()
     Model ran successfully
     >>>
-    >>> physics_df, chemistry_df, rate_constants_df = model.get_separate_dataframes(
+    >>> physics_df, chemistry_df, rate_constants_df = model.get_split_dataframes(
     ...     with_rate_constants=True,
     ... )
     >>> # Making a plot of the abundances over time
