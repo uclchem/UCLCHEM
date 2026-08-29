@@ -367,199 +367,6 @@ def get_collapse_mode(mode: str | int | CollapseMode) -> CollapseMode:
     raise ValueError(msg)
 
 
-def _filament_units():
-    """Return (unitr_pc, unitt_yr) for filament (mode 3) collapse.
-
-    Returns
-    -------
-    tuple[float, float]
-        Unit conversion factors ``(unitr_pc, unitt_yr)``.
-
-    """
-    two_pi_g_rho0_mh = _TWO_PI_G * _RHO0_FILAMENT * _MH
-    cs = np.sqrt(_KB * 10.0 / (2.0 * _MH))  # sound speed at 10 K
-    unitr = cs * two_pi_g_rho0_mh ** (-0.5) / _PC  # in pc
-    unitt = two_pi_g_rho0_mh ** (-0.5) / _SECONDS_PER_YEAR  # in yr
-    return unitr, unitt
-
-
-def _rminfit(t_yr: float, mode: CollapseMode) -> float:
-    """Fit to time evolution of the radius of minimum velocity.
-
-    Parameters
-    ----------
-    t_yr : float
-        Time in years.
-    mode : CollapseMode
-        Collapse mode. One of ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
-
-    Returns
-    -------
-    float
-        Radius of minimum velocity (pc for mode 3, normalized units for mode 4).
-
-    Raises
-    ------
-    ValueError
-        If ``mode`` is not one of
-        ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
-
-    """
-    if mode == CollapseMode.FILAMENT:
-        _, unitt = _filament_units()
-        tnew = t_yr / unitt
-        if tnew == 0:
-            return 7.2
-        if np.log(tnew) < 1.6:  # ruff: ignore[magic-value-comparison]
-            return -1.149 * tnew + 7.2
-        if np.log(tnew) < 1.674:  # ruff: ignore[magic-value-comparison]
-            return -9.2 * np.log(tnew) + 16.25
-        return -22.0 * np.log(tnew) + 37.65
-    if mode == CollapseMode.AMBIPOLAR:
-        t6 = 1e-6 * t_yr
-        if t6 <= 10.2:  # ruff: ignore[magic-value-comparison]
-            return -0.0039 * t6 + 0.49
-        if t6 <= 15.1:  # ruff: ignore[magic-value-comparison]
-            return -0.0306 * (t6 - 10.2) + 0.45
-        return -0.282 * (t6 - 15.1) + 0.3
-    msg = "mode was not one of CollapseMode.FILAMENT or CollapseMode.AMBIPOLAR."
-    raise ValueError(msg)
-
-
-def _vminfit(t_yr: float, mode: CollapseMode) -> float:
-    """Fit to time evolution of minimum velocity (dimensionless units).
-
-    Parameters
-    ----------
-    t_yr : float
-        Time in years.
-    mode : CollapseMode
-        Collapse mode. One of ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
-
-    Returns
-    -------
-    float
-        Minimum velocity in dimensionless units.
-
-    Raises
-    ------
-    ValueError
-        If ``mode`` is not one of
-        ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
-
-    """
-    if mode == CollapseMode.FILAMENT:
-        _, unitt = _filament_units()
-        tnew = t_yr / unitt
-        if tnew == 0:
-            return 0.0
-        if np.log(tnew) < 1.6:  # ruff: ignore[magic-value-comparison]
-            return 0.0891 * tnew
-        if np.log(tnew) < 1.674:  # ruff: ignore[magic-value-comparison]
-            return 5.5 * np.log(tnew) - 8.37
-        return 18.9 * np.log(tnew) - 30.8
-    if mode == CollapseMode.AMBIPOLAR:
-        t6 = 1e-6 * t_yr
-        return 3.44 * (16.138 - t6) ** (-0.35) - 0.7
-    msg = "mode was not one of CollapseMode.FILAMENT or CollapseMode.AMBIPOLAR."
-    raise ValueError(msg)
-
-
-def _avfit(t_yr: float, mode: CollapseMode) -> float:
-    """Fit to velocity a-parameter (mode 4) or velocity at r=0.5 (mode 3).
-
-    Parameters
-    ----------
-    t_yr : float
-        Time in years.
-    mode : CollapseMode
-        Collapse mode. One of ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
-
-    Returns
-    -------
-    float
-        Velocity a-parameter (mode 4) or velocity at r=0.5 (mode 3).
-
-    Raises
-    ------
-    ValueError
-        If ``mode`` is not one of
-        ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
-
-    """
-    if mode == CollapseMode.FILAMENT:
-        _, unitt = _filament_units()
-        tnew = t_yr / unitt
-        if tnew == 0:
-            return 0.4
-        if np.log(tnew) < 1.6:  # ruff: ignore[magic-value-comparison]
-            return 0.0101 * tnew + 0.4
-        if np.log(tnew) < 1.674:  # ruff: ignore[magic-value-comparison]
-            return 0.695 * np.log(tnew) - 0.663
-        return 2.69 * np.log(tnew) - 4.0
-    if mode == CollapseMode.AMBIPOLAR:
-        t6 = 1e-6 * t_yr
-        if t6 <= 10.2:  # ruff: ignore[magic-value-comparison]
-            return 0.143 * t6
-        return 0.217 * (t6 - 10.2) + 1.46
-    msg = "mode was not one of CollapseMode.FILAMENT or CollapseMode.AMBIPOLAR."
-    raise ValueError(msg)
-
-
-def _vrfit(r_pc: float, rmin: float, vmin: float, av: float, mode: CollapseMode) -> float:
-    """Radial velocity fit in cm/s (Priestley et al. 2018).
-
-    Modes 3 (filament) and 4 (ambipolar) only.
-
-    Parameters
-    ----------
-    r_pc : float
-        Radius in pc.
-    rmin : float
-        Radius of minimum velocity in the same units as the fit.
-    vmin : float
-        Minimum velocity in dimensionless units.
-    av : float
-        Velocity amplitude parameter for the outer profile fit.
-    mode : CollapseMode
-        Collapse mode. One of ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
-
-    Returns
-    -------
-    float
-        Radial velocity in cm/s.
-
-    Raises
-    ------
-    ValueError
-        If ``mode`` is not one of
-        ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
-
-    """
-    if mode == CollapseMode.FILAMENT:
-        unitr, _ = _filament_units()
-        cs = np.sqrt(_KB * 10.0 / (2.0 * _MH))
-        new_r = r_pc / unitr - rmin
-        if new_r < 0.0:
-            vr = vmin * ((new_r / rmin) ** 2 - 1.0)
-        else:
-            vr = vmin * (np.exp(-2.0 * av * new_r) - 2.0 * np.exp(-av * new_r))
-        return cs * vr
-    if mode == CollapseMode.AMBIPOLAR:
-        rmid = 0.5
-        r75 = r_pc / 0.75
-        new_r = r75 - rmin
-        if r75 < rmin:
-            vr = vmin * ((new_r / rmin) ** 2 - 1.0)
-        elif r75 <= rmid:
-            vr = (vmin - av) * (new_r / (rmid - rmin)) ** 0.3 - vmin
-        else:
-            vr = av / (1.0 - rmid) * (r75 - rmid) - av
-        return 1e3 * vr  # convert from 1e-2 km/s to cm/s
-    msg = "mode was not one of CollapseMode.FILAMENT or CollapseMode.AMBIPOLAR."
-    raise ValueError(msg)
-
-
 def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
     """Return the radial velocity (cm/s) for a parcel of a Collapse model.
 
@@ -584,36 +391,25 @@ def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
         Radial velocity in cm s⁻¹, indexed by time in years.
         Negative values indicate infall.
 
-    Raises
-    ------
-    TypeError
-        If *model* is not a Collapse model instance.
-    TypeError
-        If ``model.collapse`` is not an instance of class:`CollapseMode`.
-
     """
-    from uclchem.model import (  # ruff: ignore[import-outside-top-level] — avoid circular import at module level
-        Collapse,
-    )
-
-    if not isinstance(model, Collapse):
-        msg = f"model must be a Collapse instance, got {type(model).__name__}"
-        raise TypeError(msg)
+    from uclchemwrap import collapse_mod  # ruff: ignore[import-outside-top-level]
 
     df = model.get_joined_dataframes(point=point)
-    t_yr: np.ndarray = np.asarray(df["Time"].values)
-    r_pc: np.ndarray = np.asarray(df["parcel_radius"].values)
-    mode = model.collapse  # CollapseMode
-
-    if not isinstance(mode, CollapseMode):
-        msg = f"Expected 'model.collapse' to be an instance of CollapseMode, but got type {type(mode)}"
-        raise TypeError(msg)
+    t_yr = df["Time"].to_numpy()
+    r_pc = df["parcel_radius"].to_numpy()
+    mode = model.collapse
 
     if mode in {CollapseMode.FILAMENT, CollapseMode.AMBIPOLAR}:
         vr = np.array(
             [
-                _vrfit(r, _rminfit(t, mode), _vminfit(t, mode), _avfit(t, mode), mode)
-                for t, r in zip(t_yr, r_pc, strict=False)
+                collapse_mod.get_vrfit(
+                    r,
+                    collapse_mod.get_rminfit(t, mode.value),
+                    collapse_mod.get_vminfit(t, mode.value),
+                    collapse_mod.get_avfit(t, mode.value),
+                    mode.value,
+                )
+                for t, r in zip(t_yr, r_pc, strict=True)
             ]
         )
     else:

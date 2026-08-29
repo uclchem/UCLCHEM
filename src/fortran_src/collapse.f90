@@ -17,7 +17,8 @@ module collapse_mod
    implicit none
 
    private
-   public :: collapse_mode, initializePhysics, updatePhysics, updateTargetTime, sublimation
+   public :: collapse_mode, initializePhysics, updatePhysics, updateTargetTime, sublimation, get_avfit, &
+       get_vrfit, get_vminfit, get_rminfit
 
    integer :: collapse_mode
    real(dp) :: maxTime
@@ -45,7 +46,8 @@ contains
             case(4)
                 collapseFinalTime=1.6132984e7_dp
             case default
-                write(*,*) "unacceptable collapse mode"
+                write(*,*) "Invalid collapse mode", collapse_mode
+                write(*,*) "Valid options are: 1, 2, 3, 4"
                 successFlag=-1
                 return
          end select
@@ -60,7 +62,8 @@ contains
             end do
          end if
 
-         density=get_rhofit(parcelRadius(dstep),get_rho0fit(timeInYears),get_r0fit(timeInYears),get_afit(timeInYears))
+         density=get_rhofit(parcelRadius(dstep),get_rho0fit(timeInYears),get_r0fit(timeInYears),&
+             get_afit(timeInYears, collapse_mode))
          if (collapse_mode <= 2) call findmassInRadius
     end subroutine initializePhysics
 
@@ -119,7 +122,8 @@ contains
         effectiveTime = MIN(timeInYears, collapseFinalTime)
         !calculate column density. Remember dstep counts from core to edge
         !and coldens should be amount of gas from edge to parcel.
-        call findcoldens(coldens(dstep),rin,get_rho0fit(effectiveTime),get_r0fit(effectiveTime),get_afit(effectiveTime),rout)
+        call findcoldens(coldens(dstep),rin,get_rho0fit(effectiveTime),get_r0fit(effectiveTime),&
+            get_afit(effectiveTime, collapse_mode),rout)
         !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
         av(dstep)= get_av(baseAv, coldens(dstep))
         !If collapse is one of the parameterized modes, find new density and radius
@@ -127,17 +131,20 @@ contains
         if ((collapse_mode <= 2)) then
             !I changed rin to rout
             call findNewRadius(massInRadius(dstep),rout,get_rho0fit(effectiveTime),&
-                &get_r0fit(effectiveTime),get_afit(effectiveTime),parcelRadius(dstep))
+                &get_r0fit(effectiveTime),get_afit(effectiveTime, collapse_mode),parcelRadius(dstep))
         else
             dt = targetTime - currentTime
             if (timeInYears < collapseFinalTime) then
-                drad = get_vrfit(parcelRadius(dstep),get_rminfit(effectiveTime),&
-                    get_vminfit(effectiveTime),get_avfit(effectiveTime))*dt/PC
+                drad = get_vrfit(parcelRadius(dstep),&
+                    get_rminfit(effectiveTime, collapse_mode),&
+                    get_vminfit(effectiveTime, collapse_mode),&
+                    get_avfit(effectiveTime, collapse_mode), collapse_mode)*dt/PC
                 parcelRadius(dstep) = parcelRadius(dstep) + drad
             end if
         end if
         parcel_radius(dstep) = parcelRadius(dstep)
-        density(dstep)=get_rhofit(parcelRadius(dstep),get_rho0fit(effectiveTime),get_r0fit(effectiveTime),get_afit(effectiveTime))
+        density(dstep)=get_rhofit(parcelRadius(dstep),get_rho0fit(effectiveTime),get_r0fit(effectiveTime),&
+            get_afit(effectiveTime, collapse_mode))
         ! Apply hard density of n_H=1e8 limit to prevent unphysical behavior
         density(dstep) = MIN(density(dstep), 1e8_dp)
     end subroutine updatePhysics
@@ -159,7 +166,7 @@ contains
 
         rho0=get_rho0fit(timeInYears)
         r0=get_r0fit(timeInYears)
-        a=get_afit(timeInYears)
+        a=get_afit(timeInYears, collapse_mode)
       do dstep=1,points
         np = 1000
         dr = parcelRadius(dstep)/np
@@ -233,6 +240,9 @@ contains
       else if (collapse_mode == 4) then
          r75 = r/7.5e-1_dp
          rhofit = rho0/(1.0_dp + (r75/r0)**a)
+      else
+         write(*,*) "Invalid collapse mode", collapse_mode
+         write(*,*) "Valid options are: 1, 2, 3, 4"
       end if
 
     end function get_rhofit
@@ -260,6 +270,9 @@ contains
             logrho0 = 5.3_dp*(16.138_dp-1e-6_dp*t)**(-0.1_dp) - 1.0_dp
             rho0fit = 10_dp**logrho0
          end if
+      else
+         write(*,*) "Invalid collapse mode", collapse_mode
+         write(*,*) "Valid options are: 1, 2, 3, 4"
       end if
 
     end function get_rho0fit
@@ -284,13 +297,17 @@ contains
       else if (collapse_mode == 4) then
          logr0 = -2.57_dp*(16.138_dp-1e-6_dp*t)**(-0.1_dp) + 1.85_dp
          r0fit = 10**logr0
+      else
+         write(*,*) "Invalid collapse mode", collapse_mode
+         write(*,*) "Valid options are: 1, 2, 3, 4"
       end if
 
     end function get_r0fit
 
 ! fit to time evolution of density slope parameter
-    function get_afit(t) result(afit)
+    function get_afit(t, collapse_mode) result(afit)
       real(dp), intent(in) :: t
+      integer, intent(in) :: collapse_mode
 
       real(dp) :: afit
 
@@ -306,13 +323,18 @@ contains
          afit = 2.0_dp - 0.5_dp*(t/unitt/5.47_dp)**9
       else if (collapse_mode == 4) then
          afit = 2.4_dp - 0.2_dp*(1e-6_dp*t/16.138_dp)**40
+      else
+         write(*,*) "Invalid collapse mode", collapse_mode
+         write(*,*) "Valid options are: 1, 2, 3, 4"
       end if
 
     end function get_afit
 
 ! fit to radial velocity of hydrodynamical simulation
-    function get_vrfit(r,rmin,vmin,a) result(vrfit)
+    function get_vrfit(r,rmin,vmin,a, collapse_mode) result(vrfit)
       real(dp), intent(in) :: r,rmin,vmin,a
+      integer, intent(in) :: collapse_mode
+
       real(dp) :: vrfit
       real(dp) :: unitr,newRadius,rmid,r75
 
@@ -338,13 +360,17 @@ contains
             vrfit = a/(1.0_dp-rmid)*(r75-rmid) - a
          end if
          vrfit = 1e3_dp*vrfit  ! convert to cm s-1 from 1e-2 km s-1
+      else
+         write(*,*) "Invalid collapse mode", collapse_mode
+         write(*,*) "Valid options for get_vrfit are: 3, 4"
       end if
 
     end function get_vrfit
 
 ! fit to time evolution of radius of minimum velocity
-    function get_rminfit(t) result(rminfit)
+    function get_rminfit(t, collapse_mode) result(rminfit)
       real(dp), intent(in) :: t
+      integer, intent(in) :: collapse_mode
 
       real(dp) :: rminfit
 
@@ -373,13 +399,17 @@ contains
          else
             rminfit = -0.282_dp*(t6-15.1_dp) + 0.3_dp
          end if
+      else
+         write(*,*) "Invalid collapse mode", collapse_mode
+         write(*,*) "Valid options for get_rminfit are: 3, 4"
       end if
 
     end function get_rminfit
 
 ! fit to time evolution of minimum velocity
-    function get_vminfit(t) result(vminfit)
+    function get_vminfit(t, collapse_mode) result(vminfit)
       real(dp), intent(in) :: t
+      integer, intent(in) :: collapse_mode
 
       real(dp) :: vminfit
 
@@ -402,13 +432,17 @@ contains
       else if (collapse_mode == 4) then
          t6 = 1e-6_dp*t
          vminfit = 3.44_dp*(16.138_dp-t6)**(-0.35_dp) - 0.7_dp
+      else
+         write(*,*) "Invalid collapse mode", collapse_mode
+         write(*,*) "Valid options for get_vminfit are: 3, 4"
       end if
 
     end function get_vminfit
 
 ! fit to time evolution of velocity a-parameter (collapse 4) or velocity at r=0.5 (collapse 5)
-    function get_avfit(t) result(avfit)
+    function get_avfit(t, collapse_mode) result(avfit)
       real(dp), intent(in) :: t
+      integer, intent(in) :: collapse_mode
 
       real(dp) :: avfit
 
@@ -435,6 +469,9 @@ contains
          else
             avfit = 0.217_dp*(t6-10.2_dp) + 1.46_dp
          end if
+      else
+         write(*,*) "Invalid collapse mode", collapse_mode
+         write(*,*) "Valid options for get_avfit are: 3, 4"
       end if
 
     end function get_avfit
