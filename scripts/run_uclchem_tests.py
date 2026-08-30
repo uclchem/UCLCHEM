@@ -10,7 +10,7 @@ from time import perf_counter
 import uclchem
 
 if __name__ == "__main__":
-    uclchem.utils.configure_logging(level="INFO")
+    uclchem.utils.configure_logging(level="DEBUG")
 
     out_dir = Path("examples/test-output")
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -29,6 +29,7 @@ if __name__ == "__main__":
         "finalDens": 1e5,
         "finalTime": 5.0e6,
         "outputFile": str(out_dir / "static-full.dat"),
+        "writeTimeStepInfo": True,
     }
 
     start = perf_counter()

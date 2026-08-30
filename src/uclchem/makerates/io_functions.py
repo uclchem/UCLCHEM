@@ -44,6 +44,8 @@ from uclchem.utils import (
     MISSING_VALUE_FLOAT,
     MISSING_VALUE_INTEGER,
     NO_REACTANT_OR_PRODUCT,
+    REAC_NOT_PRESENT,
+    SPECIES_NOT_PRESENT,
     UCLCHEM_ROOT_DIR,
     strip_comment,
 )
@@ -609,6 +611,8 @@ def write_outputs(
         "missing_value_integer": MISSING_VALUE_INTEGER,
         "missing_value_float": MISSING_VALUE_FLOAT,
         "no_reactant_or_product": NO_REACTANT_OR_PRODUCT,
+        "reac_not_present": REAC_NOT_PRESENT,
+        "species_not_present": SPECIES_NOT_PRESENT,
     }
     # Write all outputs to temporary files first; only replace finals if all succeed.
     tmp_paths = []
@@ -1556,9 +1560,9 @@ def write_network_file(
     with file_name.open("w") as openFile:
         openFile.write(
             dedent("""        module network
-            use constants, only: dp, REAC_NOT_PRESENT
+            use constants, only: dp
             use f2py_constants, only: nSpec, nReac, MISSING_VALUE_FLOAT, MISSING_VALUE_INTEGER, &
-                NO_REACTANT_OR_PRODUCT
+                NO_REACTANT_OR_PRODUCT, REAC_NOT_PRESENT, SPECIES_NOT_PRESENT
 
             implicit none
 
@@ -1580,11 +1584,11 @@ def write_network_file(
         speciesIndices = ",".join(
             f"{name}={species_index}"
             for name, species_index in network.species_indices.items()
-        )
+        ).replace(str(SPECIES_NOT_PRESENT), "SPECIES_NOT_PRESENT")
         openFile.write(truncate_line("integer, parameter :: " + speciesIndices + "\n"))
         openFile.write("logical, parameter :: THREE_PHASE = .true.\n")
         openFile.write(
-            array_to_string("specname", names, value_type="string", length_name="nSpec")
+            array_to_string("specName", names, value_type="string", length_name="nSpec")
         )
         openFile.write(
             array_to_string("mass", masses, value_type="float", length_name="nSpec")
@@ -1867,11 +1871,11 @@ def write_network_file(
                 indices = [int(reac_indices[0]) + 1, int(reac_indices[-1]) + 1]
             else:
                 # We still want a dummy array if the reaction type isn't in network
-                indices = [99999, 99999]
+                indices = [REAC_NOT_PRESENT, REAC_NOT_PRESENT]
             openFile.write(
                 array_to_string(
                     list_name, indices, value_type="int", parameter=True
-                ).replace("99999", "REAC_NOT_PRESENT")
+                ).replace(str(REAC_NOT_PRESENT), "REAC_NOT_PRESENT")
             )
 
         # Write LHDES and ERDES mapping arrays (Feature 3: LH/ER-DES mapping)
@@ -1888,7 +1892,7 @@ def write_network_file(
                     LHDEScorrespondingLHreacs.append(reacIndex)
                 else:
                     # If no partner set, use dummy index
-                    LHDEScorrespondingLHreacs.append(99999)
+                    LHDEScorrespondingLHreacs.append(REAC_NOT_PRESENT)
 
         openFile.write(
             f"integer, parameter :: N_LHDES_REACTIONS = {len(LHDEScorrespondingLHreacs)}\n"
@@ -1896,7 +1900,7 @@ def write_network_file(
 
         # Write array (use dummy if empty for backward compatibility)
         if len(LHDEScorrespondingLHreacs) == 0:
-            LHDEScorrespondingLHreacs = [99999]
+            LHDEScorrespondingLHreacs = [REAC_NOT_PRESENT]
         openFile.write(
             array_to_string(
                 "LHDEScorrespondingLHreacs",
@@ -1906,7 +1910,7 @@ def write_network_file(
                 length_name="N_LHDES_REACTIONS"
                 if len(LHDEScorrespondingLHreacs) > 2  # ruff: ignore[magic-value-comparison]
                 else None,
-            ).replace("99999", "REAC_NOT_PRESENT")
+            ).replace(str(REAC_NOT_PRESENT), "REAC_NOT_PRESENT")
         )
 
         ERDEScorrespondingERreacs = []
@@ -1921,14 +1925,14 @@ def write_network_file(
                     ERDEScorrespondingERreacs.append(reacIndex)
                 else:
                     # If no partner set, use dummy index
-                    ERDEScorrespondingERreacs.append(99999)
+                    ERDEScorrespondingERreacs.append(REAC_NOT_PRESENT)
 
         openFile.write(
             f"integer, parameter :: N_ERDES_REACTIONS = {len(ERDEScorrespondingERreacs)}\n"
         )
         # Write array (use dummy if empty for backward compatibility)
         if len(ERDEScorrespondingERreacs) == 0:
-            ERDEScorrespondingERreacs = [99999]
+            ERDEScorrespondingERreacs = [REAC_NOT_PRESENT]
         if len(ERDEScorrespondingERreacs) == 1:
             # Fortran needs at least 2 elements for array
             ERDEScorrespondingERreacs.append(ERDEScorrespondingERreacs[0])
@@ -1941,7 +1945,7 @@ def write_network_file(
                 length_name="N_ERDES_REACTIONS"
                 if len(ERDEScorrespondingERreacs) > 2  # ruff: ignore[magic-value-comparison]
                 else None,
-            ).replace("99999", "REAC_NOT_PRESENT")
+            ).replace(str(REAC_NOT_PRESENT), "REAC_NOT_PRESENT")
         )
         openFile.write("end module network")
 

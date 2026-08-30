@@ -1,7 +1,7 @@
 module RATES
-    use constants, only: dp, HABING_TO_DRAINE, REAC_NOT_PRESENT
+    use constants, only: dp, HABING_TO_DRAINE
     use DEFAULTPARAMETERS
-    use f2py_constants, only: nSpec, nReac
+    use f2py_constants, only: nSpec, nReac, REAC_NOT_PRESENT
     !f2py INTEGER, parameter :: dp
     ! allow(use-all)
     use network
