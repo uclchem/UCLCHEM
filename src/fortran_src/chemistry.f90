@@ -15,7 +15,7 @@ module chemistry
     !f2py INTEGER, parameter :: dp
     use physicscore, only: points, dstep, cloudsize, radfield, radfield_internal, h2crprateconstant, improvedH2CRPDissociation, &
     & zeta, currentTime, targetTime, timeinyears, freefall, density, ion, get_densdot, gasTemp, dustTemp, av, av_internal, colDens
-    use f2py_constants, only: nSpec, nReac, REAC_NOT_PRESENT
+    use f2py_constants, only: nSpec, nReac, REAC_NOT_PRESENT, SPECIES_NOT_PRESENT
     use heating, only: calculateDustTemp, getTempDot, initializeHeating
     ! allow(use-all)
     use network
@@ -117,20 +117,21 @@ contains
 
             !Start by filling all metallicity scaling elements
             !neutral atoms
-            abund(no,:) = fo
-            abund(nn,:) = fn
-            abund(nmg,:) = fmg
-            abund(np,:) = fp
-            abund(nf,:) = ff
-            !abund(nfe,:) = ffe
-            abund(nna,:) = fna
-            abund(nli,:) = fli
-            abund(npah,:) = fpah
+            if (nO .ne. SPECIES_NOT_PRESENT) abund(nO, :) = fO
+            if (nN .ne. SPECIES_NOT_PRESENT) abund(nN, :) = fN
+            if (nMg .ne. SPECIES_NOT_PRESENT) abund(nMg, :) = fMg
+            if (nP .ne. SPECIES_NOT_PRESENT) abund(nP, :) = fP
+            if (nF .ne. SPECIES_NOT_PRESENT) abund(nF, :) = fF
+            if (nNa .ne. SPECIES_NOT_PRESENT) abund(nNa, :) = fNa
+            if (nLi .ne. SPECIES_NOT_PRESENT) abund(nLi, :) = fLi
+            if (nPAH .ne. SPECIES_NOT_PRESENT) abund(nPAH, :) = fPAH
+            if (nHe .ne. SPECIES_NOT_PRESENT) abund(nHe, :) = fHe
             !default to ions
-            abund(nsx,:) = fs
-            abund(nsix,:) = fsi
-            abund(nclx,:) = fcl
-            !Decide how much carbon is initially ionized using parameters.f90
+            if (nSx .ne. SPECIES_NOT_PRESENT) abund(nSx, :) = fS
+            if (nSix .ne. SPECIES_NOT_PRESENT) abund(nSix, :) = fSi
+            if (nClx .ne. SPECIES_NOT_PRESENT) abund(nClx, :) = fCl
+
+            !Decide how much carbon is initially ionized
             select case (ion)
                 case(0)
                     abund(nc,:)=fc
@@ -148,20 +149,21 @@ contains
             end select
 
             !isotopes
-            abund(n18o,:) = f18o
-            abund(n15n,:) = f15n
-            abund(n13c,:) = f13c
+            if (n18O .ne. SPECIES_NOT_PRESENT) abund(n18O, :) = f18O
+            if (n15N .ne. SPECIES_NOT_PRESENT) abund(n15N, :) = f15N
+            if (n13C .ne. SPECIES_NOT_PRESENT) abund(n13C, :) = f13C
+            if (nD .ne. SPECIES_NOT_PRESENT) abund(nD, :) = fD
 
             abund(nelec,:)=abund(ncx,:)+abund(nsix,:)+abund(nsx,:)+abund(nclx,:)+abund(nmgx,:)
 
             abund=abund*metallicity
 
             !Total H nuclei is always 1 so put fh into H and whatever is left over in H2
-            abund(nh,:) = fh
-            abund(nh2,:) = 0.5_dp*(1.0_dp-fh)
-            abund(nd,:)=fd
+            if (nH .ne. SPECIES_NOT_PRESENT) then
+                abund(nH,:) = fH
+                abund(nH2,:) = 0.5_dp*(1.0_dp-fH)
+            end if
 
-            abund(nhe,:) = fhe
         end if
         abund(nSpec+2,:)=density      !Gas density
         abund(nSpec+1,:)=gasTemp    !Gas temperature
