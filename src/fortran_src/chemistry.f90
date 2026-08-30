@@ -109,6 +109,7 @@ contains
         if (ALLOCATED(abund)) deallocate(abund,vdiff,vdes)
         if (ALLOCATED(reltol_vec)) deallocate(reltol_vec)
         allocate(abund(NEQ,points),vdiff(N_ICE_SPECIES),vdes(N_ICE_SPECIES))
+        call get_ion_indices(ionList, nIon)
         !Set abundances to initial elemental if not reading them in.
         if (.NOT. readAbunds) then
             !ensure abund is initially zero
@@ -125,7 +126,6 @@ contains
             if (nNa .ne. SPECIES_NOT_PRESENT) abund(nNa, :) = fNa
             if (nLi .ne. SPECIES_NOT_PRESENT) abund(nLi, :) = fLi
             if (nPAH .ne. SPECIES_NOT_PRESENT) abund(nPAH, :) = fPAH
-            if (nHe .ne. SPECIES_NOT_PRESENT) abund(nHe, :) = fHe
             !default to ions
             if (nSx .ne. SPECIES_NOT_PRESENT) abund(nSx, :) = fS
             if (nSix .ne. SPECIES_NOT_PRESENT) abund(nSix, :) = fSi
@@ -154,7 +154,7 @@ contains
             if (n13C .ne. SPECIES_NOT_PRESENT) abund(n13C, :) = f13C
             if (nD .ne. SPECIES_NOT_PRESENT) abund(nD, :) = fD
 
-            abund(nelec,:)=abund(ncx,:)+abund(nsix,:)+abund(nsx,:)+abund(nclx,:)+abund(nmgx,:)
+            abund(nElec, :)=sum(abund(ionList(1:nion), :))
 
             abund=abund*metallicity
 
@@ -163,7 +163,7 @@ contains
                 abund(nH,:) = fH
                 abund(nH2,:) = 0.5_dp*(1.0_dp-fH)
             end if
-
+            if (nHe .ne. SPECIES_NOT_PRESENT) abund(nHe, :) = fHe
         end if
         abund(nSpec+2,:)=density      !Gas density
         abund(nSpec+1,:)=gasTemp    !Gas temperature
@@ -177,7 +177,6 @@ contains
         allocate(initial_elem_abund(n_elem_tracked, points))
         initial_elem_abund = 0.0_dp
 
-        call get_ion_indices(ionList, nIon)
 
         !DVODE SETTINGS
         ISTATE=1
