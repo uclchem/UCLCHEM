@@ -152,7 +152,6 @@ contains
             if (n18O /= SPECIES_NOT_PRESENT) abund(n18O, :) = f18O
             if (n15N /= SPECIES_NOT_PRESENT) abund(n15N, :) = f15N
             if (n13C /= SPECIES_NOT_PRESENT) abund(n13C, :) = f13C
-            if (nD /= SPECIES_NOT_PRESENT) abund(nD, :) = fD
 
             abund(nElec, :)=sum(abund(ionList(1:nion), :))
 
@@ -163,6 +162,7 @@ contains
                 abund(nH,:) = fH
                 abund(nH2,:) = 0.5_dp*(1.0_dp-fH)
             end if
+            if (nD /= SPECIES_NOT_PRESENT) abund(nD, :) = fD
             if (nHe /= SPECIES_NOT_PRESENT) abund(nHe, :) = fHe
         end if
         abund(nSpec+2,:)=density      !Gas density
