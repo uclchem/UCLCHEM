@@ -42,7 +42,8 @@ module uclchemwrap
 
     private
     public :: cloud, jshock, cshock, postprocess, collapse, hot_core, get_rate_constants, &
-        get_odes, get_specname, get_coolant_restart_mode_wrap, set_coolant_restart_mode_wrap
+        get_odes, get_coolant_restart_mode_wrap, set_coolant_restart_mode_wrap, &
+        coefficientParser
 
     character(LEN=1) :: dummyString = ""
 
@@ -1464,13 +1465,14 @@ contains
         end do
     end subroutine dictionaryParser
 
-    subroutine coefficientParser(coeffDictString,coeffArray)
+    pure subroutine coefficientParser(coeffDictString,coeffArray)
         !Similar to dictionaryParser, it reads a python dictionary
         !however, it's intended to read pairs of reaction indices and coefficient values
         !for the alpha, beta, and gama arrays.
         ! No return value, just modifies the coeffArray
         character(LEN=*), intent(inout) :: coeffDictString
-        real(dp), intent(inout), dimension(:) :: coeffArray
+        real(dp), intent(out), dimension(:) :: coeffArray
+
         integer :: inputIndx, posStart, posEnd
         character(LEN=100) :: inputValue
         logical :: continue_flag
@@ -1499,15 +1501,6 @@ contains
             coeffDictString=coeffDictString(posEnd+1:)
         end do
     end subroutine coefficientParser
-
-    subroutine get_specname(specname_out)
-        !Returns:
-        ! specname_out - array of species that are in the chemicalabunarray
-        !f2py integer, intent(aux) :: nspec
-        !f2py intent(out) specname_out
-        character(LEN=32), intent(out) :: specname_out(nSpec)
-        specname_out(:nSpec) = specName
-    end subroutine get_specname
 
     ! TODO: move this to coolant_module, but coolant_module is not being exposed
     ! to f2py currently. So for now, keep it here.
