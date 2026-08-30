@@ -118,18 +118,18 @@ contains
 
             !Start by filling all metallicity scaling elements
             !neutral atoms
-            if (nO .ne. SPECIES_NOT_PRESENT) abund(nO, :) = fO
-            if (nN .ne. SPECIES_NOT_PRESENT) abund(nN, :) = fN
-            if (nMg .ne. SPECIES_NOT_PRESENT) abund(nMg, :) = fMg
-            if (nP .ne. SPECIES_NOT_PRESENT) abund(nP, :) = fP
-            if (nF .ne. SPECIES_NOT_PRESENT) abund(nF, :) = fF
-            if (nNa .ne. SPECIES_NOT_PRESENT) abund(nNa, :) = fNa
-            if (nLi .ne. SPECIES_NOT_PRESENT) abund(nLi, :) = fLi
-            if (nPAH .ne. SPECIES_NOT_PRESENT) abund(nPAH, :) = fPAH
+            if (nO /= SPECIES_NOT_PRESENT) abund(nO, :) = fO
+            if (nN /= SPECIES_NOT_PRESENT) abund(nN, :) = fN
+            if (nMg /= SPECIES_NOT_PRESENT) abund(nMg, :) = fMg
+            if (nP /= SPECIES_NOT_PRESENT) abund(nP, :) = fP
+            if (nF /= SPECIES_NOT_PRESENT) abund(nF, :) = fF
+            if (nNa /= SPECIES_NOT_PRESENT) abund(nNa, :) = fNa
+            if (nLi /= SPECIES_NOT_PRESENT) abund(nLi, :) = fLi
+            if (nPAH /= SPECIES_NOT_PRESENT) abund(nPAH, :) = fPAH
             !default to ions
-            if (nSx .ne. SPECIES_NOT_PRESENT) abund(nSx, :) = fS
-            if (nSix .ne. SPECIES_NOT_PRESENT) abund(nSix, :) = fSi
-            if (nClx .ne. SPECIES_NOT_PRESENT) abund(nClx, :) = fCl
+            if (nSx /= SPECIES_NOT_PRESENT) abund(nSx, :) = fS
+            if (nSix /= SPECIES_NOT_PRESENT) abund(nSix, :) = fSi
+            if (nClx /= SPECIES_NOT_PRESENT) abund(nClx, :) = fCl
 
             !Decide how much carbon is initially ionized
             select case (ion)
@@ -149,21 +149,21 @@ contains
             end select
 
             !isotopes
-            if (n18O .ne. SPECIES_NOT_PRESENT) abund(n18O, :) = f18O
-            if (n15N .ne. SPECIES_NOT_PRESENT) abund(n15N, :) = f15N
-            if (n13C .ne. SPECIES_NOT_PRESENT) abund(n13C, :) = f13C
-            if (nD .ne. SPECIES_NOT_PRESENT) abund(nD, :) = fD
+            if (n18O /= SPECIES_NOT_PRESENT) abund(n18O, :) = f18O
+            if (n15N /= SPECIES_NOT_PRESENT) abund(n15N, :) = f15N
+            if (n13C /= SPECIES_NOT_PRESENT) abund(n13C, :) = f13C
+            if (nD /= SPECIES_NOT_PRESENT) abund(nD, :) = fD
 
             abund(nElec, :)=sum(abund(ionList(1:nion), :))
 
             abund=abund*metallicity
 
             !Total H nuclei is always 1 so put fh into H and whatever is left over in H2
-            if (nH .ne. SPECIES_NOT_PRESENT) then
+            if (nH /= SPECIES_NOT_PRESENT) then
                 abund(nH,:) = fH
                 abund(nH2,:) = 0.5_dp*(1.0_dp-fH)
             end if
-            if (nHe .ne. SPECIES_NOT_PRESENT) abund(nHe, :) = fHe
+            if (nHe /= SPECIES_NOT_PRESENT) abund(nHe, :) = fHe
         end if
         abund(nSpec+2,:)=density      !Gas density
         abund(nSpec+1,:)=gasTemp    !Gas temperature
