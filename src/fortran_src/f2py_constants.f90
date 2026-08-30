@@ -16,6 +16,8 @@ module F2PY_CONSTANTS
     integer, parameter :: MISSING_VALUE_INTEGER=-1  !Integer to indicate missing value
     real(dp), parameter :: MISSING_VALUE_FLOAT=-1.0_dp  !Float to indicate missing value
     integer, parameter :: NO_REACTANT_OR_PRODUCT=9999  !Indicates that the reaction does not have this many reactants or products
+    integer, parameter :: REAC_NOT_PRESENT=9998  !Indicates that this reaction is not in the current network
+    integer, parameter :: SPECIES_NOT_PRESENT=9997  !Indicates that this species is not in the current network
 
     ! Coolant file names and species names
     character(LEN=15), parameter :: coolantFiles(NCOOLANTS)=(/"ly-a.dat       ","12c+_nometa.dat","16o.dat        ",&

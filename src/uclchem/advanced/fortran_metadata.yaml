@@ -231,7 +231,6 @@ fortran_parameters:
   - physics_init_error
   - physics_update_error
   - pi
-  - reac_not_present
   - reduced_planck
   - sb_const
   - seconds_per_year
@@ -258,6 +257,8 @@ fortran_parameters:
   - no_reactant_or_product
   - nreac
   - nspec
+  - reac_not_present
+  - species_not_present
   - suggested_freq_rel_tol
   surfacereactions:
   - chemical_barrier_thickness

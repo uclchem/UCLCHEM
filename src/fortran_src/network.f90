@@ -1,7 +1,7 @@
 module network
-    use constants, only: dp, REAC_NOT_PRESENT
+    use constants, only: dp
     use f2py_constants, only: nSpec, nReac, MISSING_VALUE_FLOAT, MISSING_VALUE_INTEGER, &
-        NO_REACTANT_OR_PRODUCT
+        NO_REACTANT_OR_PRODUCT, SPECIES_NOT_PRESENT, REAC_NOT_PRESENT
 
     implicit none
 
@@ -9,11 +9,13 @@ module network
 
 integer, parameter :: nCx=10,nHx=2,nH2=3,nHE=6,nHEx=7,nN=15,nNx=16,nO=25,nOx=26&
     &,nC=9,nSIx=57,nSx=84,nH2O=32,nCH3OH=79,nCL=95,nCLx=96,nCO=50,nMG=38,nMGx=39&
-    &,nGH=167,nGH2=168,nGN=173,nGO=178,nGOH=180,nSurface=335,nBulk=334,nH=1,nD=336&
-    &,nF=336,nP=336,nS=83,nLI=336,nNA=336,nSI=56,nPAH=336,n15N=336,n13C=336,n18O=336&
-    &,nElec=333,nFE=336
+    &,nGH=167,nGH2=168,nGN=173,nGO=178,nGOH=180,nSurface=335,nBulk=334,nH=1&
+    &,nD=SPECIES_NOT_PRESENT,nF=SPECIES_NOT_PRESENT,nP=SPECIES_NOT_PRESENT,nS=83&
+    &,nLI=SPECIES_NOT_PRESENT,nNA=SPECIES_NOT_PRESENT,nSI=56,nPAH=SPECIES_NOT_PRESENT&
+    &,n15N=SPECIES_NOT_PRESENT,n13C=SPECIES_NOT_PRESENT,n18O=SPECIES_NOT_PRESENT&
+    &,nElec=333,nFE=SPECIES_NOT_PRESENT
 logical, parameter :: THREE_PHASE = .true.
-character(LEN=7), parameter :: specname (nSpec)=(/"H      ","H+     ","H2     ",&
+character(LEN=7), parameter :: specName (nSpec)=(/"H      ","H+     ","H2     ",&
     &"H2+    ","H3+    ","HE     ","HE+    ","HEH+   ","C      ","C+     ","CH     ",&
     &"CH+    ","CH2    ","CH2+   ","N      ","N+     ","CH3    ","CH3+   ","NH     ",&
     &"NH+    ","CH4    ","CH4+   ","NH2    ","NH2+   ","O      ","O+     ","CH5+   ",&

@@ -73,7 +73,13 @@ MISSING_VALUE_FLOAT: float = -1.0
 """Float to indicate a missing value"""
 
 NO_REACTANT_OR_PRODUCT: int = 9999
-"""Integer to indicate that there is no reactant or product."""
+"""Integer to indicate that this reaction does not have a reactant or product at this index."""
+
+REAC_NOT_PRESENT: int = 9998
+"""Integer to indicate that the reaction is not present in the network."""
+
+SPECIES_NOT_PRESENT: int = 9997
+"""Integer to indicate that this species is not present in the network."""
 
 DTYPE_MAPPING = MappingProxyType(
     {

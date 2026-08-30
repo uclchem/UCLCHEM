@@ -1,12 +1,12 @@
-! Chemistry module of UCL_CHEM.                                                               !
-! Contains all the core machinery of the code, not really intended to be altered in standard  !
-! use. Use a (custom) physics module to alter temp/density behavior etc.                      !
-!                                                                                             !
-! chemistry module contains rates.f90, a series of subroutines to calculate all reaction rate_constants!
-! when updateChemistry is called from main, these rate constants are calculated, the ODEs are solved   !
-! from currentTime to targetTime to get abundances at targetTime and then all abundances are  !
-! written to the fullOutput file.                                                             !
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! Chemistry module of UCLCHEM.                                                                          !
+! Contains all the core machinery of the code, not really intended to be altered in standard            !
+! use. Use a (custom) physics module to alter temperature/density behavior etc.                         !
+!                                                                                                       !
+! chemistry module contains rates.f90, a series of subroutines to calculate all reaction rate constants !
+! when updateChemistry is called from main, these rate constants are calculated, the ODEs are solved    !
+! from currentTime to targetTime to get abundances at targetTime and then all abundances are            !
+! written to the fullOutput file.                                                                       !
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 module chemistry
     use constants, only: dp, SECONDS_PER_YEAR, CONSERVATION_ERROR, SOLVER_STATS_OVERFLOW_ERROR, &
         INT_TOO_MANY_FAILS_ERROR, INT_UNRECOVERABLE_ERROR, NOT_ENOUGH_TIMEPOINTS_ERROR, MIN_ABUND, eV
@@ -15,7 +15,7 @@ module chemistry
     !f2py INTEGER, parameter :: dp
     use physicscore, only: points, dstep, cloudsize, radfield, radfield_internal, h2crprateconstant, improvedH2CRPDissociation, &
     & zeta, currentTime, targetTime, timeinyears, freefall, density, ion, get_densdot, gasTemp, dustTemp, av, av_internal, colDens
-    use f2py_constants, only: nSpec, nReac
+    use f2py_constants, only: nSpec, nReac, REAC_NOT_PRESENT
     use heating, only: calculateDustTemp, getTempDot, initializeHeating
     ! allow(use-all)
     use network

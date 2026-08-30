@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from uclchem.makerates.heating import convert_to_erg, set_custom_exothermicities
+from uclchem.utils import SPECIES_NOT_PRESENT
 
 from .reaction import (
     BULK_REACTION_TYPES,
@@ -1371,8 +1372,9 @@ class NetworkBuilder:
     def _index_important_species(self) -> None:
         """Obtain the indices for all the important reactions."""
         self.network.species_indices = {}
-        names = list(self.network.species.keys())
-        dummy_species_index = len(names) + 1
+        name_index_mapping: dict[str, int] = {
+            name: index + 1 for index, name in enumerate(self.network.species.keys())
+        }
         for element in [
             "C+",
             "H+",
@@ -1403,13 +1405,11 @@ class NetworkBuilder:
             "Bulk",
             *elementList,
         ]:
-            try:
-                species_index = names.index(element.upper()) + 1
-            except ValueError:
-                # TODO(Tobias Dijkhuis): The dummy value is currently SURFACE/BULK; https://github.com/uclchem/UCLCHEM/issues/205
-                # We could handle this better somehow
+            if element.upper() in name_index_mapping:
+                species_index = name_index_mapping[element.upper()]
+            else:
                 logger.info(f"\t{element} not in network, adding dummy index")
-                species_index = dummy_species_index
+                species_index = SPECIES_NOT_PRESENT
 
             name = f"n{element.replace('+', 'x').replace('E-', 'Elec').replace('#', 'G')}"
             self.network.species_indices[name] = species_index
