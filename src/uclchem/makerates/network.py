@@ -1027,7 +1027,7 @@ class Network(BaseNetwork, MutableNetworkABC):
             if len(self._reactions_dict) == 0:
                 new_idx = 0
             else:
-                new_idx = len(self._reactions_dict) + 1
+                new_idx = max(self._reactions_dict.keys()) + 1
 
             self._reactions_dict[new_idx] = reaction
 
