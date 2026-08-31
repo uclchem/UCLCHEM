@@ -1389,7 +1389,7 @@ class AbstractModel(ABC):
         with_level_populations: bool = False,
         with_se_stats: bool = False,
     ) -> np.ndarray | tuple[np.ndarray, ...]:
-        """Get a view of the arrays generated during a model run.
+        """Get a copy of the arrays generated during a model run.
 
         Parameters
         ----------
@@ -1423,7 +1423,7 @@ class AbstractModel(ABC):
 
         Notes
         -----
-        Returns a view, not a copy, so changing the returned arrays also changes
+        Returns a copy, so changing the returned arrays does not change
         the arrays within the model object.
 
         """
@@ -1489,7 +1489,7 @@ class AbstractModel(ABC):
         with_level_populations: bool = False,
         with_se_stats: bool = False,
     ) -> np.ndarray:
-        """Get a view of the arrays generated during a model run, joined together.
+        """Get a copy of the arrays generated during a model run, joined together.
 
         Convenience wrapper around :meth:`get_arrays` with ``joined=True``.
 
@@ -1520,7 +1520,7 @@ class AbstractModel(ABC):
 
         Notes
         -----
-        Returns a view, not a copy, so changing the returned arrays also changes
+        Returns a copy, so changing the returned arrays does not change
         the arrays within the model object.
 
         """
@@ -1576,7 +1576,7 @@ class AbstractModel(ABC):
 
         Notes
         -----
-        Returns a view, not a copy, so changing the returned arrays also changes
+        Returns a copy, so changing the returned arrays does not change
         the arrays within the model object.
 
         """
