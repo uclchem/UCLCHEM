@@ -1059,7 +1059,9 @@ class NetworkBuilder:
                             reaction_idx=reaction_index, reaction=reaction
                         )
 
-                        for coupled_reaction in self.network.get_all_partners(reaction):
+                        for coupled_reaction in self.network.get_all_coupled_to_reaction(
+                            reaction
+                        ):
                             reaction_index = self.network.get_reaction_index(
                                 coupled_reaction
                             )

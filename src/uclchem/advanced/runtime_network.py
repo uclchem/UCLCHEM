@@ -766,9 +766,15 @@ class RuntimeNetwork(BaseNetwork):
 
         """
         reaction_idx = self.get_reaction_index(reaction)
+        if isinstance(self._reactions_dict[reaction_idx], CoupledReaction):
+            warnings.warn(
+                f"Directly changing parameter of coupled reaction {self}. Consider instead changing parameter by changing its partner, {self._reactions_dict[reaction_idx].partner}.",  # type: ignore[attr-defined, ty:unresolved-attribute]
+                category=UserWarning,
+                stacklevel=2,
+            )
         self.modify_reaction_parameters(reaction_idx, gamma=barrier)
 
-        coupled_reactions = self.get_all_partners(reaction)
+        coupled_reactions = self.get_all_coupled_to_reaction(reaction)
         for coupled_reaction in coupled_reactions:
             reaction_idx = self.get_reaction_index(coupled_reaction)
             self.modify_reaction_parameters(reaction_idx, gamma=barrier)
