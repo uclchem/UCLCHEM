@@ -68,7 +68,7 @@ module heating
         "ContinuumEmission             ", &
         "MolecularLine                 " /)
 
-    integer, parameter :: nHeatingTerms = 2 + NHEATING + NCOOLING + NCOOLANTS  !Total number of heating and cooling terms tracked including time and chemical heating.
+    integer, parameter :: nHeatingTerms = 1 + NHEATING + NCOOLING + NCOOLANTS  !Total number of heating and cooling terms tracked including chemical heating.
 
     ! Treatment of the dust-gas temperature coupling
     ! 1 = Simple treatment Hocuk et al. 2017
