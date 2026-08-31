@@ -15,6 +15,7 @@ from uclchem.advanced.runtime_network instead.
 """
 
 import logging
+import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Collection, Iterable
 from copy import deepcopy
@@ -527,8 +528,8 @@ class BaseNetwork(NetworkABC):
 
         return next(iter(similar.keys()))
 
-    def get_all_partners(self, reaction: Reaction) -> list[Reaction]:
-        """Get a list of all reactions that have ``reaction`` as their partner.
+    def get_all_coupled_to_reaction(self, reaction: Reaction) -> list[Reaction]:
+        """Get a list of all reactions that have `reaction` as their partner.
 
         Parameters
         ----------
@@ -538,8 +539,7 @@ class BaseNetwork(NetworkABC):
         Returns
         -------
         reactions_coupled_to_reaction : list[Reaction]
-            List of
-            reactions that have ``reaction`` as their partner.
+            List of reactions that have `reaction` as their partner.
 
         Raises
         ------
@@ -1027,7 +1027,7 @@ class Network(BaseNetwork, MutableNetworkABC):
             if len(self._reactions_dict) == 0:
                 new_idx = 0
             else:
-                new_idx = max(self._reactions_dict.keys()) + 1
+                new_idx = len(self._reactions_dict) + 1
 
             self._reactions_dict[new_idx] = reaction
 
@@ -1059,7 +1059,7 @@ class Network(BaseNetwork, MutableNetworkABC):
             )
             raise RuntimeError(msg)
 
-        for coupled_reaction in self.get_all_partners(reaction):
+        for coupled_reaction in self.get_all_coupled_to_reaction(reaction):
             reaction_idx = self.get_reaction_index(coupled_reaction)
             del self._reactions_dict[reaction_idx]
 
@@ -1187,10 +1187,16 @@ class Network(BaseNetwork, MutableNetworkABC):
             raise RuntimeError(msg)
 
         reaction_idx, _ = similar_reactions[0]
+        if isinstance(self._reactions_dict[reaction_idx], CoupledReaction):
+            warnings.warn(
+                f"Directly changing parameter of coupled reaction {self}. Consider instead changing parameter by changing its partner, {self._reactions_dict[reaction_idx].partner}.",  # type: ignore[attr-defined, ty:unresolved-attribute]
+                category=UserWarning,
+                stacklevel=2,
+            )
         getattr(self._reactions_dict[reaction_idx], function_name)(new_value)
 
         # Change all partners too
-        coupled_reactions = self.get_all_partners(reaction)
+        coupled_reactions = self.get_all_coupled_to_reaction(reaction)
         for coupled_reaction in coupled_reactions:
             similar_reactions = list(
                 self.find_similar_reactions(coupled_reaction).items()

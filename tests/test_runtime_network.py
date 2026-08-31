@@ -80,7 +80,7 @@ class TestRuntimeNetwork:
             Reaction(["#H", "#H", "LHDES", "H2", *["NAN"] * 8]),
             Reaction(["@H", "@H", "LH", "@H2", *["NAN"] * 8]),
         ]
-        partners = network.get_all_partners(original_reaction)
+        partners = network.get_all_coupled_to_reaction(original_reaction)
 
         for partner in partners:
             assert partner in expected_partners
@@ -93,7 +93,7 @@ class TestRuntimeNetwork:
 
         original_reaction_modified = network.get_reaction(original_idx)
         assert original_reaction_modified.get_gamma() == new_value
-        partners = network.get_all_partners(original_reaction)
+        partners = network.get_all_coupled_to_reaction(original_reaction)
         for partner in partners:
             assert partner.get_gamma() == new_value
 

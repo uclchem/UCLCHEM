@@ -40,7 +40,7 @@ add_bulk_reactions_species = [
 ]
 
 
-def test_get_all_partners() -> None:
+def test_get_all_coupled_to_reaction() -> None:
     original_reaction = Reaction(["#H", "#H", "LH", "#H2", *_dummy_reaction_data])
     coupled_reaction_bulk = CoupledReaction(
         ["@H", "@H", "LH", "@H2", *_dummy_reaction_data]
@@ -66,7 +66,7 @@ def test_get_all_partners() -> None:
     reactions_in_network = list(network.reactions.values())
     for reaction in reactions_in_network:
         if reaction == original_reaction:
-            assert network.get_all_partners(reaction) == coupled_reactions
+            assert network.get_all_coupled_to_reaction(reaction) == coupled_reactions
         elif reaction in coupled_reactions:
             reaction: CoupledReaction = reaction  # type: ignore[no-redef, ty:invalid-assignment] # Making mypy happy
             assert isinstance(reaction, CoupledReaction)
@@ -120,7 +120,7 @@ def test_change_reaction_barrier(reactions):
         assert len(surface_reaction) == 1
         surface_reaction = surface_reaction[0]
 
-        assert reaction in network.get_all_partners(surface_reaction)
+        assert reaction in network.get_all_coupled_to_reaction(surface_reaction)
 
         network.change_reaction_barrier(surface_reaction, _rng.random())
         assert reaction.get_gamma() == surface_reaction.get_gamma()
