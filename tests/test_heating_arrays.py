@@ -34,7 +34,6 @@ class TestHeatingArrays:
     def expected_heating_columns(self):
         """Expected column names for heating DataFrame."""
         return [
-            "Time",
             "Atomic Cooling",
             "Collisionally Induced Emission",
             "Compton Scattering Cooling",
@@ -149,7 +148,6 @@ class TestHeatingArrays:
         print(heating_df.columns.tolist())
         # Check that essential columns are present (allow extra columns for extensibility)
         essential_columns = [
-            "Time",
             "Compton Cooling",
             "H2Formation Heating",
             "Chemical Heating",
@@ -217,7 +215,7 @@ class TestHeatingArrays:
             for item in result:
                 if isinstance(item, pd.DataFrame) and len(item.columns) >= 12:
                     # This is likely the heating DataFrame (check for key columns)
-                    if "Time" in item.columns and (
+                    if (
                         "Atomic Cooling" in item.columns
                         or "Chemical Heating" in item.columns
                     ):
@@ -227,7 +225,6 @@ class TestHeatingArrays:
             assert isinstance(heating_df, pd.DataFrame), (
                 "The output should be a DataFrame"
             )
-            assert "Time" in heating_df.columns, "Time should be returned"
             assert (heating_df.to_numpy()[:, 1:] != 0).any(), (
                 f"Some terms should have non-zero values, head is {heating_df.head()}"
             )
@@ -270,13 +267,12 @@ class TestHeatingArrays:
 
         # Check that we have finite values (no NaN or inf)
         for col in heating_df.columns:
-            if col != "Time":  # Time column might have different constraints
-                finite_values = np.isfinite(heating_df[col]).all()
-                assert finite_values, f"Column {col} contains non-finite values"
+            finite_values = np.isfinite(heating_df[col]).all()
+            assert finite_values, f"Column {col} contains non-finite values"
 
         # Check that at least some heating/cooling terms have non-zero values
         # (this ensures the physics is actually being calculated)
-        non_time_columns = [col for col in heating_df.columns if col != "Time"]
+        non_time_columns = [col for col in heating_df.columns]
         has_nonzero = False
         for col in non_time_columns:
             if (heating_df[col] != 0).any():

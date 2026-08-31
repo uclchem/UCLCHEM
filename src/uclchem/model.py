@@ -1054,9 +1054,9 @@ class AbstractModel(ABC):
             Integer referring to which point of the UCLCHEM model to return.
             If None, returns data for all points with a 'Point' column. Defaults to None.
         joined : bool
-            Flag on whether the returned pandas dataframe should be one, or if
-            two dataframes should be
-            returned. One physical, one chemical_abun dataframe. Defaults to True.
+            Flag on whether the returned pandas dataframe should be one, or if a tuple
+            of dataframes should be returned, with at least one physical,
+            and one chemical_abun dataframe. Defaults to True.
         with_rate_constants : bool
             Flag on whether to include reaction rate constants
             in the dataframe, and/or as a separate dataframe depending on the value of `joined`.
@@ -1092,11 +1092,11 @@ class AbstractModel(ABC):
             df.insert(0, "Point", point_num)
             return df
 
-        # Determine total number of points in model
-        n_points = self._param_dict.get("points", 1)
-
         # Get dataframes for the requested points
         if point is None:
+            # Determine total number of points in model
+            n_points = self._param_dict.get("points", 1)
+
             # Collect dataframes for all points
             all_dfs = []
             for pt in range(n_points):
@@ -1117,33 +1117,32 @@ class AbstractModel(ABC):
             df_collections = list(zip(*all_dfs, strict=False))
 
             # Concatenate each type vertically
-            concatenated: list[pd.DataFrame] = [
+            concatenated = tuple(
                 pd.concat(list(collection), ignore_index=True)
                 for collection in df_collections
-            ]
+            )
         else:
             # Single point mode
-            concatenated = list(
-                self._get_single_point_dataframes(
-                    point,
-                    with_rate_constants=with_rate_constants,
-                    with_heating=with_heating,
-                    with_stats=with_stats,
-                    with_level_populations=with_level_populations,
-                    with_se_stats=with_se_stats,
-                )
+            concatenated = self._get_single_point_dataframes(
+                point,
+                with_rate_constants=with_rate_constants,
+                with_heating=with_heating,
+                with_stats=with_stats,
+                with_level_populations=with_level_populations,
+                with_se_stats=with_se_stats,
             )
             # Add Point columns (1-indexed)
-            concatenated = [add_point_column(df, point + 1) for df in concatenated]
+            concatenated = tuple(add_point_column(df, point + 1) for df in concatenated)
+
+        if not joined:
+            return concatenated
 
         # Join horizontally if requested
-        if joined:
-            result_df = concatenated[0]  # Start with physics
-            for df in concatenated[1:]:
-                # Drop duplicate Point column from subsequent dataframes
-                result_df = result_df.join(df.drop(columns=["Point"]))
-            return result_df
-        return tuple(concatenated)
+        result_df = concatenated[0]  # Start with physics
+        for df in concatenated[1:]:
+            # Drop duplicate Point column from subsequent dataframes
+            result_df = result_df.join(df.drop(columns=["Point"]))
+        return result_df
 
     def get_joined_dataframes(
         self,
@@ -1186,7 +1185,8 @@ class AbstractModel(ABC):
             Single DataFrame with physics, abundances, and any optional columns joined horizontally.
 
         """
-        result = self.get_dataframes(
+        # joined=True always returns a single DataFrame
+        result: pd.DataFrame = self.get_dataframes(  # type: ignore[assignment, ty:invalid-assignment]
             point=point,
             joined=True,
             with_rate_constants=with_rate_constants,
@@ -1195,8 +1195,7 @@ class AbstractModel(ABC):
             with_level_populations=with_level_populations,
             with_se_stats=with_se_stats,
         )
-        # joined=True always returns a single DataFrame
-        return result  # type: ignore[return-value, ty:invalid-return-type]
+        return result
 
     def get_split_dataframes(
         self,
@@ -1239,7 +1238,8 @@ class AbstractModel(ABC):
             Tuple of DataFrames with physics, abundances, and any optional columns.
 
         """
-        result = self.get_dataframes(
+        # joined=False always returns a tuple of DataFrames
+        result: tuple[pd.DataFrame, ...] = self.get_dataframes(  # type: ignore[assignment, ty:invalid-assignment]
             point=point,
             joined=False,
             with_rate_constants=with_rate_constants,
@@ -1248,8 +1248,7 @@ class AbstractModel(ABC):
             with_level_populations=with_level_populations,
             with_se_stats=with_se_stats,
         )
-        # joined=False always returns a tuple of DataFrames
-        return result  # type: ignore[return-value, ty:invalid-return-type]
+        return result
 
     def _get_single_point_dataframes(
         self,
@@ -1268,8 +1267,8 @@ class AbstractModel(ABC):
         point : int
             Spatial point index (for multi-point models).
         with_rate_constants : bool
-            Flag on whether to include a reaction rate constant dataframe. Default=False.
-            in the tuple.
+            Flag on whether to include a reaction rate constant dataframe in the tuple.
+            Default=False.
         with_heating : bool
             Flag on whether to include heating/cooling rates dataframe in the tuple.
             Default=False.
@@ -1300,9 +1299,8 @@ class AbstractModel(ABC):
             self.physics_array[:, point, :], stored_cols, model_identifier
         )
         # Create an abundances dataframe using global species names
-        species_names = get_species_names()
         chemistry_df = pd.DataFrame(
-            self.chemical_abun_array[:, point, :], index=None, columns=species_names
+            self.chemical_abun_array[:, point, :], index=None, columns=get_species_names()
         )
         if self.rate_constants_array is not None and with_rate_constants:
             # Create a rate constants dataframe.
@@ -1316,7 +1314,7 @@ class AbstractModel(ABC):
 
         if self.heat_array is not None and with_heating:
             # Create a heating dataframe dynamically using labels from heating.f90
-            heating_columns = ["Time"]
+            heating_columns = []
 
             # Add cooling mechanism labels
             cooling_labels = [
@@ -1380,6 +1378,261 @@ class AbstractModel(ABC):
             result.append(se_stats_df)
         return tuple(df for df in result if df is not None)
 
+    def get_arrays(
+        self,
+        point: int | None = None,
+        *,
+        joined: bool = True,
+        with_rate_constants: bool = False,
+        with_heating: bool = False,
+        with_stats: bool = False,
+        with_level_populations: bool = False,
+        with_se_stats: bool = False,
+    ) -> np.ndarray | tuple[np.ndarray, ...]:
+        """Get a view of the arrays generated during a model run.
+
+        Parameters
+        ----------
+        point : int | None
+            Integer referring to which point of the UCLCHEM model to return.
+            If None, returns data for all points with a 'Point' column. Defaults to None.
+        joined : bool
+            Whether to get one array with all data types, or return a tuple
+            of arrays, with each one separate. Default=True.
+        with_rate_constants : bool
+            Flag on whether to include a reaction rate constant array. Default=False.
+        with_heating : bool
+            Flag on whether to include heating/cooling rates array.
+            Default=False.
+        with_stats : bool
+            Flag on whether to include the DVODE solver statistics array.
+            Default=False.
+        with_level_populations : bool
+            Flag on whether to include the coolant level populations array.
+            Default = False.
+        with_se_stats : bool
+            Flag on whether to include the SE solver statistics array.
+            Default = False.
+
+        Returns
+        -------
+        result : np.ndarray | tuple[np.ndarray, ...]
+            One array with all the data joined together, or separately if `joined` is False.
+            The order is the same as that specified in
+            :meth:`uclchem.model.AbstractModel.get_dataframes()`.
+
+        Notes
+        -----
+        Returns a view, not a copy, so changing the returned arrays also changes
+        the arrays within the model object.
+
+        """
+
+        def _add_point_column(array: np.ndarray, point: int) -> np.ndarray:
+            num_rows = array.shape[0]
+            return np.concatenate((np.ones(shape=(num_rows, 1)) * point, array), axis=1)
+
+        if point is None:
+            n_points = self._param_dict.get("points", 1)
+
+            all_arrays = []
+            for pt in range(n_points):
+                arrays = self._get_single_point_arrays(
+                    pt,
+                    with_rate_constants=with_rate_constants,
+                    with_heating=with_heating,
+                    with_stats=with_stats,
+                    with_level_populations=with_level_populations,
+                    with_se_stats=with_se_stats,
+                )
+                arrays = tuple(_add_point_column(array, pt + 1) for array in arrays)
+                all_arrays.append(arrays)
+
+            # Transpose to group by array type instead of by point
+            # e.g., [[phys0, chem0, rates0], [phys1, chem1, rates1]] -> [[phys0, phys1], [chem0, chem1], [rates0, rates1]] # ruff: ignore[doc-line-too-long]
+            array_collections = list(zip(*all_arrays, strict=False))
+
+            # Concatenate each type vertically
+            arrays_tuple = tuple(
+                np.concatenate(collection, axis=0) for collection in array_collections
+            )
+        else:
+            arrays_tuple = self._get_single_point_arrays(
+                point,
+                with_rate_constants=with_rate_constants,
+                with_heating=with_heating,
+                with_stats=with_stats,
+                with_level_populations=with_level_populations,
+                with_se_stats=with_se_stats,
+            )
+            arrays_tuple = tuple(
+                _add_point_column(array, point + 1) for array in arrays_tuple
+            )
+
+        if not joined:
+            return arrays_tuple
+
+        # Join arrays if requested
+        # Drop all 'point' columns from all arrays after physics array
+        array = np.concatenate(
+            (arrays_tuple[0], *(array[:, 1:] for array in arrays_tuple[1:])), axis=1
+        )
+        return array
+
+    def get_joined_arrays(
+        self,
+        point: int | None = None,
+        *,
+        with_rate_constants: bool = False,
+        with_heating: bool = False,
+        with_stats: bool = False,
+        with_level_populations: bool = False,
+        with_se_stats: bool = False,
+    ) -> np.ndarray:
+        """Get a view of the arrays generated during a model run, joined together.
+
+        Convenience wrapper around :meth:`get_arrays` with ``joined=True``.
+
+        Parameters
+        ----------
+        point : int | None
+            Integer referring to which point of the UCLCHEM model to return.
+            If None, returns data for all points with a 'Point' column. Defaults to None.
+        with_rate_constants : bool
+            Flag on whether to include a reaction rate constant array. Default=False.
+        with_heating : bool
+            Flag on whether to include heating/cooling rates array.
+            Default=False.
+        with_stats : bool
+            Flag on whether to include the DVODE solver statistics array.
+            Default=False.
+        with_level_populations : bool
+            Flag on whether to include the coolant level populations array.
+            Default = False.
+        with_se_stats : bool
+            Flag on whether to include the SE solver statistics array.
+            Default = False.
+
+        Returns
+        -------
+        array : np.ndarray
+            One array with all the data joined together.
+
+        Notes
+        -----
+        Returns a view, not a copy, so changing the returned arrays also changes
+        the arrays within the model object.
+
+        """
+        array: np.ndarray = self.get_arrays(  # type: ignore[assignment, ty:invalid-assignment]
+            point=point,
+            joined=True,
+            with_rate_constants=with_rate_constants,
+            with_heating=with_heating,
+            with_stats=with_stats,
+            with_level_populations=with_level_populations,
+            with_se_stats=with_se_stats,
+        )
+        return array
+
+    def get_split_arrays(
+        self,
+        point: int | None = None,
+        *,
+        with_rate_constants: bool = False,
+        with_heating: bool = False,
+        with_stats: bool = False,
+        with_level_populations: bool = False,
+        with_se_stats: bool = False,
+    ) -> tuple[np.ndarray, ...]:
+        """Get a view of the arrays generated during a model run, split by type.
+
+        Convenience wrapper around :meth:`get_arrays` with ``joined=False``.
+
+        Parameters
+        ----------
+        point : int | None
+            Integer referring to which point of the UCLCHEM model to return.
+            If None, returns data for all points with a 'Point' column. Defaults to None.
+        with_rate_constants : bool
+            Flag on whether to include a reaction rate constant array in the tuple. Default=False.
+        with_heating : bool
+            Flag on whether to include heating/cooling rates array in the tuple.
+            Default=False.
+        with_stats : bool
+            Flag on whether to include the DVODE solver statistics array in the tuple.
+            Default=False.
+        with_level_populations : bool
+            Flag on whether to include the coolant level populations array in the tuple.
+            Default = False.
+        with_se_stats : bool
+            Flag on whether to include the SE solver statistics array in the tuple.
+            Default = False.
+
+        Returns
+        -------
+        array : tuple[np.ndarray, ...]
+            Tuple of arrays with each array being a separate type.
+
+        Notes
+        -----
+        Returns a view, not a copy, so changing the returned arrays also changes
+        the arrays within the model object.
+
+        """
+        arrays_tuple: tuple[np.ndarray, ...] = self.get_arrays(  # type: ignore[assignment, ty:invalid-assignment]
+            point=point,
+            joined=False,
+            with_rate_constants=with_rate_constants,
+            with_heating=with_heating,
+            with_stats=with_stats,
+            with_level_populations=with_level_populations,
+            with_se_stats=with_se_stats,
+        )
+        return arrays_tuple
+
+    def _get_single_point_arrays(
+        self,
+        point: int,
+        *,
+        with_rate_constants: bool = False,
+        with_heating: bool = False,
+        with_stats: bool = False,
+        with_level_populations: bool = False,
+        with_se_stats: bool = False,
+    ) -> tuple[np.ndarray, ...]:
+        def _append_if_true_and_not_none(
+            lst: list[Any], attr_name: str, *, append: bool
+        ) -> list[Any]:
+            if not hasattr(self, attr_name):
+                msg = f"Tried to append {attr_name} of to arrays, but {self} does not have this attribute."
+                raise AttributeError(msg)
+            if not append:
+                return lst
+            array = getattr(self, attr_name)
+            if array is None:
+                msg = f"Tried to append {attr_name} of object {self} to arrays, but its value is None."
+                raise ValueError(msg)
+            lst.append(array[:, point, :])
+            return lst
+
+        arrays = [self.physics_array[:, point, :], self.chemical_abun_array[:, point, :]]
+
+        arrays = _append_if_true_and_not_none(
+            arrays, "rate_constants_array", append=with_rate_constants
+        )
+        arrays = _append_if_true_and_not_none(arrays, "heat_array", append=with_heating)
+        arrays = _append_if_true_and_not_none(arrays, "stats_array", append=with_stats)
+        arrays = _append_if_true_and_not_none(
+            arrays, "level_populations_array", append=with_level_populations
+        )
+        arrays = _append_if_true_and_not_none(
+            arrays, "se_stats_array", append=with_se_stats
+        )
+
+        arrays_tuple = tuple(arrays)
+        return arrays_tuple
+
     def get_final_abundances_of_species(self, species: Sequence[str]) -> np.ndarray:
         """Get the final abundances of a list of species.
 
@@ -1391,7 +1644,7 @@ class AbstractModel(ABC):
         Returns
         -------
         abundances : np.ndarray
-            array of final abundances of ``species``.
+            array of final abundances of `species`.
 
         """
         species_names = get_species_names()
@@ -2438,7 +2691,7 @@ class AbstractModel(ABC):
         """Create the Fortran-compliant np.array for heating/cooling rates passed to UCLCHEM."""
         try:
             heating_array_size = (
-                2
+                1
                 + uclchemwrap.heating.ncooling
                 + uclchemwrap.heating.nheating
                 + uclchemwrap.f2py_constants.ncoolants

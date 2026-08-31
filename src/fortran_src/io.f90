@@ -165,15 +165,14 @@ contains
                 rateConstantsArray(dtime, dstep, :) = rate_constants(:nreac)
                 ! Only populate the heating array if it is present, properly sized, AND heating is enabled
                 if (SIZE(heatarray, 1) >= timePoints .AND. heatingFlag) then
-                    heatarray(dtime, dstep, 1) = timeInYears
-                    heatarray(dtime, dstep, 2:(1+NCOOLING)) = coolingValues(:)
+                    heatarray(dtime, dstep, 1:(NCOOLING)) = coolingValues(:)
                     ! Write all NCOOLANTS line cooling terms
-                    heatarray(dtime, dstep, (2+NCOOLING):(1+NCOOLING+NCOOLANTS)) = lineCoolingArray(median_line_index, :NCOOLANTS)
+                    heatarray(dtime, dstep, (1+NCOOLING):(NCOOLING+NCOOLANTS)) = lineCoolingArray(median_line_index, :NCOOLANTS)
 
                     ! Heating terms (NHEATING values)
-                    heatarray(dtime, dstep, (2+NCOOLING+NCOOLANTS):(1+NCOOLING+NCOOLANTS+NHEATING)) = heatingValues(:)
+                    heatarray(dtime, dstep, (1+NCOOLING+NCOOLANTS):(NCOOLING+NCOOLANTS+NHEATING)) = heatingValues(:)
                     ! Chemical heating (1 value)
-                    heatarray(dtime, dstep, 2+NCOOLING+NCOOLANTS+NHEATING) = chemheating
+                    heatarray(dtime, dstep, 1+NCOOLING+NCOOLANTS+NHEATING) = chemheating
                 end if
             else
                 ! Else, we write the rate constants and rates to the file.

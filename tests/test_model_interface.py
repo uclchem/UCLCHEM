@@ -46,4 +46,23 @@ def test_model_precision_saving_storage_size(tmp_path: Path):
 def test_model_precision_overflow(tmp_path: Path):
     model = Cloud()
     with pytest.raises(OverflowError):
-        model.save_model(file=tmp_path / "model_fp16.f5", float_dtype="fp16")
+        model.save_model(file=tmp_path / "model_fp16.h5", float_dtype="fp16")
+
+
+def test_get_arrays():
+    model = Cloud()
+    with_all = {
+        "with_heating": True,
+        "with_rate_constants": True,
+        "with_se_stats": True,
+        "with_stats": True,
+        "with_level_populations": True,
+    }
+    arrays = model.get_split_arrays(**with_all)
+    dfs = model.get_split_dataframes(**with_all)
+    for array, df in zip(arrays, dfs, strict=True):
+        assert np.all(df.to_numpy() == array)
+
+    array = model.get_joined_arrays(**with_all)
+    df = model.get_joined_dataframes(**with_all)
+    assert np.all(df.to_numpy() == array)
