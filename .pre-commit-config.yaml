@@ -27,7 +27,7 @@ repos:
         pass_filenames: false
 
   - repo: https://github.com/adhtruong/mirrors-typos
-    rev: v1.49.0
+    rev: v1.50.0
     hooks:
       - id: typos
         name: "[correctness] Check spelling errors"
@@ -46,7 +46,7 @@ repos:
 
   # Ruff: Code style, docstrings, etc
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.3
+    rev: v0.16.5
     hooks:
       - id: ruff
         name: "[correctness] Ruff linter"
@@ -70,7 +70,7 @@ repos:
   # Purpose: Enforce consistent code style
   # ============================================================================
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.3
+    rev: v0.16.5
     hooks:
       - id: ruff-format
         name: "[style] Ruff formatter"
