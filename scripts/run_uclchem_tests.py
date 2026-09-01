@@ -4,16 +4,14 @@ This should be run from the UCLCHEM root directory.
 
 """
 
-import logging
 from pathlib import Path
 from time import perf_counter
 
 import uclchem
 
-logging.basicConfig(level=logging.DEBUG)
-
-
 if __name__ == "__main__":
+    uclchem.utils.configure_logging(level="DEBUG")
+
     out_dir = Path("examples/test-output")
     out_dir.mkdir(parents=True, exist_ok=True)
     save_file = out_dir / "models.h5"
@@ -31,6 +29,7 @@ if __name__ == "__main__":
         "finalDens": 1e5,
         "finalTime": 5.0e6,
         "outputFile": str(out_dir / "static-full.dat"),
+        "writeTimeStepInfo": True,
     }
 
     start = perf_counter()

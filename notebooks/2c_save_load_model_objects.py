@@ -15,7 +15,6 @@
 # In this tutorial we will repeat the models of 2b, but this time we will leave all the plotting for the end. Instead, we will store the models into a `.h5` file, delete the objects, and in the end reload them so we can perform the same analysis as was done in 2b. For details on what models are being created, we refer you back to tutorial 2b, here we will only discuss the technical components of saving and loading models.
 
 # %%
-import os
 from pathlib import Path
 from typing import Any
 
@@ -28,12 +27,11 @@ import uclchem
 # %%
 save_file = Path("output_2c/models.h5")
 
-if not os.path.exists(save_file.parent):
-    os.makedirs(save_file.parent)
-else:
-    # Remove existing file to avoid appending to old data
-    if os.path.exists(save_file):
-        os.remove(save_file)
+if not Path(save_file.parent).exists():
+    Path(save_file.parent).mkdir(parents=True)
+# Remove existing file to avoid appending to old data
+elif Path(save_file).exists():
+    Path(save_file).unlink()
 
 # %%
 # set a parameter dictionary for cloud collapse model
@@ -132,9 +130,7 @@ save_file = Path("output_2c/models.h5")
 # We begin by loading the prestellar core model. We will check the conservation of elements, as well as the success flag and plot it as was done in tutorial 2b.
 
 # %%
-loaded_p_core = uclchem.model.load_model(
-    file=save_file, name="prestellar_core"
-)
+loaded_p_core = uclchem.model.load_model(file=save_file, name="prestellar_core")
 print(f"Success Flag = {loaded_p_core.success_flag}")
 loaded_p_core.check_conservation()
 

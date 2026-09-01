@@ -1,75 +1,85 @@
-MODULE SurfaceReactions
-  USE constants
-  USE DEFAULTPARAMETERS
+module SurfaceReactions
+  use constants, only: dp, K_BOLTZ, K_BOLTZ_SI, PI, AMU, HP_SI, N_AVOGADRO, &
+      REDUCED_PLANCK, KCAL_TO_JOULE
+  use DEFAULTPARAMETERS
+  use f2py_constants, only: nSpec, nReac, NO_REACTANT_OR_PRODUCT, &
+      MISSING_VALUE_FLOAT, MISSING_VALUE_INTEGER
+  use network, only: iceList, bulkList, surfaceList, gasIceList, bindingEnergy, diffusionBarrier, &
+      re1, re2, p1, p2, p3, p4, alpha, beta, gama, reducedMasses, &
+      mass, specName, atomCounts, surfSwapReacs, bulkSwapReacs, &
+      moleculeIsLinear, formationEnthalpy, LHDEScorrespondingLHreacs, &
+      customVdes, customVdiff, THREE_PHASE, inertiaProducts, &
+      ngh2, nh2, ngn, ngo, ngoh, nh, ngh
   !f2py INTEGER, parameter :: dp
-  USE f2py_constants
-  USE network
-  IMPLICIT NONE
-  REAL(dp) :: surfaceCoverage,totalSwap,bulkLayersReciprocal
-  REAL(dp) :: safeMantle,safeBulk
-  ! REAL(dp) :: diffToBindRatio, EDEndothermicityFactor
-  ! LOGICAL :: h2EncounterDesorption, hEncounterDesorption
-  ! LOGICAL :: h2StickingCoeffByh2Coverage, hStickingCoeffByh2Coverage
+  use numerics, only: is_equal, linear_interp
+
+  implicit none
+
+  public
+
+  real(dp) :: surfaceCoverage,totalSwap,bulkLayersReciprocal
+  real(dp) :: safeMantle,safeBulk
 
   !Silicate grain properties for H2 Formation
-  REAL(dp),PARAMETER :: SILICATE_MU=0.005D0 ! Fraction of newly formed H2 that stays on the grain surface
-  REAL(dp),PARAMETER :: SILICATE_E_S=110.0D0 ! Energy of the saddle point between a physisorbed and a chemisorbed site (K)
-  REAL(dp),PARAMETER :: SILICATE_E_H2=320.0D0 ! Desorption energy of H2 molecules (K)
-  REAL(dp),PARAMETER :: SILICATE_E_HP=450.0D0 ! Desorption energy of physisorbed H atoms (K)
-  REAL(dp),PARAMETER :: SILICATE_E_HC=3.0D4   ! Desorption energy of chemisorbed H atoms (K)
-  REAL(dp),PARAMETER :: SILICATE_NU_H2=3.0D12 ! Vibrational frequency of H2 molecules in surface sites (s^-1)
-  REAL(dp),PARAMETER :: SILICATE_NU_HC=1.3D13 ! Vibrational frequency of H atoms in their surface sites (s^-1)
-  REAL(dp),PARAMETER :: SILICATE_CROSS_SECTION=8.473D-22!*CROSS_SECTION_SCALE ! Silicate grain cross section per H nucleus (cm^-2/nucleus)
+  real(dp), parameter :: SILICATE_MU=0.005_dp  ! Fraction of newly formed H2 that stays on the grain surface
+  real(dp), parameter :: SILICATE_E_S=110.0_dp  ! Energy of the saddle point between a physisorbed and a chemisorbed site (K)
+  real(dp), parameter :: SILICATE_E_H2=320.0_dp  ! Desorption energy of H2 molecules (K)
+  real(dp), parameter :: SILICATE_E_HP=450.0_dp  ! Desorption energy of physisorbed H atoms (K)
+  real(dp), parameter :: SILICATE_E_HC=3.0e4_dp   ! Desorption energy of chemisorbed H atoms (K)
+  real(dp), parameter :: SILICATE_NU_H2=3.0e12_dp  ! Vibrational frequency of H2 molecules in surface sites (s^-1)
+  real(dp), parameter :: SILICATE_NU_HC=1.3e13_dp  ! Vibrational frequency of H atoms in their surface sites (s^-1)
+  real(dp), parameter :: SILICATE_CROSS_SECTION=8.473e-22_dp  !*CROSS_SECTION_SCALE ! Silicate grain cross section per H nucleus (cm^-2/nucleus)
 
   !Graphite grain properties for H2 Formation
-  REAL(dp),PARAMETER :: GRAPHITE_MU=0.005D0   ! Fraction of newly formed H2 that stays on the grain surface
-  REAL(dp),PARAMETER :: GRAPHITE_E_S=260.0D0  ! Energy of the saddle point between a physisorbed and a chemisorbed site (K)
-  REAL(dp),PARAMETER :: GRAPHITE_E_H2=520.0D0 ! Desorption energy of H2 molecules (K)
-  REAL(dp),PARAMETER :: GRAPHITE_E_HP=800.0D0 ! Desorption energy of physisorbed H atoms (K)
-  REAL(dp),PARAMETER :: GRAPHITE_E_HC=3.0D4   ! Desorption energy of chemisorbed H atoms (K)
-  REAL(dp),PARAMETER :: GRAPHITE_NU_H2=3.0D12 ! Vibrational frequency of H2 molecules in surface sites (s^-1)
-  REAL(dp),PARAMETER :: GRAPHITE_NU_HC=1.3D13 ! Vibrational frequency of H atoms in their surface sites (s^-1)
-  REAL(dp),PARAMETER :: GRAPHITE_CROSS_SECTION=7.908D-22!*CROSS_SECTION_SCALE ! Graphite grain cross section per H nucleus (cm^-2/nucleus)
+  real(dp), parameter :: GRAPHITE_MU=0.005_dp   ! Fraction of newly formed H2 that stays on the grain surface
+  real(dp), parameter :: GRAPHITE_E_S=260.0_dp  ! Energy of the saddle point between a physisorbed and a chemisorbed site (K)
+  real(dp), parameter :: GRAPHITE_E_H2=520.0_dp  ! Desorption energy of H2 molecules (K)
+  real(dp), parameter :: GRAPHITE_E_HP=800.0_dp  ! Desorption energy of physisorbed H atoms (K)
+  real(dp), parameter :: GRAPHITE_E_HC=3.0e4_dp   ! Desorption energy of chemisorbed H atoms (K)
+  real(dp), parameter :: GRAPHITE_NU_H2=3.0e12_dp  ! Vibrational frequency of H2 molecules in surface sites (s^-1)
+  real(dp), parameter :: GRAPHITE_NU_HC=1.3e13_dp  ! Vibrational frequency of H atoms in their surface sites (s^-1)
+  real(dp), parameter :: GRAPHITE_CROSS_SECTION=7.908e-22_dp  !*CROSS_SECTION_SCALE ! Graphite grain cross section per H nucleus (cm^-2/nucleus)
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   !Grain surface parameters
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  REAL(dp), PARAMETER :: GAS_DUST_MASS_RATIO=100.0,GRAIN_RADIUS=1.d-5, GRAIN_DENSITY = 3.0 ! Mass density of a dust grain
-  REAL(dp), PARAMETER :: THERMAL_VEL= SQRT(8.0d0*K_BOLTZ/(PI*AMU)) !Thermal velocity without the factor of SQRT(T/m) where m is moelcular mass in amu
+  real(dp), parameter :: GAS_DUST_MASS_RATIO=100.0_dp,GRAIN_RADIUS=1.0e-5_dp, GRAIN_DENSITY = 3.0_dp  ! Mass density of a dust grain
+  real(dp), parameter :: THERMAL_VEL= sqrt(8.0_dp*K_BOLTZ/(PI*AMU))  !Thermal velocity without the factor of SQRT(T/m) where m is moelcular mass in amu
 
   !reciprocal of fractional abundance of dust grains (we only divide by number density so better to store reciprocal)
-  REAL(dp), PARAMETER :: GAS_DUST_DENSITY_RATIO = (4.0*PI*(GRAIN_RADIUS**3)*GRAIN_DENSITY*GAS_DUST_MASS_RATIO)/(3.0 * AMU)
+  real(dp), parameter :: GAS_DUST_DENSITY_RATIO = (4.0_dp*PI*(GRAIN_RADIUS**3)*GRAIN_DENSITY*GAS_DUST_MASS_RATIO)/(3.0_dp * AMU)
   !Grain area per h nuclei, values taken from Cazaux & Tielens 2004 via UCL-PDR to match H2 formation rate
-  REAL(dp), PARAMETER :: GRAIN_CROSSSECTION_PER_H=0.5*(7.908D-22+8.473D-22)
-  REAL(dp), PARAMETER :: GRAIN_SURFACEAREA_PER_H=4.0*GRAIN_CROSSSECTION_PER_H!2.0*4.0*PI*GRAIN_RADIUS*GRAIN_RADIUS/GAS_DUST_DENSITY_RATIO
+  real(dp), parameter :: GRAIN_CROSSSECTION_PER_H=0.5_dp*(7.908e-22_dp+8.473e-22_dp)
+  real(dp), parameter :: GRAIN_SURFACEAREA_PER_H=4.0_dp*GRAIN_CROSSSECTION_PER_H  !2.0*4.0*PI*GRAIN_RADIUS*GRAIN_RADIUS/GAS_DUST_DENSITY_RATIO
 
   !Below are values for grain surface reactions
-  LOGICAL, PARAMETER :: DIFFUSE_REACT_COMPETITION=.True., GRAINS_HAVE_ICE=.True.
-  REAL(dp), PARAMETER :: NUM_MONOLAYERS_IS_SURFACE=2.0D0 ! Number of monolayers to count as surface
-  LOGICAL, PARAMETER :: useGarrod2011Transfer=.True. ! Use Garrod 2011 transfer upon net desorption
-  LOGICAL, PARAMETER :: useCustomReducedMass=.True. ! Use custom predicted reduced mass for tunneling
-  REAL(dp), PARAMETER :: CHEMICAL_BARRIER_THICKNESS = 1.40d-8! Parameter used to compute the probability for a surface reaction with 
+  logical, parameter :: DIFFUSE_REACT_COMPETITION=.true., GRAINS_HAVE_ICE=.true.
+  real(dp), parameter :: NUM_MONOLAYERS_IS_SURFACE=2.0_dp  ! Number of monolayers to count as surface
+  logical, parameter :: useGarrod2011Transfer=.true.  ! Use Garrod 2011 transfer upon net desorption
+  logical, parameter :: useCustomReducedMass=.true.  ! Use custom predicted reduced mass for tunneling
+  real(dp), parameter :: CHEMICAL_BARRIER_THICKNESS = 1.40e-8_dp  ! Parameter used to compute the probability for a surface reaction with
   !! activation energy to occur through quantum tunneling (Hasegawa et al. Eq 6 (1992).)
-  REAL(dp), PARAMETER :: SURFACE_SITE_DENSITY = 1.5d15 ! site density on one grain [cm-2]
-  REAL(dp), PARAMETER :: VDIFF_PREFACTOR=2.0*K_BOLTZ*SURFACE_SITE_DENSITY/PI/PI/AMU
-  REAL(dp), PARAMETER :: NUM_SITES_PER_GRAIN = GRAIN_RADIUS*GRAIN_RADIUS*SURFACE_SITE_DENSITY*4.0*PI
-  
-  ! TST prefactor constants
-  REAL(dp), PARAMETER :: HH_VDES_PREFACTOR=2.0D0*K_BOLTZ_SI*SURFACE_SITE_DENSITY*1.0D4/(PI*PI*AMU)
-  REAL(dp), PARAMETER :: TST_VDES_PREFACTOR = 2.0d0*PI*K_BOLTZ_SI**2*AMU/ &
-    (SURFACE_SITE_DENSITY*1.0d4*(HP_SI**3)*1.0d3)
-  
-  ! Encounter desorption constants
-  REAL(dp), PARAMETER :: H2_ON_H2_BINDING_ENERGY=23.0D0 ! K
-  REAL(dp), PARAMETER :: H_ON_H2_BINDING_ENERGY=45.0D0  ! K
+  real(dp), parameter :: SURFACE_SITE_DENSITY = 1.5e15_dp  ! site density on one grain [cm-2]
+  real(dp), parameter :: VDIFF_PREFACTOR=2.0_dp*K_BOLTZ*SURFACE_SITE_DENSITY/PI/PI/AMU
+  real(dp), parameter :: NUM_SITES_PER_GRAIN = SURFACE_SITE_DENSITY * (4.0_dp*PI*GRAIN_RADIUS**2)
+  real(dp), parameter :: EFFECTIVE_SURFACE_MASS = 120.0_dp  ! Effective mass of grain surface in Dalton
 
-  REAL(dp), PARAMETER :: MIN_SURFACE_ABUND=1.0d-20
+  ! TST prefactor constants
+  real(dp), parameter :: HH_VDES_PREFACTOR=2.0_dp*K_BOLTZ_SI*SURFACE_SITE_DENSITY*1.0e4_dp/(PI*PI*AMU)
+  real(dp), parameter :: TST_VDES_PREFACTOR = 2.0_dp*PI*K_BOLTZ_SI**2*AMU/ &
+    (SURFACE_SITE_DENSITY*1.0e4_dp*(HP_SI**3)*1.0e3_dp)
+
+  ! Encounter desorption constants
+  real(dp), parameter :: H2_ON_H2_BINDING_ENERGY=23.0_dp  ! K
+  real(dp), parameter :: H_ON_H2_BINDING_ENERGY=45.0_dp  ! K
+
+  real(dp), parameter :: MIN_SURFACE_ABUND=1.0e-20_dp
 
   ! Desorption fraction arrays for LHDES/ERDES reactions (pre-calculated at initialization)
-  REAL(dp), DIMENSION(nReac) :: desorptionFractionsBare, desorptionFractionsFullCoverage
+  real(dp), dimension(nReac) :: desorptionFractionsBare, desorptionFractionsFullCoverage
 
-  REAL(dp), ALLOCATABLE ::vdiff(:),vdes(:)
-CONTAINS
+  real(dp), allocatable :: vdiff(:), vdes(:)
+contains
   !=======================================================================
   !
   !  Calculate the rate of molecular hydrogen (H2) formation on grains
@@ -77,145 +87,151 @@ CONTAINS
   !  Cazaux & Tielens (2004, ApJ, 604, 222).
   !
   !-----------------------------------------------------------------------
-  FUNCTION h2FormEfficiency(gasTemp,dustTemp) RESULT(rate)
-    REAL(dp) :: rate
-    REAL(dp), INTENT(IN) :: gasTemp,dustTemp
+  pure function h2FormEfficiency(gasTemp,dustTemp) result(rate)
+    real(dp) :: rate
+    real(dp), intent(in) :: gasTemp,dustTemp
 
-    REAL(dp) :: THERMAL_VELOCITY,STICKING_COEFFICIENT,CROSS_SECTION_SCALE
-    REAL(dp) :: FLUX,FACTOR1,FACTOR2,EPSILON
-    REAL(dp) :: SILICATE_FORMATION_EFFICIENCY,GRAPHITE_FORMATION_EFFICIENCY
+    real(dp) :: THERMAL_VELOCITY,STICKING_COEFFICIENT
+    real(dp) :: FLUX,FACTOR1,FACTOR2,EPSILON
+    real(dp) :: SILICATE_FORMATION_EFFICIENCY,GRAPHITE_FORMATION_EFFICIENCY
     !  Mean thermal velocity of hydrogen atoms (cm s^-1)
-    THERMAL_VELOCITY=1.45D5*SQRT(gasTemp/1.0D2)
+    THERMAL_VELOCITY=1.45e5_dp*sqrt(gasTemp/1.0e2_dp)
 
     !  Calculate the thermally averaged sticking coefficient of hydrogen atoms on grains,
     !  as given by Hollenbach & McKee (1979, ApJS, 41, 555, eqn 3.7)
-    STICKING_COEFFICIENT=1.0D0/(1.0D0+0.04D0*SQRT(gasTemp+dustTemp) &
-                    & + 0.2D0*(gasTemp/1.0D2)+0.08D0*(gasTemp/1.0D2)**2)
+    STICKING_COEFFICIENT=1.0_dp/(1.0_dp+0.04_dp*sqrt(gasTemp+dustTemp) &
+                    & + 0.2_dp*(gasTemp/1.0e2_dp)+0.08_dp*(gasTemp/1.0e2_dp)**2)
 
-    FLUX=1.0D-10 ! Flux of H atoms in monolayers per second (mLy s^-1)
+    FLUX=1.0e-10_dp  ! Flux of H atoms in monolayers per second (mLy s^-1)
 
-    FACTOR1=SILICATE_MU*FLUX/(2*SILICATE_NU_H2*EXP(-SILICATE_E_H2/dustTemp))
+    FACTOR1=SILICATE_MU*FLUX/(2*SILICATE_NU_H2*exp(-SILICATE_E_H2/dustTemp))
 
-   FACTOR2=1.0D0*(1.0D0+SQRT((SILICATE_E_HC-SILICATE_E_S)/(SILICATE_E_HP-SILICATE_E_S)))**2 &
-        & /4.0D0*EXP(-SILICATE_E_S/dustTemp)
+   FACTOR2=1.0_dp*(1.0_dp+sqrt((SILICATE_E_HC-SILICATE_E_S)/(SILICATE_E_HP-SILICATE_E_S)))**2 &
+        & /4.0_dp*exp(-SILICATE_E_S/dustTemp)
 
-   EPSILON=1.0D0/(1.0D0+SILICATE_NU_HC/(2*FLUX)*EXP(-1.5*SILICATE_E_HC/dustTemp) &
-              & *(1.0D0+SQRT((SILICATE_E_HC-SILICATE_E_S)/(SILICATE_E_HP-SILICATE_E_S)))**2)
+   EPSILON=1.0_dp/(1.0_dp+SILICATE_NU_HC/(2*FLUX)*exp(-1.5_dp*SILICATE_E_HC/dustTemp) &
+              & *(1.0_dp+sqrt((SILICATE_E_HC-SILICATE_E_S)/(SILICATE_E_HP-SILICATE_E_S)))**2)
 
-   SILICATE_FORMATION_EFFICIENCY=1.0D0/(1.0D0+FACTOR1+FACTOR2)*EPSILON
+   SILICATE_FORMATION_EFFICIENCY=1.0_dp/(1.0_dp+FACTOR1+FACTOR2)*EPSILON
 
 
-   FACTOR1=GRAPHITE_MU*FLUX/(2*GRAPHITE_NU_H2*EXP(-GRAPHITE_E_H2/dustTemp))
+   FACTOR1=GRAPHITE_MU*FLUX/(2*GRAPHITE_NU_H2*exp(-GRAPHITE_E_H2/dustTemp))
 
-   FACTOR2=1.0D0*(1.0D0+SQRT((GRAPHITE_E_HC-GRAPHITE_E_S)/(GRAPHITE_E_HP-GRAPHITE_E_S)))**2 &
-        & /4.0D0*EXP(-GRAPHITE_E_S/dustTemp)
+   FACTOR2=1.0_dp*(1.0_dp+sqrt((GRAPHITE_E_HC-GRAPHITE_E_S)/(GRAPHITE_E_HP-GRAPHITE_E_S)))**2 &
+        & /4.0_dp*exp(-GRAPHITE_E_S/dustTemp)
 
-   EPSILON=1.0D0/(1.0D0+GRAPHITE_NU_HC/(2*FLUX)*EXP(-1.5*GRAPHITE_E_HC/dustTemp) &
-              & *(1.0D0+SQRT((GRAPHITE_E_HC-GRAPHITE_E_S)/(GRAPHITE_E_HP-GRAPHITE_E_S)))**2)
+   EPSILON=1.0_dp/(1.0_dp+GRAPHITE_NU_HC/(2*FLUX)*exp(-1.5_dp*GRAPHITE_E_HC/dustTemp) &
+              & *(1.0_dp+sqrt((GRAPHITE_E_HC-GRAPHITE_E_S)/(GRAPHITE_E_HP-GRAPHITE_E_S)))**2)
 
-   GRAPHITE_FORMATION_EFFICIENCY=1.0D0/(1.0D0+FACTOR1+FACTOR2)*EPSILON
+   GRAPHITE_FORMATION_EFFICIENCY=1.0_dp/(1.0_dp+FACTOR1+FACTOR2)*EPSILON
 
 !  Use the treatment of Cazaux & Tielens (2002, ApJ, 575, L29) and
 !  Cazaux & Tielens (2004, ApJ, 604, 222)
-   rate=0.5D0*THERMAL_VELOCITY*(SILICATE_CROSS_SECTION*SILICATE_FORMATION_EFFICIENCY &
+   rate=0.5_dp*THERMAL_VELOCITY*(SILICATE_CROSS_SECTION*SILICATE_FORMATION_EFFICIENCY &
     & + GRAPHITE_CROSS_SECTION*GRAPHITE_FORMATION_EFFICIENCY)*STICKING_COEFFICIENT
 
-     RETURN
-  END FUNCTION h2FormEfficiency
+  end function h2FormEfficiency
 
-  SUBROUTINE bulkSurfaceExchangeReactions(rate,dustTemperature)
-    REAL(dp), INTENT(INOUT) :: rate(*)
-    REAL(dp) :: dustTemperature
-    IF (THREE_PHASE) THEN
-      surfaceCoverage=bulkGainFromMantleBuildUp()
-      CALL bulkToSurfaceSwappingRates(rate,bulkswapReacs(1),bulkswapReacs(2),dustTemperature)
-      rate(surfSwapReacs(1):surfSwapReacs(2))=surfaceToBulkSwappingRates(dustTemperature)
-    END IF
-  END SUBROUTINE bulkSurfaceExchangeReactions
+  pure subroutine bulkSurfaceExchangeReactions(rate,dustTemperature)
+    real(dp), intent(inout), dimension(nReac) :: rate
+    real(dp), intent(in) :: dustTemperature
+    if (THREE_PHASE) then
+      call bulkToSurfaceSwappingRateConstants(rate,bulkswapReacs(1),bulkswapReacs(2),dustTemperature)
+      rate(surfSwapReacs(1):surfSwapReacs(2))=surfaceToBulkSwappingRateConstants(dustTemperature)
+    end if
+  end subroutine bulkSurfaceExchangeReactions
 
   !surface abundance multiplied by this value gives fraction of surface covered by material
-  FUNCTION bulkGainFromMantleBuildUp() RESULT(rate)
-    REAL(dp) :: rate
-    rate=0.5*GAS_DUST_DENSITY_RATIO/NUM_SITES_PER_GRAIN
-  END FUNCTION bulkGainFromMantleBuildUp
+  pure function bulkGainFromMantleBuildUp() result(rate)
+    real(dp) :: rate
+    rate=0.5_dp*GAS_DUST_DENSITY_RATIO/NUM_SITES_PER_GRAIN
+  end function bulkGainFromMantleBuildUp
 
-  FUNCTION surfaceToBulkSwappingRates(dustTemperature) RESULT(rate)
-    REAL(dp) ::rate,dustTemperature
-    IF ((dustTemperature .gt. maxGrainTemp) .or. (safeMantle .lt. MIN_SURFACE_ABUND)) THEN
-              rate = 0.0
-    ELSE
-        rate = 1.0
-    END IF
-  END FUNCTION surfaceToBulkSwappingRates
+  pure function surfaceToBulkSwappingRateConstants(dustTemperature) result(rate)
+    real(dp), intent(in) :: dustTemperature
+    real(dp) :: rate
+
+    if ((dustTemperature > maxGrainTemp) .or. (safeMantle < MIN_SURFACE_ABUND)) then
+              rate = 0.0_dp
+    else
+        rate = 1.0_dp
+    end if
+  end function surfaceToBulkSwappingRateConstants
 
 
-  SUBROUTINE bulkToSurfaceSwappingRates(rate,idx1,idx2,dustTemperature)
-    REAL(dp), INTENT(INOUT) :: rate(*)
-    REAL(dp) :: dustTemperature
-    INTEGER :: idx1,idx2,i,j
-    IF ((dustTemperature .gt. maxGrainTemp) .or. (safeMantle .lt. MIN_SURFACE_ABUND)) THEN
-        rate(idx1:idx2) = 0.0
-    ELSE
-        DO i=idx1,idx2
-            DO j=lbound(iceList,1),ubound(iceList,1)
-                IF (iceList(j) .eq. re1(i)) THEN
-                  rate(i)=vdiff(j)*DEXP(-bindingEnergy(j)/dustTemperature)
-                END IF
-            END DO
-        END DO
-    END IF
-  END SUBROUTINE bulkToSurfaceSwappingRates
+  pure subroutine bulkToSurfaceSwappingRateConstants(rate,idx1,idx2,dustTemperature)
+    real(dp), intent(inout), dimension(nReac) :: rate
+    real(dp), intent(in) :: dustTemperature
+    integer, intent(in) :: idx1, idx2
+
+    integer :: i, j
+
+    if ((dustTemperature > maxGrainTemp) .or. (safeMantle < MIN_SURFACE_ABUND)) then
+        rate(idx1:idx2) = 0.0_dp
+    else
+        do i=idx1,idx2
+            do j=lbound(iceList,1),ubound(iceList,1)
+                if (iceList(j) == re1(i)) then
+                  rate(i)=vdiff(j)*exp(-bindingEnergy(j)/dustTemperature)
+                end if
+            end do
+        end do
+    end if
+  end subroutine bulkToSurfaceSwappingRateConstants
 
   !----------------------------------------------------------------------------------------------------
 !Reactions on the surface treated by evaluating diffusion rates across grains and accounting
 !For competition with chemical desorption. Products remain bound ('DIFF') or are desorbed ('CHEMDES')
-!Units of s-1. 
+!Units of s-1.
 !David Quenard 2017 Arxiv:1711.05184
 !----------------------------------------------------------------------------------------------------
-FUNCTION getDiffusionBarrier(iceListIndex)
+  pure function getDiffusionBarrier(iceListIndex) result(diffusionBarrierValue)
     !! Calculate the diffusion barrier of a species in ice.
     ! For all species, except hydrogen, this is assumed to be a fraction of the binding energy.
     ! For hydrogen, it is this by default, but can be set differently by an option in the input
-    INTEGER :: iceListIndex
-    REAL(dp) :: getDiffusionBarrier
-    IF ((useCustomDiffusionBarriers) .and. &
-        (diffusionBarrier(iceListIndex) .ne. MISSING_VALUE_FLOAT)) THEN
-        getDiffusionBarrier = diffusionBarrier(iceListIndex)
-    ELSE IF (iceList(iceListIndex) .eq. ngh) THEN
-        getDiffusionBarrier = HdiffusionBarrier
-    ELSE
-        getDiffusionBarrier = diffToBindRatio*bindingEnergy(iceListIndex)
-    END IF
-END FUNCTION getDiffusionBarrier
+    integer, intent(in) :: iceListIndex
 
-FUNCTION reacProb(reacIndx, index1, index2, dustTemperature)
-    INTEGER :: reacIndx, index1, index2
-    REAL(dp) :: dustTemperature, reducedMass
-    REAL(dp) :: reacProb, tunnelProb
+    real(dp) :: diffusionBarrierValue
+
+    if ((useCustomDiffusionBarriers) .and. &
+        (.not. is_equal(diffusionBarrier(iceListIndex), MISSING_VALUE_FLOAT))) then
+        diffusionBarrierValue = diffusionBarrier(iceListIndex)
+    else if (iceList(iceListIndex) == ngh) then
+        diffusionBarrierValue = HdiffusionBarrier
+    else
+        diffusionBarrierValue = diffToBindRatio*bindingEnergy(iceListIndex)
+    end if
+  end function getDiffusionBarrier
+
+  pure function getReactionProbability(reacIndx, index1, index2, dustTemperature) result(reacProb)
+    integer, intent(in) :: reacIndx, index1, index2
+    real(dp), intent(in) :: dustTemperature
+
+    real(dp) :: reducedMass
+    real(dp) :: reacProb, tunnelProb
     !Calculate classical activation energy barrier exponent
     reacProb = gama(reacIndx)/dustTemperature
     !Calculate quantum activation energy barrier exponent
     reducedMass = reducedMasses(reacIndx)
-    IF (reducedMass .eq. MISSING_VALUE_FLOAT) THEN
-        WRITE(*,*) "The following reaction had an input reduced mass of MISSING_VALUE_FLOAT:", MISSING_VALUE_FLOAT
-        WRITE(*,*) reacIndx, specname(re1(reacIndx)), specname(re2(reacIndx)), &
-            specname(p1(reacIndx)), specname(p2(reacIndx))
-        STOP
-    END IF
-    IF ((.NOT. useCustomReducedMass) .OR. (reducedMass .eq. MISSING_VALUE_FLOAT)) THEN
-        ! reducedMasses(reacIndx) should never be 0, but just in case we calculate it here.
+    if ((.NOT. useCustomReducedMass) .OR. (is_equal(reducedMass, MISSING_VALUE_FLOAT))) then
+        ! reducedMasses(reacIndx) should never be MISSING_VALUE_FLOAT,
+        ! because it is set by MakeRateConstants, but just in case we calculate it here.
         reducedMass = mass(iceList(index1)) * mass(iceList(index2)) / (mass(iceList(index1)) + mass(iceList(index2)))
-    END IF
-    tunnelProb = 2.0d0 *CHEMICAL_BARRIER_THICKNESS/REDUCED_PLANCK * sqrt(2.0d0*AMU*reducedMass*K_BOLTZ*gama(reacIndx))
+    end if
+    tunnelProb = 2.0_dp *CHEMICAL_BARRIER_THICKNESS/REDUCED_PLANCK * sqrt(2.0_dp*AMU*reducedMass*K_BOLTZ*gama(reacIndx))
 
     !Choose fastest between classical and tunneling
-    IF (reacProb.GT.tunnelProb) reacProb=tunnelProb
-END FUNCTION reacProb
+    if (reacProb>tunnelProb) reacProb=tunnelProb
+  end function getReactionProbability
 
-REAL(dp) FUNCTION diffusionReactionRate(reacIndx,dustTemperature)
-    REAL(dp) :: reducedMass,tunnelProb,dustTemperature
-    REAL(dp) :: diffuseProb,desorbProb,reactionProb,n_dust
-    INTEGER :: index1,index2,reacIndx,i
+  pure function getDiffusionReactionRateConstant(reacIndx,dustTemperature) result(diffusionReactionRateConstant)
+    integer, intent(in) :: reacIndx
+    real(dp), intent(in) :: dustTemperature
+
+    real(dp) :: diffusionReactionRateConstant
+
+    real(dp) :: diffuseProb,desorbProb,reactionProb
+    integer :: index1,index2,i
 
 
     !want position of species in the grain array but gas phase species aren't in there
@@ -224,36 +240,36 @@ REAL(dp) FUNCTION diffusionReactionRate(reacIndx,dustTemperature)
     index2=re2(reacIndx)
 
     !then try to overwrite with position in grain array
-    DO i=lbound(iceList,1),ubound(iceList,1)
-        IF (iceList(i) .eq. index1) index1 = i
-        IF (iceList(i) .eq. index2) index2 = i
-    END DO
+    do i=lbound(iceList,1),ubound(iceList,1)
+        if (iceList(i) == index1) index1 = i
+        if (iceList(i) == index2) index2 = i
+    end do
 
-    !Hasegawa 1992 diffusion rate. Rate that two species diffuse and meet on grain surface
+    !Hasegawa 1992 diffusion rate. RateConstant that two species diffuse and meet on grain surface
     diffuseProb = vdiff(index1)*exp(-getDiffusionBarrier(index1)/dustTemperature)
     diffuseProb = diffuseProb+ (vdiff(index2)*exp(-getDiffusionBarrier(index2)/dustTemperature))
 
     !probability a reactant will just desorb
     desorbProb = vdes(index1)*exp(-bindingEnergy(index1)/dustTemperature)
-    desorbProb = desorbProb + vdes(index2)*exp(-bindingEnergy(index2)/dustTemperature) 
+    desorbProb = desorbProb + vdes(index2)*exp(-bindingEnergy(index2)/dustTemperature)
 
     !Overall reaction probability is chance of reaction occurring on meeting * diffusion rate
-    reactionProb = max(vdiff(index1),vdiff(index2)) * exp(-reacProb(reacIndx, index1, index2, dustTemperature))       
+    reactionProb = max(vdiff(index1),vdiff(index2)) * exp(-getReactionProbability(reacIndx, index1, index2, dustTemperature))
 
 
     ! Keff from Garrod & Pauly 2011 and Ruaud+2016
     ! Actual reaction probability is Preac/(Preac+Pevap+Pdiffuse), accounting for the other possible processes
-    IF(DIFFUSE_REACT_COMPETITION) THEN
+    if(DIFFUSE_REACT_COMPETITION) then
        reactionProb = reactionProb/(reactionProb + desorbProb + diffuseProb)
-    ELSE
-        reactionProb = 1.0D0
-    END IF
-    
+    else
+        reactionProb = 1.0_dp
+    end if
+
     !see Eq A1 of Quenard et al. 2018
     !NUM_SITES_PER_GRAIN should be multiplied by n_dust as in A1
     !n_dust=density/GAS_DUST_DENSITY_RATIO so we use the 1/density to cancel the density in odes.f90 and drop it here
-    diffusionReactionRate=alpha(reacIndx) *reactionProb* diffuseProb*GAS_DUST_DENSITY_RATIO/NUM_SITES_PER_GRAIN
-END FUNCTION diffusionReactionRate
+    diffusionReactionRateConstant=alpha(reacIndx) *reactionProb* diffuseProb*GAS_DUST_DENSITY_RATIO/NUM_SITES_PER_GRAIN
+  end function getDiffusionReactionRateConstant
 
 ! ---------------------------------------------------------------------
 !  Chemical Reactive Desorption (CRD)
@@ -270,114 +286,125 @@ END FUNCTION diffusionReactionRate
 ! ---------------------------------------------------------------------
 ! Get bare grain desorption fraction (Minissale+ 2016)
 ! ---------------------------------------------------------------------
-REAL(dp) FUNCTION getDesorptionFractionBare(reacIndx, LHDESindex) RESULT(desorptionFractionBare)
-    INTEGER :: reacIndx,reactIndex1,reactIndex2,degreesOfFreedom,i,j
-    INTEGER :: productIndex(4)
+  real(dp) function getDesorptionFractionBare(reacIndx, LHDESindex) result(desorptionFractionBare)
+    integer, intent(in) :: reacIndx, LHDESindex
 
-    REAL(dp) :: deltaEnthalpy,maxBindingEnergy,epsilonCd,productEnthalpy
-    REAL(dp), PARAMETER :: EFFECTIVE_SURFACE_MASS = 120.0
-    REAL(dp) :: bindingEnergyDesorbingSpec, chi
-    LOGICAL :: twoProductReaction
-    
+    integer :: reactIndex1,reactIndex2,degreesOfFreedom,i,j
+    integer :: desorbingIndex, desorbingOnGrainIndex, desorbingIceListIndex
+    integer :: productIndex(4)
 
-    INTEGER :: desorbingIndex, desorbingOnGrainIndex, LHDESindex, desorbingIceListIndex
+    real(dp) :: deltaEnthalpy,epsilonCd,productEnthalpy
+    real(dp) :: bindingEnergyDesorbingSpec, chi
+    logical :: twoProductReaction
 
-     IF (.NOT.(ANY(iceList .eq. re1(reacIndx)) .OR. (ANY(iceList .eq. re2(reacIndx))))) THEN
+    reactIndex1=0
+    reactIndex2=0
+    productIndex=0
+
+
+     if (.NOT.(ANY(iceList == re1(reacIndx)) .OR. (ANY(iceList == re2(reacIndx))))) then
         ! Gasphase reactions do not need to be calculated, should be 0
-        desorptionFractionBare = 0.0d0
-        RETURN
-     END IF
-     IF (ANY(bulkList .eq. re1(reacIndx))) THEN
+        desorptionFractionBare = 0.0_dp
+        return
+     end if
+     if (ANY(bulkList == re1(reacIndx))) then
          ! No chemical desorption from bulk ice allowed
-         desorptionFractionBare = 0.0d0
-         RETURN
-     END IF
-    
-    !Get indices of grain surface version of products products 
+         desorptionFractionBare = 0.0_dp
+         return
+     end if
+
+    !Get indices of grain surface version of products products
     productIndex=0
     !Arrays like binding energy and formation enthalpy are indexed by position in iceList
     !rather than species list. Need to find position in grain list where every reactant and product appears
     !bearing in mind that Eley-Rideal reactions can have reactants in gas phase and CHEMDES has products in gas
-    DO i=lbound(iceList,1),ubound(iceList,1)
+    do i=lbound(iceList,1),ubound(iceList,1)
         !check grain lists for reactants
-        IF (iceList(i) .eq. re1(reacIndx)) reactIndex1 = i
-        IF (gasiceList(i) .eq. re1(reacIndx)) reactIndex1 = i
+        if (iceList(i) == re1(reacIndx)) reactIndex1 = i
+        if (gasIceList(i) == re1(reacIndx)) reactIndex1 = i
         !check equivalent gas list in case of ER reaction.
-        IF (iceList(i) .eq. re2(reacIndx)) reactIndex2 = i
-        IF (gasiceList(i) .eq. re2(reacIndx)) reactIndex2 = i
+        if (iceList(i) == re2(reacIndx)) reactIndex2 = i
+        if (gasIceList(i) == re2(reacIndx)) reactIndex2 = i
 
-        IF (iceList(i) .eq. p1(reacIndx)) productIndex(1) = i
-        IF (iceList(i) .eq. p2(reacIndx)) productIndex(2) = i
-        IF (iceList(i) .eq. p3(reacIndx)) productIndex(3) = i
-        IF (iceList(i) .eq. p4(reacIndx)) productIndex(4) = i
+        if (iceList(i) == p1(reacIndx)) productIndex(1) = i
+        if (iceList(i) == p2(reacIndx)) productIndex(2) = i
+        if (iceList(i) == p3(reacIndx)) productIndex(3) = i
+        if (iceList(i) == p4(reacIndx)) productIndex(4) = i
 
-        IF (gasiceList(i) .eq. p1(reacIndx)) productIndex(1) = i
-        IF (gasiceList(i) .eq. p2(reacIndx)) productIndex(2) = i
-        IF (gasiceList(i) .eq. p3(reacIndx)) productIndex(3) = i
-        IF (gasiceList(i) .eq. p4(reacIndx)) productIndex(4) = i
-    END DO
+        if (gasIceList(i) == p1(reacIndx)) productIndex(1) = i
+        if (gasIceList(i) == p2(reacIndx)) productIndex(2) = i
+        if (gasIceList(i) == p3(reacIndx)) productIndex(3) = i
+        if (gasIceList(i) == p4(reacIndx)) productIndex(4) = i
+    end do
 
-    IF (p2(reacIndx) .eq. NO_REACTANT_OR_PRODUCT) THEN
+    if ((reactIndex1 == 0) .or. (reactIndex2 == 0)) then
+        write(*, *) "COULD NOT DETERMINE INDEX OF REACTANT FOR REACTION:"
+        write(*,*) specName(re1(reacIndx)), specName(re2(reacIndx)), "->", &
+            specName(p1(reacIndx)), specName(p2(reacIndx)), specName(p3(reacIndx))
+        stop 1
+    end if
+
+    if (p2(reacIndx) == NO_REACTANT_OR_PRODUCT) then
         ! Only one product, and so that one product is desorbing
         desorbingIndex = 1
         desorbingOnGrainIndex = p1(LHDEScorrespondingLHreacs(LHDESindex))
-        twoProductReaction = .False.
-    ELSE IF (p1(LHDEScorrespondingLHreacs(LHDESindex)) .ne. p1(reacIndx)) THEN ! p1 is desorbing
+        twoProductReaction = .false.
+    else if (p1(LHDEScorrespondingLHreacs(LHDESindex)) /= p1(reacIndx)) then  ! p1 is desorbing
         desorbingIndex = 1
         desorbingOnGrainIndex = p1(LHDEScorrespondingLHreacs(LHDESindex))
-        twoProductReaction = .True.
-    ELSE IF (p2(LHDEScorrespondingLHreacs(LHDESindex)) .ne. p2(reacIndx)) THEN ! p2 is desorbing
+        twoProductReaction = .true.
+    else if (p2(LHDEScorrespondingLHreacs(LHDESindex)) /= p2(reacIndx)) then  ! p2 is desorbing
         desorbingIndex = 2
         desorbingOnGrainIndex = p2(LHDEScorrespondingLHreacs(LHDESindex))
-        twoProductReaction = .True.
-    ELSE IF (p3(LHDEScorrespondingLHreacs(LHDESindex)) .ne. p3(reacIndx)) THEN ! p3 is desorbing
+        twoProductReaction = .true.
+    else if (p3(LHDEScorrespondingLHreacs(LHDESindex)) /= p3(reacIndx)) then  ! p3 is desorbing
         desorbingIndex = 3
         desorbingOnGrainIndex = p3(LHDEScorrespondingLHreacs(LHDESindex))
-        twoProductReaction = .True.
-    ELSE
-        WRITE(*,*) "COULD NOT DETERMINE DESORBING PRODUCT INDEX OF REACTION:"
-        WRITE(*,*) specName(re1(reacIndx)), specName(re2(reacIndx)), "->", &
+        twoProductReaction = .true.
+    else
+        write(*,*) "COULD NOT DETERMINE DESORBING PRODUCT INDEX OF REACTION:"
+        write(*,*) specName(re1(reacIndx)), specName(re2(reacIndx)), "->", &
             specName(p1(reacIndx)), specName(p2(reacIndx)), specName(p3(reacIndx))
-        WRITE(*,*) "LHDES INDEX:", LHDESindex
-        WRITE(*,*) "REAC INDEX:", reacIndx
-        WRITE(*,*) "CORRESPONDING LH INDEX:", LHDEScorrespondingLHreacs(LHDESindex)
-        WRITE(*,*) "CORRESPONDING LH REACTION:"
-        WRITE(*,*) specName(re1(LHDEScorrespondingLHreacs(LHDESindex))), &
+        write(*,*) "LHDES INDEX:", LHDESindex
+        write(*,*) "REAC INDEX:", reacIndx
+        write(*,*) "CORRESPONDING LH INDEX:", LHDEScorrespondingLHreacs(LHDESindex)
+        write(*,*) "CORRESPONDING LH REACTION:"
+        write(*,*) specName(re1(LHDEScorrespondingLHreacs(LHDESindex))), &
             specName(re2(LHDEScorrespondingLHreacs(LHDESindex))), "->", &
             specName(p1(LHDEScorrespondingLHreacs(LHDESindex))), &
             specName(p2(LHDEScorrespondingLHreacs(LHDESindex))), &
             specName(p3(LHDEScorrespondingLHreacs(LHDESindex)))
-        STOP
-    END IF
+        stop 1
+    end if
 
     ! Now we know which product desorbs, we just have to calculate bare desorption prob using Minissale et al 2016.
 
     desorbingIceListIndex = 0
-    productEnthalpy = 0.0D0
-    DO i = 1,4
-        IF (productIndex(i) .ne. 0) THEN
-            IF (i .eq. desorbingIndex) THEN
-                DO j = LBOUND(iceList, 1), UBOUND(iceList, 1)
-                    IF (iceList(j) .eq. desorbingOnGrainIndex) THEN
+    productEnthalpy = 0.0_dp
+    do i = 1,4
+        if (productIndex(i) /= 0) then
+            if (i == desorbingIndex) then
+                do j = LBOUND(iceList, 1), UBOUND(iceList, 1)
+                    if (iceList(j) == desorbingOnGrainIndex) then
                         desorbingIceListIndex = j
                         productEnthalpy = productEnthalpy + formationEnthalpy(j)
-                    END IF
-                END DO
-            ELSE
+                    end if
+                end do
+            else
                 productEnthalpy = productEnthalpy + formationEnthalpy(productIndex(i))
-            END IF
-        END IF
-    END DO
+            end if
+        end if
+    end do
 
     deltaEnthalpy = productEnthalpy - (formationEnthalpy(reactIndex1) + formationEnthalpy(reactIndex2))
     ! If deltaEnthalpy > 0: endothermic
     ! If deltaEnthalpy < 0: exothermic, energy released to environment
 
-    if (deltaEnthalpy .gt. 0.0) THEN
+    if (deltaEnthalpy > 0.0_dp) then
         ! Endothermic reactions do not induce chemical desorption
-        desorptionFractionBare = 0.0d0
-        RETURN
-    END IF
+        desorptionFractionBare = 0.0_dp
+        return
+    end if
 
     ! Now we use deltaEnthalpy as a measure of exothermicity, i.e. the amount of energy released
     deltaEnthalpy = -deltaEnthalpy
@@ -386,79 +413,80 @@ REAL(dp) FUNCTION getDesorptionFractionBare(reacIndx, LHDESindex) RESULT(desorpt
     deltaEnthalpy = deltaEnthalpy*KCAL_TO_JOULE/(K_BOLTZ_SI*N_AVOGADRO)
 
     bindingEnergyDesorbingSpec = bindingEnergy(desorbingIceListIndex)
-    IF (deltaEnthalpy .lt. bindingEnergyDesorbingSpec) THEN
-        desorptionFractionBare = 0.0d0
-        RETURN
-    END IF
+    if (deltaEnthalpy < bindingEnergyDesorbingSpec) then
+        desorptionFractionBare = 0.0_dp
+        return
+    end if
 
     epsilonCd = mass(desorbingOnGrainIndex)
     !epsilonCd is the fraction of kinetic energy kept my the product when it collides with grain surface
     epsilonCd = ((epsilonCd - EFFECTIVE_SURFACE_MASS) / (epsilonCd + EFFECTIVE_SURFACE_MASS))**2
 
-    IF (.NOT. twoProductReaction) THEN
-        chi = 1.0d0
-    ELSE
+    if (.NOT. twoProductReaction) then
+        chi = 1.0_dp
+    else
         ! Distribute energy in case of two product reaction
         ! chi_i = m_j/(m_i+m_j)
-        IF (desorbingIndex .eq. 1) THEN
+        if (desorbingIndex == 1) then
             chi = mass(p2(reacIndx)) / (mass(p1(reacIndx))+mass(p2(reacIndx)))
-        ELSE IF (desorbingIndex .eq. 2) THEN
+        else if (desorbingIndex == 2) then
             chi = mass(p1(reacIndx)) / (mass(p1(reacIndx))+mass(p2(reacIndx)))
-        ELSE
-            WRITE(*,*) "MINISSALE 2016 METHOD FOR CHEMICAL DESORPTION IS NOT VALID FOR DESORBINDEX > 2"
-            STOP
-        END IF
-    END IF
-    
+        else
+            write(*,*) "MINISSALE 2016 METHOD FOR CHEMICAL DESORPTION IS NOT VALID FOR DESORBINDEX > 2"
+            stop 1
+        end if
+    end if
+
     epsilonCd = epsilonCd * chi
 
-    IF (epsilonCd * deltaEnthalpy .lt. bindingEnergyDesorbingSpec) THEN
-        desorptionFractionBare = 0.0d0
-        RETURN
-    END IF
+    if (epsilonCd * deltaEnthalpy < bindingEnergyDesorbingSpec) then
+        desorptionFractionBare = 0.0_dp
+        return
+    end if
 
     degreesOfFreedom = 3 * atomCounts(desorbingOnGrainIndex)
     desorptionFractionBare = exp((-bindingEnergyDesorbingSpec*REAL(degreesOfFreedom)) / (epsilonCd * deltaEnthalpy))
-END FUNCTION getDesorptionFractionBare
+  end function getDesorptionFractionBare
 
 ! ---------------------------------------------------------------------
 ! Get full ice coverage desorption fraction (Fredon+ 2021, Furuya+ 2022)
 ! ---------------------------------------------------------------------
-FUNCTION getDesorptionFractionFullCoverage(reacIndx, LHDESindex) RESULT (desorptionFractionFullCoverage)
-    INTEGER :: reacIndx,reactIndex1,reactIndex2,degreesOfFreedom,i,j
-    INTEGER :: productIndex(4)
+  function getDesorptionFractionFullCoverage(reacIndx, LHDESindex) result (desorptionFractionFullCoverage)
+    integer, intent(in) :: reacIndx, LHDESindex
 
-    REAL(dp) :: deltaEnthalpy,maxBindingEnergy,epsilonCd,productEnthalpy
-    REAL(dp), PARAMETER :: EFFECTIVE_SURFACE_MASS = 120.0
-    REAL(dp) :: bindingEnergyDesorbingSpec, chi
-    INTEGER :: desorbingIndex, desorbingOnGrainIndex, LHDESindex, desorbingIceListIndex
-    LOGICAL :: twoProductReaction
+    integer :: reactIndex1,reactIndex2,i,j
+    integer :: productIndex(4)
 
-    REAL(dp) :: desorptionFractionFullCoverage
+    real(dp) :: deltaEnthalpy,productEnthalpy
+    real(dp) :: bindingEnergyDesorbingSpec, chi
+    integer :: desorbingIndex, desorbingOnGrainIndex, desorbingIceListIndex
+    logical :: twoProductReaction
 
-    IF (.NOT.(ANY(iceList .eq. re1(reacIndx)) .OR. (ANY(iceList .eq. re2(reacIndx))))) THEN
+    real(dp) :: desorptionFractionFullCoverage
+
+    if (.NOT.(ANY(iceList == re1(reacIndx)) .OR. (ANY(iceList == re2(reacIndx))))) then
        ! Gasphase reactions do not need to b calculated, should be 0
-       desorptionFractionFullCoverage = 0.0d0
-       RETURN
-    END IF
-    IF (ANY(bulkList .eq. re1(reacIndx))) THEN
+       desorptionFractionFullCoverage = 0.0_dp
+       return
+    end if
+    if (ANY(bulkList == re1(reacIndx))) then
         ! No chemical desorption from bulk ice allowed
-        desorptionFractionFullCoverage = 0.0d0
-        RETURN
-    END IF
-    
-    IF (useMinissaleIceChemdesEfficiency) THEN
-        desorptionFractionFullCoverage = desorptionFractionsBare(reacIndx)/10.0D0    !< See Minisalle et al. 2016 for icy grain surface.
-        ! Special case of OH+H, O+H, N+N on ices, see same paper
-        if (re1(reacIndx).eq.ngn.and.re2(reacIndx).eq.ngn) desorptionFractionFullCoverage = 0.5D0
-        if ((re1(reacIndx).eq.ngo.and.re2(reacIndx).eq.nh) &
-            &.or. (re1(reacIndx).eq. nh.and.re2(reacIndx).eq.ngo)) desorptionFractionFullCoverage = 0.3D0
-        if ((re1(reacIndx).eq.ngoh.and.re2(reacIndx).eq.nh) &
-            &.or. (re1(reacIndx).eq.nh.and.re2(reacIndx).eq.ngoh)) desorptionFractionFullCoverage = 0.25D0
-        RETURN
-    ENDIF
+        desorptionFractionFullCoverage = 0.0_dp
+        return
+    end if
 
-    !Get indices of grain surface version of products products 
+    if (useMinissaleIceChemdesEfficiency) then
+        desorptionFractionFullCoverage = desorptionFractionsBare(reacIndx)/10.0_dp    !< See Minisalle et al. 2016 for icy grain surface.
+        ! Special case of OH+H, O+H, N+N on ices, see same paper
+        if (re1(reacIndx)==ngn.and.re2(reacIndx)==ngn) desorptionFractionFullCoverage = 0.5_dp
+        if ((re1(reacIndx)==ngo.and.re2(reacIndx)==nh) &
+            &.or. (re1(reacIndx)== nh.and.re2(reacIndx)==ngo)) desorptionFractionFullCoverage = 0.3_dp
+        if ((re1(reacIndx)==ngoh.and.re2(reacIndx)==nh) &
+            &.or. (re1(reacIndx)==nh.and.re2(reacIndx)==ngoh)) desorptionFractionFullCoverage = 0.25_dp
+        return
+    end if
+
+    !Get indices of grain surface version of products products
     productIndex = 0
     reactIndex1 = 0
     reactIndex2 = 0
@@ -466,88 +494,89 @@ FUNCTION getDesorptionFractionFullCoverage(reacIndx, LHDESindex) RESULT (desorpt
     !Arrays like binding energy and formation enthalpy are indexed by position in iceList
     !rather than species list. Need to find position in grain list where every reactant and product appears
     !bearing in mind that Eley-Rideal reactions can have reactants in gas phase and CHEMDES has products in gas
-    DO i=lbound(iceList,1),ubound(iceList,1)
+    do i=lbound(iceList,1),ubound(iceList,1)
         !check grain lists for reactants
-        IF (iceList(i) .eq. re1(reacIndx)) reactIndex1 = i
-        IF (gasiceList(i) .eq. re1(reacIndx)) reactIndex1 = i
+        if (iceList(i) == re1(reacIndx)) reactIndex1 = i
+        if (gasIceList(i) == re1(reacIndx)) reactIndex1 = i
         !check equivalent gas list in case of ER reaction.
-        IF (iceList(i) .eq. re2(reacIndx)) reactIndex2 = i
-        IF (gasiceList(i) .eq. re2(reacIndx)) reactIndex2 = i
+        if (iceList(i) == re2(reacIndx)) reactIndex2 = i
+        if (gasIceList(i) == re2(reacIndx)) reactIndex2 = i
 
-        IF (iceList(i) .eq. p1(reacIndx)) productIndex(1) = i
-        IF (iceList(i) .eq. p2(reacIndx)) productIndex(2) = i
-        IF (iceList(i) .eq. p3(reacIndx)) productIndex(3) = i
-        IF (iceList(i) .eq. p4(reacIndx)) productIndex(4) = i
+        if (iceList(i) == p1(reacIndx)) productIndex(1) = i
+        if (iceList(i) == p2(reacIndx)) productIndex(2) = i
+        if (iceList(i) == p3(reacIndx)) productIndex(3) = i
+        if (iceList(i) == p4(reacIndx)) productIndex(4) = i
 
-        IF (gasiceList(i) .eq. p1(reacIndx)) productIndex(1) = i
-        IF (gasiceList(i) .eq. p2(reacIndx)) productIndex(2) = i
-        IF (gasiceList(i) .eq. p3(reacIndx)) productIndex(3) = i
-        IF (gasiceList(i) .eq. p4(reacIndx)) productIndex(4) = i
-    END DO
+        if (gasIceList(i) == p1(reacIndx)) productIndex(1) = i
+        if (gasIceList(i) == p2(reacIndx)) productIndex(2) = i
+        if (gasIceList(i) == p3(reacIndx)) productIndex(3) = i
+        if (gasIceList(i) == p4(reacIndx)) productIndex(4) = i
+    end do
 
-    IF (ALL(productIndex == 0)) THEN
-        WRITE(*,*) "ERROR Could not determine productIndex for LHDES reaction"
-        WRITE(*,*) "ERROR", specname(re1(reacIndx)), "+", specname(re2(reacIndx)), "->", &
+    if (ALL(productIndex == 0)) then
+        write(*,*) "ERROR Could not determine productIndex for LHDES reaction"
+        write(*,*) "ERROR", specname(re1(reacIndx)), "+", specname(re2(reacIndx)), "->", &
             & specname(p1(reacIndx)), "+", specname(p2(reacIndx))
-        STOP
-    END IF
+        stop
+    end if
 
-    IF (p2(reacIndx) .eq. NO_REACTANT_OR_PRODUCT) THEN
+    if (p2(reacIndx) == NO_REACTANT_OR_PRODUCT) then
         ! Only one product, and so that one product is desorbing
         desorbingIndex = 1
         desorbingOnGrainIndex = p1(LHDEScorrespondingLHreacs(LHDESindex))
-        twoProductReaction = .False.
-    ELSE IF (p1(LHDEScorrespondingLHreacs(LHDESindex)) .ne. p1(reacIndx)) THEN ! p1 is desorbing
+        twoProductReaction = .false.
+    else if (p1(LHDEScorrespondingLHreacs(LHDESindex)) /= p1(reacIndx)) then  ! p1 is desorbing
         desorbingIndex = 1
         desorbingOnGrainIndex = p1(LHDEScorrespondingLHreacs(LHDESindex))
-        twoProductReaction = .True.
-    ELSE IF (p2(LHDEScorrespondingLHreacs(LHDESindex)) .ne. p2(reacIndx)) THEN ! p2 is desorbing
+        twoProductReaction = .true.
+    else if (p2(LHDEScorrespondingLHreacs(LHDESindex)) /= p2(reacIndx)) then  ! p2 is desorbing
         desorbingIndex = 2
         desorbingOnGrainIndex = p2(LHDEScorrespondingLHreacs(LHDESindex))
-        twoProductReaction = .True.
-    ELSE IF (p3(LHDEScorrespondingLHreacs(LHDESindex)) .ne. p3(reacIndx)) THEN ! p3 is desorbing
+        twoProductReaction = .true.
+    else if (p3(LHDEScorrespondingLHreacs(LHDESindex)) /= p3(reacIndx)) then  ! p3 is desorbing
         desorbingIndex = 3
         desorbingOnGrainIndex = p3(LHDEScorrespondingLHreacs(LHDESindex))
-        twoProductReaction = .True.
-    ELSE
-        WRITE(*,*) "COULD NOT DETERMINE DESORBING PRODUCT INDEX OF REACTION:"
-        WRITE(*,*) specName(re1(reacIndx)), specName(re2(reacIndx)), "->", &
+        twoProductReaction = .true.
+    else
+        write(*,*) "COULD NOT DETERMINE DESORBING PRODUCT INDEX OF REACTION:"
+        write(*,*) specName(re1(reacIndx)), specName(re2(reacIndx)), "->", &
             specName(p1(reacIndx)), specName(p2(reacIndx)), specName(p3(reacIndx))
-        STOP
-    END IF
+        stop
+    end if
 
 
     ! Now we know which product desorbs, we just have to calculate bare desorption prob using Minissale et al 2016.
-    productEnthalpy = 0.0D0
-    DO i = 1,4
-        IF (productIndex(i) .ne. 0) THEN
-            IF (i .eq. desorbingIndex) THEN
-                DO j = LBOUND(iceList, 1), UBOUND(iceList, 1)
-                    IF (iceList(j) .eq. desorbingOnGrainIndex) THEN
+    productEnthalpy = 0.0_dp
+    do i = 1,4
+        if (productIndex(i) /= 0) then
+            if (i == desorbingIndex) then
+                do j = LBOUND(iceList, 1), UBOUND(iceList, 1)
+                    if (iceList(j) == desorbingOnGrainIndex) then
                         desorbingIceListIndex = j
                         productEnthalpy = productEnthalpy + formationEnthalpy(j)
-                    END IF
-                END DO
-            ELSE
+                    end if
+                end do
+            else
                 productEnthalpy = productEnthalpy + formationEnthalpy(productIndex(i))
-            END IF
-        END IF
-    END DO
+            end if
+        end if
+    end do
 
-    IF (reactIndex1 .eq. 0 .OR. reactIndex2 .eq. 0) THEN
-        WRITE(*,*) "ERROR getDesorptionFractionFullCoverage: reactIndex not set, returning 0 for reacIndx", reacIndx, " reactIndex1=", reactIndex1, " reactIndex2=", reactIndex2
-        STOP
-    END IF
+    if (reactIndex1 == 0 .OR. reactIndex2 == 0) then
+        write(*,*) "ERROR getDesorptionFractionFullCoverage: reactIndex not set, returning 0 for reacIndx", &
+            & reacIndx, " reactIndex1=", reactIndex1, " reactIndex2=", reactIndex2
+        stop
+    end if
 
     deltaEnthalpy = productEnthalpy - (formationEnthalpy(reactIndex1) + formationEnthalpy(reactIndex2))
     ! If deltaEnthalpy > 0: endothermic
     ! If deltaEnthalpy < 0: exothermic, energy released to environment
 
-    if (deltaEnthalpy .gt. 0.0) THEN
+    if (deltaEnthalpy > 0.0_dp) then
         ! Endothermic reactions do not induce chemical desorption
-        desorptionFractionFullCoverage = 0.0d0
-        RETURN
-    END IF
+        desorptionFractionFullCoverage = 0.0_dp
+        return
+    end if
 
     ! Now we use deltaEnthalpy as a measure of exothermicity, i.e. the amount of energy released
     deltaEnthalpy = -deltaEnthalpy
@@ -555,204 +584,209 @@ FUNCTION getDesorptionFractionFullCoverage(reacIndx, LHDESindex) RESULT (desorpt
     !Convert from kcal to J, from J to K and from moles-1 to reactions-1
     deltaEnthalpy = deltaEnthalpy*KCAL_TO_JOULE/(K_BOLTZ_SI*N_AVOGADRO)
 
-    IF (desorbingIceListIndex .eq. 0) THEN
-        WRITE(*,*) "ERROR getDesorptionFractionFullCoverage: desorbingIceListIndex is 0; reacIndx=", reacIndx
-        desorptionFractionFullCoverage = 0.0d0
-        WRITE(*,*) "ERROR", specname(re1(reacIndx)), "+", specname(re2(reacIndx)), "->", specname(p1(reacIndx)), "+", &
+    if (desorbingIceListIndex == 0) then
+        write(*,*) "ERROR getDesorptionFractionFullCoverage: desorbingIceListIndex is 0; reacIndx=", reacIndx
+        desorptionFractionFullCoverage = 0.0_dp
+        write(*,*) "ERROR", specname(re1(reacIndx)), "+", specname(re2(reacIndx)), "->", specname(p1(reacIndx)), "+", &
             & specname(p2(reacIndx))
-        WRITE(*,*) "ERROR Corresponding LH reaction:", specname(re1(LHDEScorrespondingLHreacs(LHDESindex))), &
+        write(*,*) "ERROR Corresponding LH reaction:", specname(re1(LHDEScorrespondingLHreacs(LHDESindex))), &
             & specname(re2(LHDEScorrespondingLHreacs(LHDESindex))), specname(p1(LHDEScorrespondingLHreacs(LHDESindex)))
-        STOP
-    END IF
-    IF (desorbingIceListIndex < LBOUND(bindingEnergy,1) .OR. desorbingIceListIndex > UBOUND(bindingEnergy,1)) THEN
-        WRITE(*,*) "ERROR getDesorptionFractionFullCoverage: desorbingIceListIndex out of bounds; reacIndx=", reacIndx, " idx=", desorbingIceListIndex
-        desorptionFractionFullCoverage = 0.0d0
-        WRITE(*,*) "ERROR", re1(reacIndx), "+", re2(reacIndx), "->", p1(reacIndx), "->", p2(reacIndx)
-        STOP
-    END IF
+        stop
+    end if
+    if (desorbingIceListIndex < LBOUND(bindingEnergy,1) .OR. desorbingIceListIndex > UBOUND(bindingEnergy,1)) then
+        write(*,*) "ERROR getDesorptionFractionFullCoverage: desorbingIceListIndex out of bounds; reacIndx=", &
+            & reacIndx, " idx=", desorbingIceListIndex
+        desorptionFractionFullCoverage = 0.0_dp
+        write(*,*) "ERROR", re1(reacIndx), "+", re2(reacIndx), "->", p1(reacIndx), "->", p2(reacIndx)
+        stop
+    end if
 
     bindingEnergyDesorbingSpec = bindingEnergy(desorbingIceListIndex)
-    IF (deltaEnthalpy .lt. bindingEnergyDesorbingSpec) THEN
-        desorptionFractionFullCoverage = 0.0d0
-        RETURN
-    END IF
+    if (deltaEnthalpy < bindingEnergyDesorbingSpec) then
+        desorptionFractionFullCoverage = 0.0_dp
+        return
+    end if
 
-    IF (.NOT. twoProductReaction) THEN
-        chi = 0.07D0 ! chi_1 approx 0.07, Furuya et al, 2022
-    ELSE
-        IF (desorbingIndex .eq. 1) THEN
-            chi = 0.2D0 * mass(p2(reacIndx)) / (mass(p1(reacIndx))+mass(p2(reacIndx))) ! Assume that chi_2 = 0.2
-        ELSE IF (desorbingIndex .eq. 2) THEN
-            chi = 0.2D0 * mass(p1(reacIndx)) / (mass(p1(reacIndx))+mass(p2(reacIndx)))
-        ELSE
-            WRITE(*,*) "FREDON 2021 METHOD FOR CHEMICAL DESORPTION IS NOT VALID FOR DESORBINDEX > 2"
-            STOP
-        END IF
-    END IF
-    IF (chi * deltaEnthalpy - bindingEnergyDesorbingSpec .lt. 0.0) THEN
-        desorptionFractionFullCoverage = 0.0D0
-    ELSE
-        desorptionFractionFullCoverage = 0.5D0*(1.0D0-EXP(-(chi * deltaEnthalpy - &
-            bindingEnergyDesorbingSpec)/(3.0D0*bindingEnergyDesorbingSpec)))
-    END IF
-END FUNCTION getDesorptionFractionFullCoverage
+    if (.NOT. twoProductReaction) then
+        chi = 0.07_dp  ! chi_1 approx 0.07, Furuya et al, 2022
+    else
+        if (desorbingIndex == 1) then
+            chi = 0.2_dp * mass(p2(reacIndx)) / (mass(p1(reacIndx))+mass(p2(reacIndx)))  ! Assume that chi_2 = 0.2
+        else if (desorbingIndex == 2) then
+            chi = 0.2_dp * mass(p1(reacIndx)) / (mass(p1(reacIndx))+mass(p2(reacIndx)))
+        else
+            write(*,*) "FREDON 2021 METHOD FOR CHEMICAL DESORPTION IS NOT VALID FOR DESORBINDEX > 2"
+            stop
+        end if
+    end if
+    if (chi * deltaEnthalpy - bindingEnergyDesorbingSpec < 0.0_dp) then
+        desorptionFractionFullCoverage = 0.0_dp
+    else
+        desorptionFractionFullCoverage = 0.5_dp*(1.0_dp-exp(-(chi * deltaEnthalpy - &
+            bindingEnergyDesorbingSpec)/(3.0_dp*bindingEnergyDesorbingSpec)))
+    end if
+  end function getDesorptionFractionFullCoverage
 
 ! ---------------------------------------------------------------------
 ! Get ice-coverage-dependent desorption fraction
 ! Interpolates between bare grain and full ice coverage
 ! ---------------------------------------------------------------------
-REAL(dp) FUNCTION desorptionFractionIncludingIce(reacIndx, numMonolayers)
-    INTEGER :: reacIndx
-    REAL(dp) :: numMonolayers
+  function getDesorptionFractionIncludingIce(reacIndx, numMonolayers) result(desorptionFraction)
+    integer, intent(in) :: reacIndx
+    real(dp), intent(in) :: numMonolayers
+    real(dp) :: desorptionFraction
 
-    REAL(dp) :: desorptionFractionBare
-    REAL(dp) :: desorptionFractionFullCoverage
-    
+
+    real(dp) :: desorptionFractionBare
+    real(dp) :: desorptionFractionFullCoverage
+
     desorptionFractionBare = desorptionFractionsBare(reacIndx)
-    IF (.NOT. GRAINS_HAVE_ICE) THEN
+    if (.NOT. GRAINS_HAVE_ICE) then
         ! If we do not simulate with ice, return bare grain desorption efficiency
-        desorptionFractionIncludingIce = desorptionFractionBare
-        RETURN
-    END IF
-    
+        desorptionFraction = desorptionFractionBare
+        return
+    end if
 
     desorptionFractionFullCoverage = desorptionFractionsFullCoverage(reacIndx)
 
- 
-    desorptionFractionIncludingIce = desorptionFractionBare + &
-        (desorptionFractionFullCoverage-desorptionFractionBare)*MIN(1.0D0, numMonolayers)
-END FUNCTION desorptionFractionIncludingIce
+    desorptionFraction = linear_interp(MIN(1.0_dp, numMonolayers), &
+        desorptionFractionBare, desorptionFractionFullCoverage)
+  end function getDesorptionFractionIncludingIce
 
 ! ---------------------------------------------------------------------
 ! Get number of monolayers from abundance
 ! ---------------------------------------------------------------------
-FUNCTION getNumberMonolayers(abundance) RESULT(numberMonolayers)
-    REAL(dp) :: abundance, numberMonolayers
-    
-    IF (.NOT. GRAINS_HAVE_ICE) THEN
-        numberMonolayers = 0.0d0
-        RETURN
-    END IF
-    
+  pure function getNumberMonolayers(abundance) result(numberMonolayers)
+    real(dp), intent(in) :: abundance
+    real(dp) :: numberMonolayers
+
+    if (.NOT. GRAINS_HAVE_ICE) then
+        numberMonolayers = 0.0_dp
+        return
+    end if
+
     numberMonolayers = abundance * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN
-END FUNCTION
+  end function getNumberMonolayers
 
 ! ---------------------------------------------------------------------
 ! Update diffusion and desorption rates with TST or Hasegawa-Herbst
 ! ---------------------------------------------------------------------
-SUBROUTINE updateVdiffAndVdes(gasTemp, dustTemp, nIce, vdiff, vdes)
-    REAL(dp), INTENT(IN) :: gasTemp, dustTemp
-    INTEGER, INTENT(IN) :: nIce
-    REAL(dp), INTENT(OUT) :: vdiff(nIce), vdes(nIce)
+  pure subroutine updateVdiffAndVdes(dustTemp, nIce, vdiff, vdes)
+    real(dp), intent(in) :: dustTemp
+    integer, intent(in) :: nIce
+    real(dp), intent(out) :: vdiff(nIce), vdes(nIce)
 
     ! inertiaProducts are scaled up by 1e50 in Makerates to avoid numerical issues
     ! We need to scale them down again here
-    REAL(dp), PARAMETER :: scaleFactor = 1d-50
+    real(dp), parameter :: scaleFactor = 1e-50_dp
 
-    REAL(dp) :: estimatedInertiaProduct
-    INTEGER :: i, j
+    real(dp) :: estimatedInertiaProduct
+    integer :: i, j
 
-    IF (.NOT. useTSTprefactors) THEN
-        DO i=1,nIce
+    if (.NOT. useTSTprefactors) then
+        do i=1,nIce
             j = iceList(i)
             ! Original treatment by Hasegawa et al, 1992
-            vdes(i) = SQRT(HH_VDES_PREFACTOR*bindingEnergy(i)*mass(j))
+            vdes(i) = sqrt(HH_VDES_PREFACTOR*bindingEnergy(i)*mass(j))
             vdiff(i) = vdes(i)
-        END DO
-    ELSE
+        end do
+    else
         ! TST treatment - use dust temperature for desorption
         vdes(:) = TST_VDES_PREFACTOR * dustTemp * dustTemp
-        
-        DO  i=1,nIce
+
+        do  i=1,nIce
             j=iceList(i)
-            IF (atomCounts(j) .eq. 1) THEN 
+            if (atomCounts(j) == 1) then
                 ! Atomic species, no rotational partition function
                 vdes(i) = vdes(i) * mass(j)
-            ELSE IF (inertiaProducts(i) .ne. MISSING_VALUE_FLOAT) THEN 
-                ! Custom supplied 1/sigma*SQRT(Ix*Iy*Iz)
-                IF (moleculeIsLinear(i)) THEN 
+            else if (.not. is_equal(inertiaProducts(i), MISSING_VALUE_FLOAT)) then
+                ! Custom supplied 1/sigma*sqrt(Ix*Iy*Iz)
+                if (moleculeIsLinear(i)) then
                     ! Linear molecule (H2, OH, CO2, etc)
                     vdes(i) = vdes(i) * mass(j)*scaleFactor * &
-                        SQRT(PI) / (HP_SI**2)*(8.0D0*PI**2*K_BOLTZ_SI*dustTemp)*&
+                        sqrt(PI) / (HP_SI**2)*(8.0_dp*PI**2*K_BOLTZ_SI*dustTemp)*&
                         inertiaProducts(i)
-                ELSE
+                else
                     ! Nonlinear molecule
                     vdes(i) = vdes(i) * mass(j) *scaleFactor* &
-                        SQRT(PI) / (HP_SI**3)*(8.0D0*PI**2*K_BOLTZ_SI*dustTemp)**(3.0D0/2.0D0)*&
+                        sqrt(PI) / (HP_SI**3)*(8.0_dp*PI**2*K_BOLTZ_SI*dustTemp)**(3.0_dp/2.0_dp)*&
                         inertiaProducts(i)
-                END IF
-            ELSE
+                end if
+            else
                 ! No inertia data available - estimate for polyatomic molecules
-                IF (atomCounts(j) .ge. 3) THEN
+                if (atomCounts(j) >= 3) then
                     ! Fitted function to estimate inertia product for nonlinear molecules
-                    estimatedInertiaProduct = 2.35425621D-21*EXP(1.04448580D-01*mass(j))
+                    estimatedInertiaProduct = 2.35425621e-21_dp*exp(1.04448580e-01_dp*mass(j))
                     vdes(i) = vdes(i) * mass(j) *scaleFactor* &
-                        SQRT(PI) / (HP_SI**3)*(8.0D0*PI**2*K_BOLTZ_SI*dustTemp)** &
-                        (3.0D0/2.0D0)*estimatedInertiaProduct
-                ELSE
+                        sqrt(PI) / (HP_SI**3)*(8.0_dp*PI**2*K_BOLTZ_SI*dustTemp)** &
+                        (3.0_dp/2.0_dp)*estimatedInertiaProduct
+                else
                     ! Diatomic - use HH as fallback
-                    vdes(i) = SQRT(HH_VDES_PREFACTOR*bindingEnergy(i)*mass(j))
-                END IF
-            END IF
-        END DO
+                    vdes(i) = sqrt(HH_VDES_PREFACTOR*bindingEnergy(i)*mass(j))
+                end if
+            end if
+        end do
 
-        IF (separateDiffAndDesorbPrefactor) THEN
+        if (separateDiffAndDesorbPrefactor) then
             ! Under stationary adsorbate assumption, q^TS = q^RS, so vdiff = kB*T/h
             vdiff = K_BOLTZ_SI * dustTemp / HP_SI
-        ELSE
+        else
             vdiff = vdes
-        END IF
-        
-    END IF
+        end if
+
+    end if
 
 
-    IF (useCustomPrefactors) THEN
-        DO i=LBOUND(iceList, 1), UBOUND(iceList, 1)
-            IF (customVdiff(i) .ne. MISSING_VALUE_FLOAT) vdiff(i) = customVdiff(i)
-            IF (customVdes(i) .ne. MISSING_VALUE_FLOAT) vdes(i) = customVdes(i)
-        END DO
-    END IF
-END SUBROUTINE updateVdiffAndVdes
+    if (useCustomPrefactors) then
+        do i=LBOUND(iceList, 1), UBOUND(iceList, 1)
+            if (.not. is_equal(customVdiff(i), MISSING_VALUE_FLOAT)) vdiff(i) = customVdiff(i)
+            if (.not. is_equal(customVdes(i), MISSING_VALUE_FLOAT)) vdes(i) = customVdes(i)
+        end do
+    end if
+  end subroutine updateVdiffAndVdes
 
 ! ---------------------------------------------------------------------
 ! Encounter Desorption for H and H2 on H2-covered surfaces
 ! Hincelin et al. 2015
 ! ---------------------------------------------------------------------
-REAL(dp) FUNCTION EncounterDesorptionRate(reacIndx,dustTemperature)
-    REAL(dp) :: dustTemperature
-    REAL(dp) :: meetProb,desorbProb,diffuseProb
+  pure function getEncounterDesorptionRateConstant(reacIndx,dustTemperature) result(encounterDesorptionRateConstant)
+    real(dp), intent(in) :: dustTemperature
+    integer, intent(in) :: reacIndx
+    real(dp) :: encounterDesorptionRateConstant
 
-    INTEGER :: index1,index2,reacIndx,i
+    real(dp) :: meetProb,desorbProb,diffuseProb
+
+    integer :: index1,index2,i
 
     ! Get position of reactant in grain array
     index1=re1(reacIndx)
 
-    DO i=lbound(iceList,1),ubound(iceList,1)
-        IF (iceList(i) .eq. index1) index1 = i
-        IF (iceList(i) .eq. ngh2) index2 = i
-    END DO
+    do i=lbound(iceList,1),ubound(iceList,1)
+        if (iceList(i) == index1) index1 = i
+        if (iceList(i) == ngh2) index2 = i
+    end do
 
     ! Diffusion rate that species meets H2 on grain surface
     meetProb = vdiff(index1)*exp(-getDiffusionBarrier(index1)/dustTemperature)
     meetProb = meetProb + (vdiff(index2)*exp(-getDiffusionBarrier(index2)/dustTemperature))
 
     ! Adjust for energy required to move from H2O onto H2
-    IF (EDEndothermicityFactor .ne. 0.0) THEN
+    if (.not. is_equal(EDEndothermicityFactor, 0.0_dp)) then
         meetProb = meetProb &
         & * exp(-EDEndothermicityFactor*(bindingEnergy(index1)-H2_ON_H2_BINDING_ENERGY)/dustTemperature)
-    END IF
+    end if
 
-    ! Rate of diffusion of index1 specie off of H2
+    ! RateConstant of diffusion of index1 specie off of H2
     diffuseProb = vdiff(index1)*exp(-diffToBindRatio*H2_ON_H2_BINDING_ENERGY/dustTemperature)
 
-    ! Rate of desorption of index1 specie off of H2
+    ! RateConstant of desorption of index1 specie off of H2
     desorbProb = vdiff(index1)*exp(-H2_ON_H2_BINDING_ENERGY/dustTemperature)
 
     ! Probability of desorbing when on top of H2
     desorbProb = desorbProb / (desorbProb + diffuseProb)
 
     ! Actual rate of EncounterDesorption mechanism
-    EncounterDesorptionRate = 0.5D0*desorbProb* meetProb*GAS_DUST_DENSITY_RATIO/NUM_SITES_PER_GRAIN
-END FUNCTION EncounterDesorptionRate
+    encounterDesorptionRateConstant = 0.5_dp*desorbProb* meetProb*GAS_DUST_DENSITY_RATIO/NUM_SITES_PER_GRAIN
+  end function getEncounterDesorptionRateConstant
 
-END MODULE SurfaceReactions
+end module SurfaceReactions

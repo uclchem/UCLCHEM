@@ -4,10 +4,6 @@ This test uses return_array and return_dataframe with starting_chemistry
 to ensure all model stages work with Python in-memory arrays.
 """
 
-import shutil
-import tempfile
-from pathlib import Path
-
 import pytest
 
 try:
@@ -26,14 +22,7 @@ def test_import_uclchem():
         )
 
 
-@pytest.fixture(scope="function")
-def test_output_directory(request):
-    temp_dir = Path(tempfile.mkdtemp())
-    yield temp_dir
-    shutil.rmtree(temp_dir, ignore_errors=True)
-
-
-def test_static_model_return_array(test_output_directory):
+def test_static_model_return_array():
     """Test static cloud model with return_array"""
     params = {
         "endAtFinalDensity": False,
@@ -44,7 +33,7 @@ def test_static_model_return_array(test_output_directory):
         "finalDens": 1e5,
         "finalTime": 5.0e6,
     }
-    physics, chemistry, rates, heating, abundances_start, return_code = (
+    physics, _chemistry, _rates, _heating, _abundances_start, return_code = (
         uclchem.functional.cloud(
             param_dict=params,
             out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
@@ -66,7 +55,7 @@ def test_static_model_return_array(test_output_directory):
     )
 
 
-def test_static_model_return_dataframe(test_output_directory):
+def test_static_model_return_dataframe():
     """Test static cloud model with return_dataframe"""
     params = {
         "endAtFinalDensity": False,
@@ -77,7 +66,7 @@ def test_static_model_return_dataframe(test_output_directory):
         "finalDens": 1e5,
         "finalTime": 5.0e6,
     }
-    physics, chemistry, rates, heating, abundances_start, return_code = (
+    physics, _chemistry, _rates, _heating, _abundances_start, return_code = (
         uclchem.functional.cloud(
             param_dict=params,
             out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
@@ -98,7 +87,7 @@ def test_static_model_return_dataframe(test_output_directory):
     )
 
 
-def test_collapse_hotcore_return_array(test_output_directory):
+def test_collapse_hotcore_return_array():
     """Test collapse -> hot core chained models with return_array"""
     # Stage 1: Collapse with endAtFinalDensity=True
     params = {
@@ -107,17 +96,17 @@ def test_collapse_hotcore_return_array(test_output_directory):
         "initialDens": 1e2,
         "finalDens": 1e6,
         "finalTime": 1e5,
+        "writeTimeStepInfo": True,
     }
     # return_array with return_rate_constants=True returns 6 values:
-    # physics, chemistry, rates, heating(None), abundances, flag  # noqa: ERA001
-    physics, chemistry, rates, heating, abundances_start, return_code = (
-        uclchem.functional.cloud(
-            param_dict=params,
-            out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
-            return_array=True,
-            return_rate_constants=True,
-        )
+    # physics, chemistry, rates, heating(None), abundances, flag  # ruff: ignore[commented-out-code]
+    physics, _, _, _, abundances_start, return_code = uclchem.functional.cloud(
+        param_dict=params,
+        out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
+        return_array=True,
+        return_rate_constants=True,
     )
+
     assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
         f"Stage 1 returned with nonzero exit code {return_code}"
     )
@@ -150,7 +139,7 @@ def test_collapse_hotcore_return_array(test_output_directory):
         "finalTime": 1e6,
     }
     # prestellar_core with return_array also returns 6 values
-    physics, chemistry, rates, heating, abundances_start, return_code = (
+    physics, _chemistry, _rates, _heating, _, return_code = (
         uclchem.functional.prestellar_core(
             3,
             300.0,
@@ -174,7 +163,7 @@ def test_collapse_hotcore_return_array(test_output_directory):
     )
 
 
-def test_collapse_hotcore_return_dataframe(test_output_directory):
+def test_collapse_hotcore_return_dataframe():
     """Test collapse -> hot core chained models with return_dataframe"""
     # Stage 1: Collapse with endAtFinalDensity=True
     params = {
@@ -185,13 +174,11 @@ def test_collapse_hotcore_return_dataframe(test_output_directory):
         "finalTime": 1e5,
     }
     # return_dataframe returns 6 values:
-    # physics, chemistry, rates(None), heating(None), abundances, flag # noqa: ERA001
-    physics, chemistry, rates, heating, abundances_start, return_code = (
-        uclchem.functional.cloud(
-            param_dict=params,
-            out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
-            return_dataframe=True,
-        )
+    # physics, chemistry, rates(None), heating(None), abundances, flag # ruff: ignore[commented-out-code]
+    physics, _, _, _, abundances_start, return_code = uclchem.functional.cloud(
+        param_dict=params,
+        out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
+        return_dataframe=True,
     )
     assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
         f"Stage 1 returned with nonzero exit code {return_code}"
@@ -216,15 +203,13 @@ def test_collapse_hotcore_return_dataframe(test_output_directory):
         "finalTime": 1e6,
     }
     # prestellar_core with return_dataframe also returns 6 values
-    physics, chemistry, rates, heating, abundances_start, return_code = (
-        uclchem.functional.prestellar_core(
-            3,
-            300.0,
-            param_dict=params,
-            out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
-            return_dataframe=True,
-            starting_chemistry=abundances_start,
-        )
+    physics, _, _, _, _, return_code = uclchem.functional.prestellar_core(
+        3,
+        300.0,
+        param_dict=params,
+        out_species=["OH", "OCS", "CO", "CS", "CH3OH"],
+        return_dataframe=True,
+        starting_chemistry=abundances_start,
     )
     assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
         f"Stage 2 returned with nonzero exit code {return_code}"
@@ -240,7 +225,7 @@ def test_collapse_hotcore_return_dataframe(test_output_directory):
     )
 
 
-def test_cshock_return_dataframe(test_output_directory):
+def test_cshock_return_dataframe():
     """Test C-shock model with return_dataframe and starting_chemistry"""
     # Pre-shock cloud
     param_dict = {
@@ -254,12 +239,12 @@ def test_cshock_return_dataframe(test_output_directory):
         "baseAv": 1.0,
     }
     # return_dataframe returns 6 values:
-    # physics, chemistry, rates(None), heating(None), abundances, flag # noqa: ERA001
+    # physics, chemistry, rates(None), heating(None), abundances, flag # ruff: ignore[commented-out-code]
     (
         df_stage1_physics,
-        df_stage1_chemistry,
-        rates,
-        heating,
+        _,
+        _,
+        _,
         final_abundances,
         return_code,
     ) = uclchem.functional.cloud(param_dict=param_dict, return_dataframe=True)
@@ -277,14 +262,14 @@ def test_cshock_return_dataframe(test_output_directory):
     param_dict["initialDens"] = 1e4
     param_dict["finalTime"] = 1e6
     # CShock returns 7 values:
-    # physics, chemistry, rates(None), heating(None), dissipation_time, abundances, flag # noqa: ERA001
+    # physics, chemistry, rates(None), heating(None), dissipation_time, abundances, flag # ruff: ignore[commented-out-code]
     (
         df_stage2_physics,
-        df_stage2_chemistry,
-        rates,
-        heating,
-        dissipation_time,
-        final_abundances2,
+        _,
+        _,
+        _,
+        _,
+        _,
         return_code,
     ) = uclchem.functional.cshock(
         shock_vel=40,
@@ -303,20 +288,18 @@ def test_cshock_return_dataframe(test_output_directory):
     )
 
 
-def test_endAtFinalDensity_with_collapse():  # noqa: N802
+def test_endAtFinalDensity_with_collapse():  # ruff: ignore[invalid-function-name]
     """Test that endAtFinalDensity=True works correctly with Collapse models"""
     params = {
         "initialTemp": 10.0,
         "endAtFinalDensity": True,
     }
 
-    physics, chemistry, rates, heating, abundances, return_code = (
-        uclchem.functional.collapse(
-            collapse="BE4",  # BE collapse mode
-            param_dict=params,
-            out_species=["OH", "CO"],
-            return_array=True,
-        )
+    physics, _, _, _, _, return_code = uclchem.functional.collapse(
+        collapse="BE4",  # BE collapse mode
+        param_dict=params,
+        out_species=["OH", "CO"],
+        return_array=True,
     )
     assert return_code == uclchem.utils.SuccessFlag.SUCCESS, (
         f"Collapse model returned with nonzero exit code {return_code}"
@@ -330,7 +313,7 @@ def test_endAtFinalDensity_with_collapse():  # noqa: N802
     )
 
 
-def test_endAtFinalDensity_validation(test_output_directory):  # noqa: N802
+def test_endAtFinalDensity_validation():  # ruff: ignore[invalid-function-name]
     """Test that endAtFinalDensity=True raises error without freefall for Cloud"""
     params = {
         "endAtFinalDensity": True,  # Invalid without freefall
@@ -341,18 +324,8 @@ def test_endAtFinalDensity_validation(test_output_directory):  # noqa: N802
 
     # Should raise ValueError for Cloud without freefall
     with pytest.raises(ValueError, match="parcelStoppingMode != 0 can only be used"):
-        physics, chemistry, rates, heating, abundances, return_code = (
-            uclchem.functional.cloud(
-                param_dict=params,
-                out_species=["OH", "CO"],
-                return_array=True,
-            )
+        uclchem.functional.cloud(
+            param_dict=params,
+            out_species=["OH", "CO"],
+            return_array=True,
         )
-
-
-def main():
-    pytest.main(["-v", __file__])
-
-
-if __name__ == "__main__":
-    main()

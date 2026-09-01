@@ -189,7 +189,7 @@ def validate_coolant_frequencies(
                     break
                 continue
             parts = line.split()
-            if len(parts) >= 3:  # noqa: PLR2004
+            if len(parts) >= 3:  # ruff: ignore[magic-value-comparison]
                 idx = int(parts[0])
                 energy_cm = float(parts[1])
                 energies[idx] = (
@@ -214,7 +214,7 @@ def validate_coolant_frequencies(
                             break
                         continue
                     parts = line.split()
-                    if len(parts) >= 5:  # noqa: PLR2004
+                    if len(parts) >= 5:  # ruff: ignore[magic-value-comparison]
                         up = int(parts[1])
                         low = int(parts[2])
                         freq_ghz = float(parts[4])
@@ -235,7 +235,7 @@ def validate_coolant_frequencies(
 
         max_deviations[coolant_name] = max_dev
 
-        if max_dev > 0.01:  # noqa: PLR2004 # Warn for > 1% deviation
+        if max_dev > 0.01:  # ruff: ignore[magic-value-comparison] # Warn for > 1% deviation
             logger.warning(
                 f"Coolant '{coolant_name}' ({coolant_file}): max frequency deviation "
                 f"{max_dev:.4f} ({max_dev * 100:.2f}%) at transition {worst_transition}"
@@ -308,7 +308,7 @@ def load_coolant_level_names() -> dict[int, list[str]]:
                         continue
                     # Format: level_num energy weight qnum
                     parts = level_line.split()
-                    if len(parts) >= 4:  # noqa: PLR2004
+                    if len(parts) >= 4:  # ruff: ignore[magic-value-comparison]
                         qnum = parts[3]  # quantum number
                         level_names[i].append(f"{coolant_name}_{qnum}")
                         level_count += 1

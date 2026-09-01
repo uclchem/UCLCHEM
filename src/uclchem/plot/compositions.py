@@ -36,8 +36,8 @@ def create_abundance_plot(
     ----------
     df : pd.DataFrame
         Pandas dataframe containing the UCLCHEM output, see
-        ``uclchem.analysis.read_output_file``, ``uclchem.model.load_model`` or
-        ``uclchem.model.Model.get_dataframes``.
+        :func:`uclchem.analysis.read_output_file`, :func:`uclchem.model.load_model` or
+        :meth:`uclchem.model.Model.get_joined_dataframes`.
     species : list[str]
         list of strings containing species names.
         Using a $ instead of # or @ will plot the sum of surface and bulk abundances.
@@ -48,7 +48,7 @@ def create_abundance_plot(
         Path to file where figure will be saved.
         If None, figure is not saved. Defaults to None.
     plot_kwargs : dict[str, Any] | None
-        keyword arguments passed to ``ax.plot``.
+        keyword arguments passed to :meth:`matplotlib.pyplot.Axes.plot`.
         Default = None.
 
     Returns
@@ -68,7 +68,7 @@ def create_abundance_plot(
     ax.legend(loc=4, fontsize="small")
 
     ax.set_xlabel("Time / years")
-    ax.set_ylabel("X$_{Species}$")
+    ax.set_ylabel(r"X$_{\mathrm{species}}$")
 
     ax.set_yscale("log")
     if plot_file is not None:
@@ -107,7 +107,7 @@ def plot_rate_summary(
         axes of the plot
 
     """
-    fig, axs = plt.subplots(2, 1, sharex=True, figsize=(7, top_k_rates))
+    _fig, axs = plt.subplots(2, 1, sharex=True, figsize=(7, top_k_rates))
     production_df.iloc[step].sort_values(ascending=False)[:top_k_rates].plot.barh(
         ax=axs[0], title="Production", logx=True
     )
@@ -151,18 +151,21 @@ def plot_rates_deepdive(
         UCLCHEM species name to analyze, e.g. ``"HCO+"``.
     physics_df : pd.DataFrame
         Physics DataFrame from
-        :meth:`~uclchem.model.AbstractModel.get_dataframes`.
+        :meth:`~uclchem.model.AbstractModel.get_separate_dataframes`.
     chemistry_df : pd.DataFrame
-        Chemistry (abundance) DataFrame.
+        Chemistry (abundance) DataFrame from
+        :meth:`~uclchem.model.AbstractModel.get_separate_dataframes`.
     rate_constants_df : pd.DataFrame
-        Rate-constants DataFrame (``with_rate_constants=True``).
+        Rate-constants DataFrame from
+        :meth:`~uclchem.model.AbstractModel.get_separate_dataframes`
+        ``with_rate_constants=True``.
     network : Network | None
-        Pre-loaded :class:`~uclchem.makerates.network.Network`.  If
+        Pre-loaded :class:`~uclchem.makerates.network.Network`. If
         ``None`` the default network is loaded via
         :meth:`~uclchem.makerates.network.Network.from_csv`.
     filter_threshold : float
         Reactions whose rate never exceeds this fraction of the per-step
-        maximum within *filter_window* are excluded.  Default: ``0.01``.
+        maximum within `filter_window` are excluded. Default: ``0.01``.
     filter_window : tuple[float, float]
         ``(t_min, t_max)`` in years used for reaction filtering and
         ranking.  Default: ``(1e4, 1e6)``.
@@ -172,21 +175,21 @@ def plot_rates_deepdive(
         Maximum number of companion species to draw in Panel A.
         Default: ``12``.
     figsize : tuple[float, float]
-        Figure width × height in inches.  Ignored when *fig* is provided.
+        Figure width and height in inches. Ignored when *fig* is provided.
         Default: ``(8, 12)``.
     output_path : Path | str | None
         If provided, save the figure as both ``<output_path>.pdf`` and
-        ``<output_path>.png``.  Only meaningful when *fig* is a top-level
-        :class:`~matplotlib.figure.Figure`.  Default: ``None``.
+        ``<output_path>.png``. Only meaningful when *fig* is a top-level
+        :class:`~matplotlib.figure.Figure`. Default: ``None``.
     fig : matplotlib.figure.FigureBase | None
-        Existing figure or sub-figure to draw into.  Pass a
+        Existing figure or sub-figure to draw into. Pass a
         :class:`~matplotlib.figure.SubFigure` obtained from
         ``parent.subfigures()`` to embed this plot inside a larger layout.
         If ``None`` (default) a new figure is created.
     color_registry : dict[str, str] | None
         Mutable mapping from species / reaction name to hex color string.
         Pass the same dict to multiple calls to keep colors consistent
-        across subfigures.  If ``None`` (default) a fresh registry is
+        across subfigures. If ``None`` (default) a fresh registry is
         created internally.
 
     Returns
@@ -195,10 +198,16 @@ def plot_rates_deepdive(
         The figure (or sub-figure) containing all three panels.
     ax_abundances : plt.Axes
         Panel A — species abundances.
-    ax_rates : plt.Axes
-        Panel B — production / destruction rates.
     ax_rate_constants : plt.Axes
-        Panel C — mean rate-constant bar chart.
+        Panel B — mean rate-constant bar chart.
+    ax_rates : plt.Axes
+        Panel C — production / destruction rates.
+
+    Raises
+    ------
+    TypeError
+        If `output_path` is given, but `fig` is not an instance of
+        :class:`~matplotlib.pyplot.Figure`.
 
     Notes
     -----
@@ -207,13 +216,15 @@ def plot_rates_deepdive(
         timestep so callers can export to CSV / Excel.
 
     """
-    from uclchem import analysis  # noqa: PLC0415
-    from uclchem.makerates.network import Network as _Network  # noqa: PLC0415
+    from uclchem import analysis  # ruff: ignore[import-outside-top-level]
+    from uclchem.makerates.network import (  # ruff: ignore[import-outside-top-level]
+        Network as _Network,
+    )
 
     if network is None:
         network = _Network.from_csv()
 
-    _reg: dict[str, str] = {} if color_registry is None else color_registry
+    reg: dict[str, str] = {} if color_registry is None else color_registry
 
     # Compute rates
     _, rates = analysis.rate_constants_to_dy_and_rates(
@@ -258,12 +269,12 @@ def plot_rates_deepdive(
 
     # Geometric swap reactions are correction terms for ice layer growth/shrinkage;
     # always include them in Panel B regardless of filter_threshold.
-    _swap_types = ("SURFSWAP_GEOMETRIC", "BULKSWAP_GEOMETRIC")
+    swap_types = ("SURFSWAP_GEOMETRIC", "BULKSWAP_GEOMETRIC")
     for col in prod_rates.columns:
-        if any(s in col for s in _swap_types) and col not in top_prod:
+        if any(s in col for s in swap_types) and col not in top_prod:
             top_prod.append(col)
     for col in dest_rates.columns:
-        if any(s in col for s in _swap_types) and col not in top_dest:
+        if any(s in col for s in swap_types) and col not in top_dest:
             top_dest.append(col)
 
     # Companion species for Panel A
@@ -278,9 +289,9 @@ def plot_rates_deepdive(
 
     # For ice species, always show the surface/bulk partner so the two ice
     # reservoirs can be compared directly, regardless of filter_threshold.
-    _ice_partner = {"#": "@", "@": "#"}
-    if species and species[0] in _ice_partner:
-        ice_partner = _ice_partner[species[0]] + species[1:]
+    ice_partner_ = {"#": "@", "@": "#"}
+    if species and species[0] in ice_partner_:
+        ice_partner = ice_partner_[species[0]] + species[1:]
         if (
             ice_partner in chemistry_df.columns
             and (chemistry_df[ice_partner][pos_mask] > 0).any()
@@ -294,30 +305,42 @@ def plot_rates_deepdive(
     if fig is None:
         fig = plt.figure(figsize=figsize)
     gs = fig.add_gridspec(3, 1, height_ratios=[3, 1, 3])
-    ax_a = fig.add_subplot(gs[0])
-    ax_c = fig.add_subplot(gs[1])
-    ax_b = fig.add_subplot(gs[2])
+    ax_abundances = fig.add_subplot(gs[0])
+    ax_rate_constants = fig.add_subplot(gs[1])
+    ax_rates = fig.add_subplot(gs[2], sharex=ax_abundances)
 
     chem_filtered = chemistry_df[pos_mask]
     draw_panel_abundances(
-        ax_a,
+        ax_abundances,
         time,
         species,
         chem_filtered,
         companion,
         reactant_species=reactant_species,
-        color_registry=_reg,
+        color_registry=reg,
+    )
+    ax_abundances.set_xlim((1e0, time.iloc[-1]))
+
+    draw_panel_rate_constants(
+        ax_rate_constants,
+        time,
+        prod_k,
+        dest_k,
+        top_prod,
+        top_dest,
+        bar=True,
+        color_registry=reg,
     )
     draw_panel_rates(
-        ax_b, time, prod_rates, dest_rates, top_prod, top_dest, color_registry=_reg
-    )
-    draw_panel_rate_constants(
-        ax_c, time, prod_k, dest_k, top_prod, top_dest, bar=True, color_registry=_reg
+        ax_rates, time, prod_rates, dest_rates, top_prod, top_dest, color_registry=reg
     )
 
     if output_path is not None:
+        if not isinstance(fig, plt.Figure):
+            msg = f"Can only save figures with type 'plt.Figure', obtained from 'plt.figure()', cannot save type '{type(fig)}'."
+            raise TypeError(msg)
         base = Path(output_path)
         fig.savefig(base.with_suffix(".pdf"), format="pdf")
         fig.savefig(base.with_suffix(".png"), format="png")
 
-    return fig, ax_a, ax_b, ax_c
+    return fig, ax_abundances, ax_rate_constants, ax_rates

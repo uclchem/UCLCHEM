@@ -3,25 +3,11 @@
 Runs a cloud model and verifies the new physics produces different/better results.
 """
 
-import shutil
-import tempfile
-from pathlib import Path
-
-import pytest
-
 import uclchem
 
 
-@pytest.fixture
-def temp_output_dir():
-    """Create temporary directory for test outputs."""
-    temp_dir = tempfile.mkdtemp(prefix="uclchem_surface_test_")
-    yield temp_dir
-    shutil.rmtree(temp_dir, ignore_errors=True)
-
-
-@pytest.mark.skip(reason="H2 burial exclusion breaks ML cap")
-def test_ice_dependent_desorption_changes_chemistry(temp_output_dir):
+# @pytest.mark.skip(reason="H2 burial exclusion breaks ML cap")
+def test_ice_dependent_desorption_changes_chemistry() -> None:
     """Test that ice-coverage-dependent desorption actually affects chemistry.
 
     Verifies:
@@ -41,7 +27,6 @@ def test_ice_dependent_desorption_changes_chemistry(temp_output_dir):
         "enable_radiative_transfer": False,  # Explicitly disable to avoid state pollution from 1D tests
         "desorb": True,
         "chemdesorb": True,
-        "outputFile": str(Path(temp_output_dir) / "surface_test.dat"),
     }
 
     result = uclchem.model.Cloud(param_dict=param_dict)
@@ -71,15 +56,29 @@ def test_ice_dependent_desorption_changes_chemistry(temp_output_dir):
     assert final_ch4 > 1e-20, "Complex molecules should form"
 
     settings = uclchem.advanced.GeneralSettings()
-    num_monolayers_is_surface = list(
-        settings.search("num_monolayers_is_surface", True, True).values()
-    )[0].get()
-    gas_dust_density_ratio = list(
-        settings.search("gas_dust_density_ratio", True, True).values()
-    )[0].get()
-    num_sites_per_grain = list(
-        settings.search("num_sites_per_grain", True, True).values()
-    )[0].get()
+    num_monolayers_is_surface = next(
+        iter(
+            settings.search(
+                "num_monolayers_is_surface",
+                include_internal=True,
+                include_parameters=True,
+            ).values()
+        )
+    ).get()
+    gas_dust_density_ratio = next(
+        iter(
+            settings.search(
+                "gas_dust_density_ratio", include_internal=True, include_parameters=True
+            ).values()
+        )
+    ).get()
+    num_sites_per_grain = next(
+        iter(
+            settings.search(
+                "num_sites_per_grain", include_internal=True, include_parameters=True
+            ).values()
+        )
+    ).get()
 
     num_monolayers_in_run = (
         df["SURFACE"].max() * gas_dust_density_ratio / num_sites_per_grain
@@ -91,5 +90,31 @@ def test_ice_dependent_desorption_changes_chemistry(temp_output_dir):
     )
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v", "-s"])
+def test_high_temp_CO_should_be_low() -> None:  # ruff: ignore[invalid-function-name]
+    param_dict = {
+        "endAtFinalDensity": False,
+        "freefall": False,
+        "initialDens": 1.0e6,
+        "initialTemp": 30.0,
+        "finalTime": 5e5,
+        "points": 1,  # Explicitly set to 0D mode to avoid state pollution from 1D tests
+        "enable_radiative_transfer": False,  # Explicitly disable to avoid state pollution from 1D tests
+        "max_desorption_rate_constant_factor": 0.0,
+        "min_desorption_rate_constant_cap": 0.0,
+        "max_desorption_rate_constant_cap": 0.0,
+    }
+
+    result = uclchem.model.Cloud(param_dict=param_dict)
+
+    # Basic checks
+    assert result is not None, "Model failed to run"
+    result.check_error()
+
+    # Get dataframe
+    df = result.get_joined_dataframes()
+
+    H2O_ice = df["#H2O"].iloc[-1] + df["@H2O"].iloc[-1]  # ruff: ignore[non-lowercase-variable-in-function]
+    CO_ice = df["#CO"].iloc[-1] + df["@CO"].iloc[-1]  # ruff: ignore[non-lowercase-variable-in-function]
+    assert CO_ice < H2O_ice, "At 30 K, there should be more H2O ice than CO ice."
+    CO_gas = df["CO"].iloc[-1]  # ruff: ignore[non-lowercase-variable-in-function]
+    assert CO_ice < CO_gas, "At 30 K, CO should mostly be in the gas phase."

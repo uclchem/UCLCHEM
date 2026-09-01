@@ -6,6 +6,8 @@ fortran_parameters:
   - ckhion
   - ckldiss
   - cklion
+  - k_max
+  - nw
   - tdsub
   - wave1
   - wave2
@@ -31,7 +33,7 @@ fortran_parameters:
   - erreacs
   - exrelaxreacs
   - exsolidreacs
-  - extrapolaterates
+  - extrapolaterateconstants
   - freezepartners
   - freezereacs
   - garparams
@@ -51,7 +53,15 @@ fortran_parameters:
   - n13c
   - n15n
   - n18o
+  - n_bulk_species
   - n_elem_tracked
+  - n_erdes_reactions
+  - n_freeze_partners
+  - n_gar_params
+  - n_gar_species
+  - n_ice_species
+  - n_lhdes_reactions
+  - n_surface_species
   - nbulk
   - nc
   - nch3oh
@@ -107,6 +117,7 @@ fortran_parameters:
   - p2
   - p3
   - p4
+  - partnerindices
   - photonreacs
   - re1
   - re2
@@ -115,6 +126,7 @@ fortran_parameters:
   - refractorylist
   - solidfractions
   - specname
+  - storeratescomputation
   - surfacelist
   - surfswapreacs
   - thermreacs
@@ -133,7 +145,6 @@ fortran_parameters:
   - c4
   - c5
   - c6
-  - cmbtemp
   - coolinglabels
   - d
   - heatinglabels
@@ -141,6 +152,7 @@ fortran_parameters:
   - ncooling
   - nheating
   - nheatingterms
+  - num_fit_constants
   - phi_pah
   cshock_mod:
   - bt
@@ -155,6 +167,7 @@ fortran_parameters:
   - maxconsecutivefailures
   - maxloops
   rates:
+  - beta
   - h2stickingtemp
   - h2stickingzero
   - hstickingtemp
@@ -164,7 +177,12 @@ fortran_parameters:
   - dimh2
   - fosc
   - fpara
+  - max_num_lambda
+  - nn
   sputtering:
+  - jmax
+  - n_projectiles
+  - tolerance
   - vaporize_speed
   io:
   - abundloadid
@@ -204,6 +222,7 @@ fortran_parameters:
   - km
   - lsun
   - mh
+  - min_abund
   - n_avogadro
   - negative_abundance_error
   - not_enough_timepoints_error
@@ -212,7 +231,6 @@ fortran_parameters:
   - physics_init_error
   - physics_update_error
   - pi
-  - reac_not_present
   - reduced_planck
   - sb_const
   - seconds_per_year
@@ -221,6 +239,7 @@ fortran_parameters:
   - uisrf
   - uisrf_uv
   - zero_inner_radius_error
+  - zeta_0
   f2py_constants:
   - coolantconversionfactors
   - coolantconversionmode
@@ -238,6 +257,8 @@ fortran_parameters:
   - no_reactant_or_product
   - nreac
   - nspec
+  - reac_not_present
+  - species_not_present
   - suggested_freq_rel_tol
   surfacereactions:
   - chemical_barrier_thickness
@@ -264,6 +285,7 @@ fortran_parameters:
   - min_surface_abund
   - num_monolayers_is_surface
   - num_sites_per_grain
+  - scalefactor
   - silicate_cross_section
   - silicate_e_h2
   - silicate_e_hc

@@ -57,6 +57,7 @@ except ImportError as E:
         "Failed to import surfacereactions.f90 from uclchemwrap, did the installation with f2py succeed?"
     )
     raise
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, TextIO
 
@@ -64,7 +65,12 @@ import numpy as np
 import pandas as pd
 from pandas import Series, read_csv
 
-from uclchem.constants import default_elements_to_check, n_reactions, n_species
+from uclchem.constants import (
+    ELEMENTS_TO_CHECK,
+    PHYSICAL_PARAMETERS,
+    n_reactions,
+    n_species,
+)
 from uclchem.makerates.network import Network
 from uclchem.makerates.reaction import LH_REACTION_TYPES, Reaction
 from uclchem.makerates.species import Species, elementList
@@ -184,7 +190,7 @@ def _get_rates_change(rate_df: pd.DataFrame, species: str) -> pd.DataFrame:
 
 
 def get_change_df(
-    rate_df: pd.DataFrame, species: str, on_grain: bool = False
+    rate_df: pd.DataFrame, species: str, *, on_grain: bool = False
 ) -> pd.DataFrame:
     """From a dataframe containing all the reaction rates, get the change of a species over time,.
 
@@ -230,17 +236,17 @@ def get_change_df(
     bulk_columns = df_bulk.columns
     for column in surf_columns:
         if "->" not in column:
-            df_bulk.drop(
-                columns=column, inplace=True
-            )  # Drop the physical parameters from bulk column so we do not have them twice in the final df
+            # Drop the physical parameters from bulk column so we do not have them twice
+            # in the final df
+            df_bulk = df_bulk.drop(columns=column)
             continue
         if column in bulk_columns:
             # If the same reaction is in both dfs, that means that both surf and bulk version
             # of the species is involved in the reaction, which means that either surface is lost
             # and bulk forms, or the other way, and so we drop this column
             # from both dfs since it has no effect on the ice overall.
-            df_surf.drop(columns=column, inplace=True)
-            df_bulk.drop(columns=column, inplace=True)
+            df_surf = df_surf.drop(columns=column)
+            df_bulk = df_bulk.drop(columns=column)
     # Maybe TODO:
     # Make it such that the columns of the same reactions (but surf and bulk versions)
     # are added such that we have a single reaction rate in the ice,
@@ -313,9 +319,9 @@ def read_analysis(filepath: str | Path, species: str) -> tuple[pd.DataFrame, lis
             if not any(reaction in line for line in segment_lines):
                 rate = 0
             else:
-                reac_indx = [
+                reac_indx = next(
                     j for j, line in enumerate(segment_lines) if reaction in line
-                ][0]
+                )
                 rate = float(segment_lines[reac_indx].split()[-3])
             # Here we use the fact that the sign of the formation/destruction rate is already
             # correct, so we only need to scale it by 1 (in e.g. H+OH->H2O) or 2 (H+H->H2)
@@ -362,7 +368,7 @@ def analysis(
 
     """
     result_df = read_output_file(output_file)
-    _species_arr = np.loadtxt(
+    species_arr = np.loadtxt(
         UCLCHEM_ROOT_DIR / "species.csv",
         usecols=[0],
         dtype=str,
@@ -371,7 +377,7 @@ def analysis(
         delimiter=",",
         comments="%",
     )
-    species: list[str] = list(_species_arr)
+    species: list[str] = list(species_arr)
     reactions = np.loadtxt(
         UCLCHEM_ROOT_DIR / "reactions.csv",
         dtype=str,
@@ -406,8 +412,7 @@ def analysis(
 
     with Path(analysis_file).open("w") as f:
         f.write("All Reactions\n************************\n")
-        for reaction in formatted_reacs:
-            f.write(reaction + "\n")
+        f.writelines(reaction + "\n" for reaction in formatted_reacs)
         for _i, row in result_df.iterrows():
             # recreate the parameter dictionary needed to get accurate rates
             param_dict = _param_dict_from_output(row)
@@ -454,7 +459,7 @@ def analysis(
                 total_formation,
                 total_destruct,
                 key_reactions,
-                key_changes,
+                _key_changes,
             ) = _remove_slow_reactions(
                 changes, change_reacs, rate_threshold=rate_threshold
             )
@@ -518,7 +523,7 @@ def _get_species_rates(
     species_index: int,
     reac_indxs: list[int],
 ) -> tuple[np.ndarray, float, float, float]:
-    """Get the rate of up to 500 reactions from UCLCHEM for a given.
+    """Get the rate constants of up to 500 reactions from UCLCHEM for a given.
 
     set of parameters and abundances.
     Intended for use within the analysis script.
@@ -538,7 +543,7 @@ def _get_species_rates(
     Returns
     -------
     np.ndarray
-        Array containing the rate of every reaction specified by reac_indxs
+        Array containing the rate constant of every reaction specified by reac_indxs
     transfer
         Total transfer rate between surface and bulk ice.
     swap
@@ -560,13 +565,13 @@ def _get_species_rates(
     input_abund[: len(input_abundances)] = input_abundances
     rate_indxs = np.ones(n_reactions)
     rate_indxs[: len(reac_indxs)] = reac_indxs
-    rates, success_flag, transfer, swap, bulk_layers = wrap.get_rates(
+    rate_constants, success_flag, transfer, swap, bulk_layers = wrap.get_rate_constants(
         param_dict, input_abund, species_index, rate_indxs
     )
     if success_flag < 0:
         msg = "UCLCHEM failed to return rates for these parameters"
         raise RuntimeError(msg)
-    return rates[: len(reac_indxs)], transfer, swap, bulk_layers
+    return rate_constants[: len(reac_indxs)], transfer, swap, bulk_layers
 
 
 def _get_rates_of_change(
@@ -639,7 +644,7 @@ def _get_rates_of_change(
                 change /= safeMantle
                 if reactant == "DESOH2":
                     change *= row["H"]
-            elif (not three_phase) and (reactant in {"THERM"}):
+            elif (not three_phase) and (reactant == "THERM"):
                 change *= row["Density"] / safeMantle
 
             if "H2FORM" in reactants:
@@ -836,25 +841,28 @@ def total_element_abundance(element: str, df: pd.DataFrame) -> pd.Series:
 
     """
     sums: np.ndarray = _count_element(list(df.columns), element).to_numpy()
-    for variable in ["Time", "Density", "gasTemp", "av", "point", "SURFACE", "BULK"]:
+    for variable in [*PHYSICAL_PARAMETERS, "SURFACE", "BULK", "E-"]:
         sums = np.where(df.columns == variable, 0, sums)
     return df.mul(sums, axis=1).sum(axis=1)
 
 
 def check_element_conservation(
-    df: pd.DataFrame, element_list: list[str] | None = None, percent: bool = True
+    df: pd.DataFrame,
+    element_list: Iterable[str] = ELEMENTS_TO_CHECK,
+    *,
+    percent: bool = True,
 ) -> dict[str, str]:
-    """Check the conservation of elements by comparing their total.
+    """Check the conservation of elements through the rows of a dataframe.
 
-    abundance at start and end of model.
+    Checks the conservation by comparing their total abundances at the start and
+    at the end of the model.
 
     Parameters
     ----------
     df : pd.DataFrame
-        UCLCHEM output in format from `read_output_file`
-    element_list : list[str] | None
-        List of elements to check. If None,
-        defaults to `uclchem.constants.default_elements_to_check`.
+        UCLCHEM output.
+    element_list : Iterable[str]
+        List of elements to check. Default = :data:`uclchem.constants.ELEMENTS_TO_CHECK`.
     percent : bool
         Whether to return the change formatted as a percentage. Default = False.
 
@@ -864,18 +872,28 @@ def check_element_conservation(
         Dictionary containing the change in the total abundance of each element
         as a fraction of initial value
 
+    Raises
+    ------
+    ZeroDivisionError
+        If `percent` is True, and any of the elements in `element_list`
+        had a initial elemental abundance of 0.
+
     """
-    if element_list is None:
-        element_list = default_elements_to_check
     result = {}
     for element in element_list:
-        discrep = total_element_abundance(element, df).values
+        elemental_abundances = total_element_abundance(element, df).to_numpy()
         if percent:
-            discrep = np.abs(discrep[0] - discrep[-1]) / discrep[0]
-            result[element] = f"{discrep:.3%}"
+            if elemental_abundances[0] == 0:
+                msg = f"Tried to calculate relative change of element '{element}', but it had an initial elemental abundance of 0."
+                raise ZeroDivisionError(msg)
+            elemental_abundances = (
+                np.abs(elemental_abundances[0] - elemental_abundances[-1])
+                / elemental_abundances[0]
+            )
+            result[element] = f"{elemental_abundances:.3%}"
         else:
-            discrep = discrep[0] - discrep[-1]
-            result[element] = f"{discrep:.2e}"
+            elemental_abundances = elemental_abundances[0] - elemental_abundances[-1]
+            result[element] = f"{elemental_abundances:.2e}"
     return result
 
 
@@ -1076,7 +1094,7 @@ def rate_constants_to_dy_and_rates(
             rate *= ratioSurfaceToBulk
         # LH/LHDES bulk reactions
         elif reaction_type in LH_REACTION_TYPES:
-            if len(reactants) >= 3 and reactants[2] in LH_REACTION_TYPES:  # noqa: PLR2004
+            if len(reactants) >= 3 and reactants[2] in LH_REACTION_TYPES:  # ruff: ignore[magic-value-comparison]
                 if "@" in reactants[0]:
                     rate *= bulkLayersReciprocal
         # ED reactions multiply by #H2 abundance
@@ -1128,21 +1146,21 @@ def rate_constants_to_dy_and_rates(
     surfswap_reactions = [r for r in reactions if r.get_reaction_type() == "SURFSWAP"]
     bulkswap_reactions = [r for r in reactions if r.get_reaction_type() == "BULKSWAP"]
     # Sort them in the correct order, s.t. it matches the saving to disk format.
-    _sp_names = [str(s) for s in species]
+    sp_names = [str(s) for s in species]
     surfswap_reactions = sorted(
         surfswap_reactions,
-        key=lambda x: _sp_names.index(str(x.get_reactants()[0])),
+        key=lambda x: sp_names.index(str(x.get_reactants()[0])),
     )
     bulkswap_reactions = sorted(
         bulkswap_reactions,
-        key=lambda x: _sp_names.index(str(x.get_reactants()[0])),
+        key=lambda x: sp_names.index(str(x.get_reactants()[0])),
     )
     for row_pos, ((_row_idx_j, _rate_row), (_idx_i, abunds_row)) in enumerate(
         zip(rate_constants.iterrows(), abundances.iterrows(), strict=False)
     ):
         # Walk through the bulkswap and reactionswap pathways:
-        _sswap_rates = {}
-        _bswap_rates = {}
+        sswap_rates = {}
+        bswap_rates = {}
         # TODO: vectorize this, because this is slower than it has to be.
         for r_bswap, r_sswap in zip(bulkswap_reactions, surfswap_reactions, strict=False):
             surfaceCoverage = min(1.0, abunds_row["BULK"] / abunds_row["SURFACE"])
@@ -1159,8 +1177,8 @@ def rate_constants_to_dy_and_rates(
                 # Call it SWAP_GEOMETRIC since it is due to the swap induced by the effect
                 # of the surface layers growing, this is a geometric bookkeeping thing,
                 # So the name geometric makes the most sense.
-                _bswap_rates[str(r_bswap).replace("SWAP", "SWAP_GEOMETRIC")] = bswap
-                _sswap_rates[str(r_sswap).replace("SWAP", "SWAP_GEOMETRIC")] = 0.0
+                bswap_rates[str(r_bswap).replace("SWAP", "SWAP_GEOMETRIC")] = bswap
+                sswap_rates[str(r_sswap).replace("SWAP", "SWAP_GEOMETRIC")] = 0.0
                 # Immedidiately correct dy:
                 bswap_r_col = dy.columns.get_loc(r_bswap.get_reactants()[0])
                 bswap_p_col = dy.columns.get_loc(r_bswap.get_products()[0])
@@ -1173,8 +1191,8 @@ def rate_constants_to_dy_and_rates(
                     * surfaceCoverage
                     * abunds_row[r_sswap.get_reactants()[0]]
                 )
-                _bswap_rates[str(r_bswap).replace("SWAP", "SWAP_GEOMETRIC")] = 0.0
-                _sswap_rates[str(r_sswap).replace("SWAP", "SWAP_GEOMETRIC")] = sswap
+                bswap_rates[str(r_bswap).replace("SWAP", "SWAP_GEOMETRIC")] = 0.0
+                sswap_rates[str(r_sswap).replace("SWAP", "SWAP_GEOMETRIC")] = sswap
                 # Immediately correct dy (surface grows → #X buried into @X):
                 sswap_r_col = dy.columns.get_loc(r_sswap.get_reactants()[0])
                 sswap_p_col = dy.columns.get_loc(r_sswap.get_products()[0])
@@ -1185,7 +1203,7 @@ def rate_constants_to_dy_and_rates(
                 swap_rate_correction,
                 (
                     pd.DataFrame.from_dict(
-                        _bswap_rates | _sswap_rates,
+                        bswap_rates | sswap_rates,
                         orient="index",
                     ).T
                 ),
@@ -1302,12 +1320,11 @@ def derive_phase_from_name(name: str) -> str:
     """
     if name.startswith("@"):
         return "bulk"
-    elif name.startswith("#"):
+    if name.startswith("#"):
         return "surface"
-    elif name.endswith("+"):
+    if name.endswith("+"):
         return "ion"
-    else:
-        return "gas"
+    return "gas"
 
 
 def analyze_element_per_phase(element: str, df: pd.DataFrame) -> pd.DataFrame:
@@ -1335,8 +1352,8 @@ def analyze_element_per_phase(element: str, df: pd.DataFrame) -> pd.DataFrame:
         species_to_select = [
             s for s in list(df.columns) if derive_phase_from_name(s) == phase
         ]
-        _df = df.loc[:, species_to_select]
+        df_spec = df.loc[:, species_to_select]
         sums = _count_element(species_to_select, element)
         col_key = element + "_" + phase
-        content[col_key] = _df.mul(sums.values, axis=1).sum(axis=1)
+        content[col_key] = df_spec.mul(sums.values, axis=1).sum(axis=1)
     return content

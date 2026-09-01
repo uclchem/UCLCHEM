@@ -12,11 +12,17 @@ from copy import deepcopy
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from numpy import any as np_any
-
 from uclchem.makerates.heating import convert_to_erg, set_custom_exothermicities
+from uclchem.utils import SPECIES_NOT_PRESENT
 
-from .reaction import REACTION_TYPES, TUNNELING_REACTION_TYPES, CoupledReaction, Reaction
+from .reaction import (
+    BULK_REACTION_TYPES,
+    REACTION_TYPES,
+    TUNNELING_REACTION_TYPES,
+    CoupledReaction,
+    Reaction,
+    get_duplicate_reactions,
+)
 from .species import Species, elementList
 
 if TYPE_CHECKING:
@@ -69,10 +75,11 @@ class NetworkBuilder:
         species: list[Species],
         reactions: list[Reaction],
         user_defined_bulk: list | None = None,
+        derive_reaction_exothermicity: str | set[str] | None = None,
+        database_reaction_exothermicity: list[str | Path] | None = None,
+        *,
         gas_phase_extrapolation: bool = False,
         add_crp_photo_to_grain: bool = False,
-        derive_reaction_exothermicity: list[str] | None = None,
-        database_reaction_exothermicity: list[str | Path] | None = None,
     ):
         """Initialize the network builder.
 
@@ -84,14 +91,14 @@ class NetworkBuilder:
             List of chemical reactions
         user_defined_bulk : list | None
             User-specified bulk species (optional) (Default value = None)
+        derive_reaction_exothermicity : str | set[str] | None
+            Reaction types to calculate exothermicity for (Default value = None)
+        database_reaction_exothermicity : list[str | Path] | None
+            Custom exothermicity database files (Default value = None)
         gas_phase_extrapolation : bool
             Extrapolate gas-phase temperature (default: False)
         add_crp_photo_to_grain : bool
             Add CRP/PHOTON to grain (default: False)
-        derive_reaction_exothermicity : list[str] | None
-            Reaction types to calculate exothermicity for (Default value = None)
-        database_reaction_exothermicity : list[str | Path] | None
-            Custom exothermicity database files (Default value = None)
 
         Raises
         ------
@@ -104,9 +111,9 @@ class NetworkBuilder:
             msg = "Cannot have duplicate species in the species list."
             raise ValueError(msg)
 
-        # Store inputs
-        self.input_species = species
-        self.input_reactions = reactions
+        # Store inputs as immutable
+        self.input_species = tuple(species)
+        self.input_reactions = tuple(reactions)
 
         # Store options
         self.user_defined_bulk = user_defined_bulk or []
@@ -122,7 +129,7 @@ class NetworkBuilder:
 
     @property
     def network(self) -> "Network":
-        """Return the network under construction.
+        """The network under construction.
 
         Returns
         -------
@@ -163,7 +170,7 @@ class NetworkBuilder:
 
         """
         # Import here to avoid circular dependency
-        from .network import Network  # noqa: PLC0415 circular
+        from .network import Network  # ruff: ignore[import-outside-top-level] circular
 
         # Create initial network from inputs
         logger.info(
@@ -244,8 +251,8 @@ class NetworkBuilder:
 
         logger.info(
             "Network building complete: %d species, %d reactions",
-            len(self.network.get_species_list()),
-            len(self.network.get_reaction_list()),
+            len(self.network.species),
+            len(self.network.reactions),
         )
 
         return self.network
@@ -275,20 +282,20 @@ class NetworkBuilder:
         """
         # check for species not involved in any reactions
         lost_species = []
-        for species in self.network.get_species_list():
+        for species in self.network.species:
             # keep species that appear in a reaction
             reac_keeps = False
-            for reaction in self.network.get_reaction_list():
+            for reaction in self.network.reactions.values():
                 if (
-                    species.get_name() in reaction.get_reactants()
-                    or species.get_name() in reaction.get_products()
+                    species in reaction.get_reactants()
+                    or species in reaction.get_products()
                 ):
                     reac_keeps = True
                     break
 
             # remove the species if it didn't make it into either keep list
-            if not (reac_keeps):
-                lost_species.append(species.get_name())
+            if not reac_keeps:
+                lost_species.append(species)
         for lost_name in lost_species:
             logger.warning(
                 f"Trying to remove {lost_name} as it is not present in the reactions"
@@ -306,8 +313,9 @@ class NetworkBuilder:
         logger.debug(
             f"The network consists of species: {self.network.get_species_list()}"
         )
-        for species in self.network.get_species_list():
-            species.find_constituents()
+
+        for spec in self.network.species.values():
+            spec.find_constituents()
 
         # add in pseudo-species to track mantle
         mantle_specs = []
@@ -330,7 +338,7 @@ class NetworkBuilder:
         """
         desorbs = [
             x
-            for x in self.network.get_reaction_list()
+            for x in self.network.reactions.values()
             if x.get_reaction_type() == "DESORB"
         ]
         for desorb in desorbs:
@@ -347,7 +355,7 @@ class NetworkBuilder:
         # for all listed freeze out reactions, add them to correct species
         freezes = [
             x
-            for x in self.network.get_reaction_list()
+            for x in self.network.reactions.values()
             if x.get_reaction_type() == "FREEZE"
         ]
         for freeze in freezes:
@@ -357,7 +365,7 @@ class NetworkBuilder:
             self.network.set_specie(freeze.get_reactants()[0], specie)
 
         # then add default freeze out for species without a listed freeze out
-        for species_name, specie in self.network.get_species_dict().items():
+        for species_name, specie in self.network.species.items():
             if (not specie.is_ice_species()) and (not specie.get_freeze_products_list()):
                 logger.info(f"Adding a default freezeout for {specie} to the specie")
                 specie.add_default_freeze()
@@ -383,7 +391,7 @@ class NetworkBuilder:
         logger.debug("Adding the freeze out reactions!")
         new_reactions = []
         new_species = []
-        for species in self.network.get_species_list():
+        for species in self.network.species.values():
             logger.debug(f"Checking if {species} needs to have its freezeout added")
             if not species.is_ice_species():
                 for products, alpha in species.get_freeze_products():
@@ -392,9 +400,11 @@ class NetworkBuilder:
                         alpha = 0.0
                     new_reactions.append(
                         Reaction(
-                            [species.get_name(), "FREEZE", "NAN"]
-                            + products
-                            + [
+                            [
+                                species.get_name(),
+                                "FREEZE",
+                                "NAN",
+                                *products,
                                 alpha,
                                 0.0,
                                 species.get_binding_energy(),
@@ -405,7 +415,7 @@ class NetworkBuilder:
                         )
                     )
                     # Check if the product is in the species list
-                    if products[0] not in self.network.get_species_list():
+                    if products[0] not in self.network.species:
                         logger.info(f"Trying to add new specie {products}")
                         new_species.append(
                             Species(
@@ -426,10 +436,10 @@ class NetworkBuilder:
             self.network.add_species(new_species)
 
     def _add_bulk_species(self) -> None:
-        """Copy all surface species to the bulk. Their binding energies and diffusion barriers.
+        """Copy all surface species to the bulk.
 
-        are set to those of H2O, to mimic Ghesquire et al, 2015
-        (https://doi.org/10.1039/C5CP00558B).
+        Their binding energies and diffusion barriers are set to those of H2O,
+        to mimic Ghesquire et al, 2015 (https://doi.org/10.1039/C5CP00558B).
 
         Raises
         ------
@@ -488,33 +498,28 @@ class NetworkBuilder:
         """
         logger.debug("Adding bulk reactions")
         surface_reactions = self._get_reactions_on_grain()
-        bulk_reaction_types = ["CRP", "CRPHOT", "PHOTON", "LH", "EXSOLID", "EXRELAX"]
         surface_reactions_can_be_bulk = [
             reaction
             for reaction in surface_reactions
-            if reaction.get_reaction_type() in bulk_reaction_types
+            if reaction.get_reaction_type() in BULK_REACTION_TYPES
         ]
-        current_reaction_list = self.network.get_reaction_list()
 
+        species_names = self.network.species.keys()
         new_reactions: list[Reaction] = []
         for reaction in surface_reactions_can_be_bulk:
             new_reac = deepcopy(reaction)
             new_reac.convert_surf_to_bulk()
+            if new_reac.has_unknown_species(species_names):
+                msg = f"New bulk reaction '{new_reac}' has unknown species. Add to bulk, or call 'self._add_bulk_species' first."
+                raise RuntimeError(msg)
             new_reac = CoupledReaction(new_reac)
-            while isinstance(reaction, CoupledReaction):
-                # If the current loop reaction is also coupled, get its partner.
-                partner = reaction.get_partner()
-                if partner is None:
-                    msg = f"CoupledReaction {reaction} has no partner"
-                    raise RuntimeError(msg)
-                reaction = partner
             new_reac.set_partner(reaction)
             new_reactions.append(new_reac)
-        new_reactions = [
-            reac for reac in new_reactions if reac not in current_reaction_list
-        ]
 
-        bulk_species = [x for x in self.network.get_species_list() if "@" in x.get_name()]
+        current_reactions = self.network.reactions.values()
+        new_reactions = [reac for reac in new_reactions if reac not in current_reactions]
+
+        bulk_species = [x for x in self.network.species.values() if x.is_bulk_species()]
         new_reac_list: list[str | float] = []
         for species in bulk_species:
             # add individual swapping
@@ -537,13 +542,10 @@ class NetworkBuilder:
                 new_reactions.append(Reaction(new_reac_list))
 
             # and the reverse, going from surface to bulk
-            if species not in {
-                "@H2"
-            }:  # If species is H2, do not allow it to go from surface to bulk
-                new_reac_list[0] = species.get_name().replace("@", "#")
-                new_reac_list[1] = "SURFSWAP"
-                new_reac_list[3] = species.get_name()
-                new_reactions.append(Reaction(new_reac_list))
+            new_reac_list[0] = species.get_name().replace("@", "#")
+            new_reac_list[1] = "SURFSWAP"
+            new_reac_list[3] = species.get_name()
+            new_reactions.append(Reaction(new_reac_list))
         logger.debug(
             f"The following bulk reactions are added to the reactions: {new_reactions}"
         )
@@ -571,12 +573,12 @@ class NetworkBuilder:
 
         """
         desorb_reacs = ["DESOH2", "DESCR", "DEUVCR", "THERM"]
-        logger.debug("Adding desorption reactions!")
+        logger.debug("Adding desorption reactions")
 
         # Expand DESORB shorthand into all four physical desorption mechanisms.
         desorb_shorthand = [
             r
-            for r in self.network.get_reaction_list()
+            for r in self.network.reactions.values()
             if r.get_reaction_type() == "DESORB" and r.get_reactants()[0].startswith("#")
         ]
         if desorb_shorthand:
@@ -601,9 +603,11 @@ class NetworkBuilder:
                 prods = r.get_products()
                 expanded.extend(
                     Reaction(
-                        [reac, mech, third]
-                        + prods
-                        + [
+                        [
+                            reac,
+                            mech,
+                            third,
+                            *prods,
                             r.get_alpha(),
                             r.get_beta(),
                             r.get_gamma(),
@@ -620,14 +624,14 @@ class NetworkBuilder:
         # Species that already have at least one explicit desorption reaction
         existing_desorbs = {
             r.get_reactants()[0]
-            for r in self.network.get_reaction_list()
+            for r in self.network.reactions.values()
             if r.get_reaction_type() in desorb_reacs
         }
 
         # For species with explicit desorption reactions, update their desorb_products
         # to the first product of the first explicit reaction so that gasIceList can
         # resolve them even when the standard gas counterpart is not in the species list.
-        species_dict = {s.get_name(): s for s in self.network.get_species_list()}
+        species_dict = self.network.species.copy()
         for species_name in existing_desorbs:
             first_rxn = next(
                 r
@@ -652,13 +656,13 @@ class NetworkBuilder:
             for rtype in desorb_reacs:
                 rxns = [
                     r
-                    for r in self.network.get_reaction_list()
+                    for r in self.network.reactions.values()
                     if r.get_reactants()[0] == species_name
                     and r.get_reaction_type() == rtype
                 ]
                 if rxns:
                     total_alpha = sum(r.get_alpha() for r in rxns)
-                    if abs(total_alpha - 1.0) > 1e-6:  # noqa: PLR2004
+                    if abs(total_alpha - 1.0) > 1e-6:  # ruff: ignore[magic-value-comparison]
                         msg = (
                             f"{species_name} has {rtype} reactions with alpha summing to "
                             f"{total_alpha:.6f}, expected 1.0. "
@@ -667,7 +671,7 @@ class NetworkBuilder:
                         raise ValueError(msg)
 
         new_reactions: list[Reaction] = []
-        for species in self.network.get_species_list():
+        for species in self.network.species.values():
             if species.is_surface_species():
                 if species.get_name() in existing_desorbs:
                     logger.debug(
@@ -677,9 +681,18 @@ class NetworkBuilder:
                     continue
                 new_reactions.extend(
                     Reaction(
-                        [species.get_name(), reacType, "NAN"]
-                        + species.get_standard_desorb_products()
-                        + [1, 0, species.get_binding_energy(), 0.0, 10000.0, 0.0]
+                        [
+                            species.get_name(),
+                            reacType,
+                            "NAN",
+                            *species.get_standard_desorb_products(),
+                            1,
+                            0,
+                            species.get_binding_energy(),
+                            0.0,
+                            10000.0,
+                            0.0,
+                        ]
                     )
                     for reacType in desorb_reacs
                 )
@@ -693,28 +706,33 @@ class NetworkBuilder:
                     desorb_prods = species.get_standard_desorb_products()
                 new_reactions.append(
                     Reaction(
-                        [species.get_name(), "THERM", "NAN"]
-                        + desorb_prods
-                        + [1, 0, species.get_binding_energy(), 0.0, 10000.0, 0.0]
+                        [
+                            species.get_name(),
+                            "THERM",
+                            "NAN",
+                            *desorb_prods,
+                            1,
+                            0,
+                            species.get_binding_energy(),
+                            0.0,
+                            10000.0,
+                            0.0,
+                        ]
                     )
                 )
         self.network.add_reactions(new_reactions)
 
     def _add_chemdes_reactions(self) -> None:
-        """We have the user list all Langmuir-Hinshelwood and Eley-Rideal.
+        """Add chemical desorption reactions from LH and ER reactions.
 
-        reactions once. Then we duplicate so that the reaction branches
+        We have the user list all Langmuir-Hinshelwood and Eley-Rideal reactions once.
+        Then we duplicate so that the reaction branches
         with products on grain and products desorbing.
 
         Raises
         ------
-        ValueError
-            If not all products of the LH and ER reactions are on the
-            grain. For example: `#H + #H -> H2` should be `#H + #H -> #H2`.
         NotImplementedError
             ChemDes reaction loading is not yet implemented.
-        RuntimeError
-            If a CoupledReaction in the network has no partner set.
 
         """
         logger.debug("Adding chemical desorption reactions for LH and ER mechanisms")
@@ -729,13 +747,6 @@ class NetworkBuilder:
                 n_products = sum(prod != "NAN" for prod in reaction.get_products())
 
                 reaction_partner: Reaction = deepcopy(reaction)
-                while isinstance(reaction_partner, CoupledReaction):
-                    # If the current loop reaction is also coupled, get its partner.
-                    partner = reaction_partner.get_partner()
-                    if partner is None:
-                        msg = f"CoupledReaction {reaction_partner} has no partner"
-                        raise RuntimeError(msg)
-                    reaction_partner = partner
 
                 for i in range(n_products):
                     # For each of the products, make a new reaction where it is desorbed
@@ -751,18 +762,6 @@ class NetworkBuilder:
 
                     # Replace the species on the grain/bulk with species in gas
                     new_products = new_reaction.get_products()
-                    # Check there are no products incompatible with LH/ER reactions
-                    # by counting them
-                    if new_products.count("NAN") + sum(
-                        prod.startswith("#") or prod.startswith("@")
-                        for prod in new_products
-                    ) != len(new_products):
-                        raise ValueError(
-                            "All Langmuir-Hinshelwood and Eley-Rideal reactions should be input with products on grains only.\n"
-                            + "The fraction of products that enter the gas is dealt with by Makerates and UCLCHEM.\n"
-                            + "the following reaction caused this warning\t"
-                            + str(reaction)
-                        )
 
                     # Replace all grain or bulk products with gas phase counterparts.
                     # CRITICAL: Distinguish between chemical and physical desorption pathways.
@@ -789,7 +788,7 @@ class NetworkBuilder:
                     if desorb_products[1] == "NAN":
                         new_products[i] = desorb_products[0]
                     elif desorb_products[2] == "NAN":
-                        if i < 2 and new_products[i + 1] != "NAN":  # noqa: PLR2004
+                        if i < 2 and new_products[i + 1] != "NAN":  # ruff: ignore[magic-value-comparison]
                             # Move i+1th product over to i+2th product
                             new_products[i + 2] = new_products[i + 1]
                         new_products[i + 1] = desorb_products[1]
@@ -893,8 +892,7 @@ class NetworkBuilder:
 
                 # stops duplicate reactions e.g. #H* + #H and #H + #H*
                 if new_reac_a != new_reac_b:
-                    new_reactions.append(new_reac_a)
-                    new_reactions.append(new_reac_b)
+                    new_reactions.extend((new_reac_a, new_reac_b))
                 else:
                     new_reactions.append(new_reac_a)
 
@@ -959,15 +957,17 @@ class NetworkBuilder:
                 or "#" + reactants[0] in reaction.get_reactants()
                 for reaction in reactions_on_grain_filtered
             ):
-                # There is already another version in the network, keep that
+                logger.debug(
+                    f"There a custom version of reaction '{reaction}' on the grain (with same reactants) already in the network. Skipping adding the copied one."
+                )
                 continue
 
             if any("+" in reactant for reactant in reactants):
                 logger.debug(
-                    f"Reaction {reaction} had reactant ions, which is not possible on grain. Skipping"
+                    f"Reaction '{reaction}' had reactant ions, which is not possible on grain. Skipping"
                 )
-                # Cannot have ions in grain
                 continue
+
             # We have now filtered to have only gas-phase reactions that have type
             # CRP, CRPHOT or PHOTON
             new_reaction = deepcopy(reaction)
@@ -988,12 +988,13 @@ class NetworkBuilder:
                 or species in {"NAN", "CRP", "CRPHOT", "PHOTON"}
                 for species in reactants + products
             ):
-                # Reaction contains species that were not defined on grain surface.
-                # Do not add this reaction to the network.
                 logger.debug(
-                    f"Reaction {reaction} contains species that were not set on grain. Skipping"
+                    f"Reaction copied from gas to grain '{reaction}' contains species that were not set on grain. Skipping"
                 )
                 continue
+
+            new_reaction = CoupledReaction(new_reaction)
+            new_reaction.set_partner(reaction)
             new_reactions.append(new_reaction)
         logger.debug("Adding new reactions to grain")
         self.network.add_reactions(new_reactions)
@@ -1017,7 +1018,7 @@ class NetworkBuilder:
                 else:
                     branching_reactions[reactant_string] = reaction.get_alpha()
 
-        if any(val != 1.0 for val in branching_reactions.values()):
+        if any(val != 1 for val in branching_reactions.values()):
             logger.warning(
                 "Some of the branching ratios do not sum to 1.0, correcting those that do not"
             )
@@ -1030,16 +1031,16 @@ class NetworkBuilder:
                     # (smaller than 0.98 is allowed)
                     if (
                         reactant_string in branching_reactions
-                        and branching_reactions[reactant_string] != 1.0
+                        and branching_reactions[reactant_string] != 1
                     ):
-                        if branching_reactions[reactant_string] == 0.0:
+                        if branching_reactions[reactant_string] == 0:
                             logger.warning(
                                 f"Grain reaction {reaction} has a branching ratio of 0.0, removing the reaction altogether"
                             )
                             self.network.remove_reaction(reaction)
                             continue
 
-                        if branching_reactions[reactant_string] < 0.99:  # noqa: PLR2004
+                        if branching_reactions[reactant_string] < 0.99:  # ruff: ignore[magic-value-comparison]
                             logger.warning(
                                 f"You have reaction {reaction} with a branching ratio {branching_reactions[reactant_string]} we are assuming you set this lower on purpose."
                             )
@@ -1051,14 +1052,16 @@ class NetworkBuilder:
                         logger.warning(
                             f"Grain reaction {reaction} has a branching ratio of {reaction.get_alpha()}, dividing it by {branching_reactions[reactant_string]} resulting in BR of {new_alpha}"
                         )
-                        # TODO: apply to all partners of the reaction
+
                         reaction_index = self.network.get_reaction_index(reaction)
                         reaction.set_alpha(new_alpha)
                         self.network.set_reaction(
                             reaction_idx=reaction_index, reaction=reaction
                         )
 
-                        for coupled_reaction in self.network.get_all_partners(reaction):
+                        for coupled_reaction in self.network.get_all_coupled_to_reaction(
+                            reaction
+                        ):
                             reaction_index = self.network.get_reaction_index(
                                 coupled_reaction
                             )
@@ -1085,34 +1088,34 @@ class NetworkBuilder:
                     and (reaction.get_temphigh() == v.get_temphigh())
                     for v in similar_reactions.values()
                 ):
-                    reaction.set_extrapolation(True)
+                    reaction.set_extrapolation(enabled=True)
 
-    def _add_reaction_enthalpies(self, enthalpy_reaction_types: list[str]) -> None:
+    def _add_reaction_enthalpies(self, enthalpy_reaction_types: str | set[str]) -> None:
         """Add reaction enthalpies (exothermicity) to reactions.
 
         for heating/cooling calculations.
 
         Parameters
         ----------
-        enthalpy_reaction_types : list[str]
-            List of reaction types or "ALL" or "GAS"
+        enthalpy_reaction_types : str | set[str]
+            Set of reaction types or "ALL" or "GAS"
 
         """
         exclude_ices = True
-        if not isinstance(enthalpy_reaction_types, list):
-            enthalpy_reaction_types = [enthalpy_reaction_types]
-        if enthalpy_reaction_types[0].upper() == "ALL":
-            exclude_ices = False
-            enthalpy_reaction_types = list(REACTION_TYPES)
-        elif enthalpy_reaction_types[0].upper() == "GAS":
-            enthalpy_reaction_types = list(REACTION_TYPES)
-        for reaction in self.network.get_reaction_list():
+        if isinstance(enthalpy_reaction_types, str):
+            if enthalpy_reaction_types.upper() == "ALL":
+                exclude_ices = False
+                enthalpy_reaction_types = set(REACTION_TYPES)
+            elif enthalpy_reaction_types.upper() == "GAS":
+                enthalpy_reaction_types = set(REACTION_TYPES)
+
+        for reaction in self.network.reactions.values():
             logger.debug(f"Checking if we need to add enthalpy to {reaction}")
             if reaction.get_reaction_type() in enthalpy_reaction_types:
                 if exclude_ices and reaction.is_ice_reaction(strict=(not exclude_ices)):
                     logger.debug("Skipping ice reaction")
                     continue
-                if "E-" in (reaction.get_pure_products() + reaction.get_pure_reactants()):
+                if "E-" in (reaction.get_reactants() + reaction.get_products()):
                     logger.debug(
                         "Reaction involving electrons, skipping enthalpy due to poor estimates"
                     )
@@ -1175,11 +1178,11 @@ class NetworkBuilder:
             All reactions occurring on the grain.
 
         """
-        reactions_on_grain = []
-        for reaction in self.network.get_reaction_list():
-            reactants = reaction.get_reactants()
-            if any("#" in reactant or "@" in reactant for reactant in reactants):
-                reactions_on_grain.append(reaction)
+        reactions_on_grain = [
+            reaction
+            for reaction in self.network.reactions.values()
+            if reaction.is_ice_reaction(include_products=False, strict=False)
+        ]
         return reactions_on_grain
 
     # ========================================================================
@@ -1203,25 +1206,28 @@ class NetworkBuilder:
         logger.info(
             "\tCheck that species have surface counterparts or if they have multiple freeze outs/check alphas:\n"
         )
-        for spec in self.network.get_species_list():
-            if not spec.is_ice_species() and spec.get_name()[-1] not in {"+", "-"}:
+        for name, spec in self.network.species.items():
+            if not spec.is_ice_species() and not spec.is_ion():
                 exist_check = 0
-                for check_speck in self.network.get_species_list():
-                    if check_speck.get_name() == "#" + spec.get_name():
+                for check_speck in self.network.species:
+                    if check_speck == "#" + spec.get_name():
                         exist_check += 1
+                        break
                 if exist_check == 0:
                     logger.warning(
                         f"{spec.get_name()} does not have a surface counterpart in given default species file."
                         + "\n\tThis sets the binding energy to zero, it might cause species conservation errors."
                     )
-            freezes = 0
-            freezeout_reactions = []
-            for reaction in self.network.get_reaction_list():
-                if (spec.get_name() in reaction.get_reactants()) and (
-                    "FREEZE" in reaction.get_reactants()
-                ):
-                    freezes += 1
-                    freezeout_reactions.append(reaction)
+
+            freezeout_reactions = [
+                reaction
+                for reaction in self.network.reactions.values()
+                if (
+                    name in reaction.get_reactants()
+                    and reaction.get_reaction_type() == "FREEZE"
+                )
+            ]
+            freezes = len(freezeout_reactions)
             if freezes == 1:
                 logger.info(
                     f"\t{spec.get_name()} freezes out through {freezeout_reactions[0]}"
@@ -1237,47 +1243,39 @@ class NetworkBuilder:
         they have different temperature ranges.
 
         """
-        logger.info("\tPossible duplicate reactions for manual removal:")
-        duplicates = False
-        for i, reaction1 in enumerate(self.network.get_reaction_list()):
-            if not reaction1.duplicate:
-                for j, reaction2 in enumerate(self.network.get_reaction_list()):
-                    # Save half the checks by only doing half the comparisons
-                    if j > i and reaction1 == reaction2:
-                        if (reaction1.get_templow() >= reaction2.get_temphigh()) or (
-                            reaction1.get_temphigh() <= reaction2.get_templow()
-                        ):
-                            continue
+        logger.info("\tChecking for possible duplicate reactions for manual removal")
 
-                        if (
-                            reaction1.get_source() == reaction2.get_source()
-                            and reaction1.get_source() == "UMIST"
-                        ):
-                            logger.info(
-                                f"Detected overlapping UMIST reactions {reaction1} wit indices {i + 1} {j + 1}, this is done in UMIST to provide better rates. "
-                            )
-                        else:
-                            logger.warning(
-                                f"\tReactions with indices {i + 1} and {j + 1} are possible duplicates\n\t\t"
-                                + str(reaction1)
-                                + f" with temperature range [{reaction1.get_templow()}, {reaction1.get_temphigh()}] and source {reaction1.get_source()}"
-                                + "\n\t\t"
-                                + str(reaction2)
-                                + f" with temperature range [{reaction2.get_templow()}, {reaction2.get_temphigh()}] and source {reaction2.get_source()}"
-                            )
-                        duplicates = True
-                        # adjust temperatures so temperature ranges are adjacent
-                        if (
-                            reaction1.get_temphigh() > reaction2.get_temphigh()
-                            and reaction1.get_templow() < reaction2.get_temphigh()
-                        ):
-                            logger.warning(
-                                f"\tReactions {reaction1} and {reaction2} have non-adjacent temperature ranges"
-                            )
-                        reaction1.duplicate = True
-                        reaction2.duplicate = True
-        if not duplicates:
-            logger.info("\tNone")
+        # We could also pass `self.network.reactions.values()` to check_duplcicate_reactions,
+        # but that would lead to n_reac*(n_reac-1)/2 comparisons,
+        # whereas this splits up the comparison into buckets of reaction types,
+        # because reactions with different types are never duplicates.
+        # So, fewer comparisons are necessary, so this is much faster.
+        for reaction_type in REACTION_TYPES:
+            reactions = self.network.get_reactions_by_types(reaction_type)
+            duplicates, duplicates_umist = get_duplicate_reactions(reactions)
+            for duplicate in duplicates:
+                reaction1 = reactions[duplicate[0]]
+                reaction2 = reactions[duplicate[1]]
+                logger.warning(
+                    "\tFound reactions that are possible duplicates\n\t\t"
+                    + str(reaction1)
+                    + f" with temperature range [{reaction1.get_templow()}, {reaction1.get_temphigh()}] and source {reaction1.get_source()}"
+                    + "\n\t\t"
+                    + str(reaction2)
+                    + f" with temperature range [{reaction2.get_templow()}, {reaction2.get_temphigh()}] and source {reaction2.get_source()}"
+                )
+                if (
+                    reaction1.get_temphigh() > reaction2.get_temphigh()
+                    and reaction1.get_templow() < reaction2.get_temphigh()
+                ):
+                    logger.warning(
+                        f"\tReactions {reaction1} and {reaction2} have non-adjacent temperature ranges"
+                    )
+            for duplicate in duplicates_umist:
+                reaction1 = reactions[duplicate[0]]
+                logger.info(
+                    f"Detected overlapping UMIST reaction {reaction1}. This is done in UMIST to provide better rates."
+                )
 
     def _index_important_reactions(self) -> None:
         """We have a whole bunch of important reactions and we want to store.
@@ -1321,30 +1319,30 @@ class NetworkBuilder:
                     and ("O" in prods)
                     and ("C" in prods)
                 ),
-                "nR_C_hv": lambda reacs, prods: ("C" in reacs) and ("PHOTON" in reacs),  # noqa: ARG005
-                "nR_H2Form_CT": lambda reacs, prods: "H2FORM" in reacs,  # noqa: ARG005
+                "nR_C_hv": lambda reacs, prods: ("C" in reacs) and ("PHOTON" in reacs),  # ruff: ignore[unused-lambda-argument]
+                "nR_H2Form_CT": lambda reacs, prods: "H2FORM" in reacs,  # ruff: ignore[unused-lambda-argument]
                 "nR_H2Form_ERDes": lambda reacs, prods: (
                     ("H" in reacs) and ("#H" in reacs) and ("H2" in prods)
                 ),
                 "nR_H2Form_ER": lambda reacs, prods: (
                     ("H" in reacs) and ("#H" in reacs) and ("#H2" in prods)
                 ),
-                "nR_H2Form_LH": lambda reacs, prods: (  # noqa: ARG005
-                    (reacs.count("#H") == 2) and ("LH" in reacs)  # noqa: PLR2004
+                "nR_H2Form_LH": lambda reacs, prods: (  # ruff: ignore[unused-lambda-argument]
+                    (reacs.count("#H") == 2) and ("LH" in reacs)  # ruff: ignore[magic-value-comparison]
                 ),
-                "nR_H2Form_LHDes": lambda reacs, prods: (  # noqa: ARG005
-                    (reacs.count("#H") == 2) and ("LHDES" in reacs)  # noqa: PLR2004
+                "nR_H2Form_LHDes": lambda reacs, prods: (  # ruff: ignore[unused-lambda-argument]
+                    (reacs.count("#H") == 2) and ("LHDES" in reacs)  # ruff: ignore[magic-value-comparison]
                 ),
-                "nR_HFreeze": lambda reacs, prods: ("H" in reacs) and ("FREEZE" in reacs),  # noqa: ARG005
-                "nR_H2Freeze": lambda reacs, prods: (  # noqa: ARG005
+                "nR_HFreeze": lambda reacs, prods: ("H" in reacs) and ("FREEZE" in reacs),  # ruff: ignore[unused-lambda-argument]
+                "nR_H2Freeze": lambda reacs, prods: (  # ruff: ignore[unused-lambda-argument]
                     ("H2" in reacs) and ("FREEZE" in reacs)
                 ),
-                "nR_EFreeze": lambda reacs, prods: (  # noqa: ARG005
+                "nR_EFreeze": lambda reacs, prods: (  # ruff: ignore[unused-lambda-argument]
                     ("E-" in reacs) and ("FREEZE" in reacs)
                 ),
-                "nR_H2_hv": lambda reacs, prods: ("H2" in reacs) and ("PHOTON" in reacs),  # noqa: ARG005
+                "nR_H2_hv": lambda reacs, prods: ("H2" in reacs) and ("PHOTON" in reacs),  # ruff: ignore[unused-lambda-argument]
                 "nR_H2_crp": lambda reacs, prods: (
-                    ("H2" in reacs) and ("CRP" in reacs) and (prods.count("H") == 2)  # noqa: PLR2004
+                    ("H2" in reacs) and ("CRP" in reacs) and (prods.count("H") == 2)  # ruff: ignore[magic-value-comparison]
                 ),
                 "nR_H2_ED": lambda reacs, prods: (
                     ("#H2" in reacs) and ("ED" in reacs) and ("H2" in prods)
@@ -1364,7 +1362,7 @@ class NetworkBuilder:
                         raise RuntimeError(msg)
                     self.network.important_reactions[key] = i + 1
 
-        if np_any([value is None for value in self.network.important_reactions.values()]):
+        if any(value is None for value in self.network.important_reactions.values()):
             logger.debug(self.network.important_reactions)
             missing_reac_error = "Input reaction file is missing mandatory reactions"
             missing_reac_error += (
@@ -1376,7 +1374,9 @@ class NetworkBuilder:
     def _index_important_species(self) -> None:
         """Obtain the indices for all the important reactions."""
         self.network.species_indices = {}
-        names = [species.get_name() for species in self.network.get_species_list()]
+        name_index_mapping: dict[str, int] = {
+            name: index + 1 for index, name in enumerate(self.network.species.keys())
+        }
         for element in [
             "C+",
             "H+",
@@ -1403,17 +1403,15 @@ class NetworkBuilder:
             "#N",
             "#O",
             "#OH",
-            "SURFACE",
-            "BULK",
-        ] + elementList:
-            try:
-                species_index = names.index(element) + 1
-            except ValueError:
-                # TODO: The dummy value is currently SURFACE/BULK;
-                # We could handle this better somehow
+            "Surface",
+            "Bulk",
+            *elementList,
+        ]:
+            if element.upper() in name_index_mapping:
+                species_index = name_index_mapping[element.upper()]
+            else:
                 logger.info(f"\t{element} not in network, adding dummy index")
-                species_index = len(self.network.get_species_list()) + 1
-            name = "n" + element.lower().replace("+", "x").replace("e-", "elec").replace(
-                "#", "g"
-            )
+                species_index = SPECIES_NOT_PRESENT
+
+            name = f"n{element.replace('+', 'x').replace('E-', 'Elec').replace('#', 'G')}"
             self.network.species_indices[name] = species_index

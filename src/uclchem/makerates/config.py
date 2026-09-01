@@ -105,7 +105,7 @@ class MakeratesConfig(BaseModel):
     # OPTIONAL PARAMETERS - Exothermicity & Heating
     # ============================================================================
 
-    derive_reaction_exothermicity: bool | str | list[str] = Field(
+    derive_reaction_exothermicity: bool | str | set[str] = Field(
         default=False,
         description=(
             "Calculate reaction exothermicity from species binding energies and formation enthalpies. "
@@ -651,8 +651,7 @@ database_reaction_type: "UMIST12"
 # - Then reinstall: pip install .
 """
 
-        with Path(output_path).open("w") as f:
-            f.write(template)
+        Path(output_path).write_text(template)
 
         print(f"✓ Template configuration written to: {output_path}")
         print(
@@ -715,10 +714,9 @@ database_reaction_type: "UMIST12"
         path = Path(path)
         if path.is_absolute():
             return path
-        elif self._config_dir:
+        if self._config_dir:
             return (self._config_dir / path).resolve()
-        else:
-            return path.resolve()
+        return path.resolve()
 
     def get_all_reaction_files(self) -> list[Path]:
         """Get all reaction files (database + custom) as resolved paths.
@@ -781,3 +779,5 @@ database_reaction_type: "UMIST12"
             value = getattr(self, field_name)
             if value != field_info.default:  # Only log non-default values
                 logger.info(f"  {field_name}: {value}")
+            else:
+                logger.debug(f"  {field_name}: {value} (default)")

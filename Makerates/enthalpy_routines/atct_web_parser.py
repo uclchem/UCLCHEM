@@ -76,8 +76,7 @@ class ATCTParser:
             raise FileNotFoundError(msg)
 
         try:
-            with Path(html_path).open(encoding="utf-8") as f:
-                html_content = f.read()
+            html_content = Path(html_path).read_text(encoding="utf-8")
 
             soup = BeautifulSoup(html_content, "html.parser")
 
@@ -120,7 +119,7 @@ class ATCTParser:
 
         for table in tables:
             rows = table.find_all("tr")
-            if len(rows) > 100:  # noqa: PLR2004 # Large data table
+            if len(rows) > 100:  # ruff: ignore[magic-value-comparison] # Large data table
                 sample_text = table.get_text()[:500].lower()
                 if any(
                     keyword in sample_text
@@ -159,14 +158,14 @@ class ATCTParser:
                     text = links[0].get_text().strip()
                 row_data.append(text)
 
-            if len(row_data) >= 3:  # noqa: PLR2004
+            if len(row_data) >= 3:  # ruff: ignore[magic-value-comparison]
                 # Split formula and phase: "SiC2+ (g)" -> ["SiC2+", "g"]
                 if len(row_data) > 1:
                     formula_phase = row_data[1]
                     match = re.match(r"^(.+?)\s+\((.+)\)$", formula_phase)
                     if match:
                         species_formula, phase = match.groups()
-                        row_data = [row_data[0], species_formula, phase] + row_data[2:]
+                        row_data = [row_data[0], species_formula, phase, *row_data[2:]]
 
                 data.append(row_data)
 
@@ -311,7 +310,7 @@ class ATCTParser:
 
 def main() -> None:
     """Provide command-line interface for ATCT parser."""
-    if len(sys.argv) != 3:  # noqa: PLR2004
+    if len(sys.argv) != 3:  # ruff: ignore[magic-value-comparison]
         print("Usage: python atct_web_parser.py <input_html> <output_csv>")
         sys.exit(1)
 

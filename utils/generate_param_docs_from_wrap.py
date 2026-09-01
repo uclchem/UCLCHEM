@@ -28,7 +28,7 @@ def get_parameter_info() -> dict[str, tuple[Any, str, str]]:
 
     """
     try:
-        import uclchemwrap  # noqa: PLC0415
+        import uclchemwrap  # ruff: ignore[import-outside-top-level]
 
         dp = uclchemwrap.defaultparameters
     except ImportError:
@@ -163,7 +163,7 @@ def get_parameter_info() -> dict[str, tuple[Any, str, str]]:
     return params
 
 
-def categorize_parameters(params: dict[str, tuple[Any, str, str]]) -> dict[str, list]:  # noqa: ARG001
+def categorize_parameters(params: dict[str, tuple[Any, str, str]]) -> dict[str, list]:  # ruff: ignore[unused-function-argument]
     """Organize parameters into logical categories.
 
     Parameters
@@ -275,26 +275,24 @@ def format_value(value: Any) -> str:
     """
     if isinstance(value, bool | np.bool_):
         return ".True." if value else ".False."
-    elif isinstance(value, int | np.integer):
+    if isinstance(value, int | np.integer):
         # Check if it's a boolean disguised as int (Fortran LOGICAL)
         if value in {0, 1}:
             return ".True." if value == 1 else ".False."
         return str(value)
-    elif isinstance(value, float | np.floating):
+    if isinstance(value, float | np.floating):
         # Use scientific notation for very small/large numbers
         float_val = float(value)
-        if abs(float_val) < 0.001 or abs(float_val) > 10000:  # noqa: PLR2004
+        if abs(float_val) < 0.001 or abs(float_val) > 10000:  # ruff: ignore[magic-value-comparison]
             return f"{float_val:.2e}"
-        else:
-            return f"{float_val:.3g}"
-    elif isinstance(value, bytes | np.bytes_):
+        return f"{float_val:.3g}"
+    if isinstance(value, bytes | np.bytes_):
         # Handle Fortran strings (bytes)
         decoded = value.decode("utf-8").strip()
         return '""' if not decoded else f'"{decoded}"'
-    elif isinstance(value, str):
+    if isinstance(value, str):
         return f'"{value}"' if value else '""'
-    else:
-        return str(value)
+    return str(value)
 
 
 def generate_markdown(params: dict[str, tuple[Any, str, str]], output_file: str) -> None:
@@ -363,7 +361,7 @@ def generate_markdown(params: dict[str, tuple[Any, str, str]], output_file: str)
 
 def main() -> None:
     """Run the parameter documentation generator."""
-    if len(sys.argv) != 2:  # noqa: PLR2004
+    if len(sys.argv) != 2:  # ruff: ignore[magic-value-comparison]
         print(f"Usage: {sys.argv[0]} <output_markdown_file>")
         sys.exit(1)
 
