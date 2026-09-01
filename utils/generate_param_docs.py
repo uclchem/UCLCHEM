@@ -22,15 +22,16 @@ if __name__ == "__main__":
     with Path(param_file).open() as f:
         with Path(output_file).open("w") as output:
             for line in f:
+                line = line.lower()
                 if line.startswith("!"):
                     if not line.startswith("!!"):
                         output.write(line.replace("!", ""))
                 elif line.startswith(
-                    ("USE", "MODULE", "IMPLICIT", "END"),
+                    ("use", "module", "implicit", "end"),
                 ):
                     # Do not read the placeholder function that was introduced for f2py
                     continue
-                elif line.startswith("CONTAINS"):
+                elif line.startswith("contains"):
                     break
                 elif "=" in line:
                     new_line = line.split("=")
@@ -45,13 +46,13 @@ if __name__ == "__main__":
                         "|" + key + "|" + new_line[0] + "|" + new_line[1].strip() + "|\n"
                     )
                     output.write(line)
-                    if "REAL" in type_of_value:
+                    if "real" in type_of_value:
                         default_param_dictionary[key.lower()] = float(
                             value.replace("d", "e").strip()
                         )
-                    elif "LOGICAL" in type_of_value:
+                    elif "logical" in type_of_value:
                         default_param_dictionary[key.lower()] = bool(value[1:-1])
-                    elif "CHARACTER" in type_of_value:
+                    elif "character" in type_of_value:
                         if '"' in value:
                             value = value[value.find('"') + 1 : value.rfind('"')]
                         elif "'" in value:
@@ -60,7 +61,7 @@ if __name__ == "__main__":
                             value = None
 
                         default_param_dictionary[key.lower()] = value
-                    elif "INTEGER" in type_of_value:
+                    elif "integer" in type_of_value:
                         default_param_dictionary[key.lower()] = int(value)
 
         # Read constants and potentially modify them to update default_para_dictionary
