@@ -267,11 +267,11 @@ def __functional_return__(
         stats_df = None
 
         if points > 1:
-            physics_list = []
-            chemistry_list = []
-            rate_constants_list = []
-            heating_list = []
-            stats_list = []
+            physics_list: list[pd.DataFrame] = []
+            chemistry_list: list[pd.DataFrame] = []
+            rate_constants_list: list[pd.DataFrame] = []
+            heating_list: list[pd.DataFrame] = []
+            stats_list: list[pd.DataFrame] = []
             for pt in range(points):
                 res = model_object.get_dataframes(
                     point=pt,
@@ -280,24 +280,28 @@ def __functional_return__(
                     with_heating=return_heating,
                     with_stats=return_stats,
                 )
-                phys = res[0].copy()
-                chem = res[1].copy()
+                phys = cast("pd.DataFrame", res[0]).copy()
+                chem = cast("pd.DataFrame", res[1]).copy()
                 phys["Point"] = pt + 1
                 chem["Point"] = pt + 1
                 physics_list.append(phys)
                 chemistry_list.append(chem)
                 idx = 2
                 if return_rate_constants and len(res) > idx:
-                    rate_constants_list.append(res[idx].assign(Point=pt + 1))
+                    rate_constants_list.append(
+                        cast("pd.DataFrame", res[idx]).assign(Point=pt + 1)
+                    )
                     idx += 1
                 if return_heating and len(res) > idx:
-                    heating_list.append(res[idx].assign(Point=pt + 1))
+                    heating_list.append(
+                        cast("pd.DataFrame", res[idx]).assign(Point=pt + 1)
+                    )
                     idx += 1
                 if return_stats and len(res) > idx:
-                    stats_list.append(res[idx].assign(Point=pt + 1))
+                    stats_list.append(cast("pd.DataFrame", res[idx]).assign(Point=pt + 1))
 
-            phys_df = pd.concat(physics_list, ignore_index=True)
-            chem_df = pd.concat(chemistry_list, ignore_index=True)
+            phys_df: pd.DataFrame = pd.concat(physics_list, ignore_index=True)
+            chem_df: pd.DataFrame = pd.concat(chemistry_list, ignore_index=True)
             rate_constants_df = (
                 pd.concat(rate_constants_list, ignore_index=True)
                 if rate_constants_list
@@ -319,13 +323,13 @@ def __functional_return__(
             chem_df = cast("pd.DataFrame", result_dfs[1])
             idx = 2
             if return_rate_constants and len(result_dfs) > idx:
-                rate_constants_df = result_dfs[idx]
+                rate_constants_df = cast("pd.DataFrame", result_dfs[idx])
                 idx += 1
             if return_heating and len(result_dfs) > idx:
-                heating_df = result_dfs[idx]
+                heating_df = cast("pd.DataFrame", result_dfs[idx])
                 idx += 1
             if return_stats and len(result_dfs) > idx:
-                stats_df = result_dfs[idx]
+                stats_df = cast("pd.DataFrame", result_dfs[idx])
             phys_df["Point"] = 1
             chem_df["Point"] = 1
 
