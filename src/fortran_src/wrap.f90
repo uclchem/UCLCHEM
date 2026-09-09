@@ -1062,6 +1062,8 @@ CONTAINS
                     READ(inputValue,*,iostat=successFlag) points
                 CASE('bm0')
                     READ(inputValue,*,iostat=successFlag) bm0
+                CASE('gas_dust_mass_ratio')
+                    READ(inputValue,*,iostat=successFlag) gas_dust_mass_ratio
                 CASE('density_scale_radius')
                     READ(inputValue,*,iostat=successFlag) density_scale_radius
                 CASE('density_power_index')

@@ -56,6 +56,7 @@ def get_parameter_info() -> dict[str, tuple[Any, str, str]]:
         "baseav": "Extinction at cloud edge, Av of a parcel at rout.",
         "points": "Number of gas parcels equally spaced between rin to rout to consider.",
         "bm0": "Magnetic parameter [microgauss]: B0 = bm0*sqrt(initialDens).",
+        "gas_dust_mass_ratio": "Gas-to-dust mass ratio by mass.",
         # Behavioral Controls
         "freezefactor": "Modify freeze out rate of gas parcels by this factor.",
         "endatfinaldensity": "Choose to end model at final density, otherwise end at final time.",
@@ -191,6 +192,7 @@ def categorize_parameters(params: dict[str, tuple[Any, str, str]]) -> dict[str, 
             "baseav",
             "points",
             "bm0",
+            "gas_dust_mass_ratio",
         ],
         "Behavioral Controls": [
             "freezefactor",
