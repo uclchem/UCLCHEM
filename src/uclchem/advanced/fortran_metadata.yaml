@@ -243,8 +243,6 @@ fortran_parameters:
   - chemical_barrier_thickness
   - diffuse_react_competition
   - effective_surface_mass
-  - gas_dust_density_ratio
-  - gas_dust_mass_ratio
   - grain_crosssection_per_h
   - grain_density
   - grain_radius

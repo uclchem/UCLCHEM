@@ -6,6 +6,7 @@ MODULE physicscore
     USE constants
     USE DEFAULTPARAMETERS
     USE extinction_module
+    USE SurfaceReactions, ONLY: RECOMPUTE_GAS_DUST_DENSITY_RATIO
     !f2py INTEGER, parameter :: dp
     IMPLICIT NONE
     !Use main loop counters in calculations so they're kept here
@@ -91,6 +92,9 @@ CONTAINS
     SUBROUTINE coreInitializePhysics(successFlag)
         INTEGER, INTENT(OUT) :: successFlag
         timeInYears=currentTime/SECONDS_PER_YEAR
+
+        !keep gas_dust_density_ratio in sync in case gas_dust_mass_ratio was set via param_dict
+        CALL RECOMPUTE_GAS_DUST_DENSITY_RATIO()
 
         ! Modules not restarted in python wraps so best to reset everything manually.
         IF (ALLOCATED(av)) DEALLOCATE(av,coldens,gasTemp,dustTemp,density,density_max)
