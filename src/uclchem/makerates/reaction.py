@@ -1458,9 +1458,23 @@ def _generate_reaction_ode_bit(
         elif species == "BULKSWAP":
             ode_bit += "*ratioSurfaceToBulk"
         elif species == "SURFSWAP":
-            ode_bit += "*totalSwap/safeMantle"
+            # totalSwap/safeMantle is only guaranteed <=1 if safeMantle never
+            # transiently undershoots the total ice content it bounds; clamp
+            # it explicitly rather than relying on that invariant.
+            ode_bit += "*MIN(1.0_dp, totalSwap/safeMantle)"
         elif species in {"DEUVCR", "DESCR", "DESOH2", "ER", "ERDES"}:
-            ode_bit += "/safeMantle"
+            # Y(ice_reactant)/safeMantle is only <=1 if safeMantle never
+            # transiently undershoots the true ice content it's meant to
+            # bound. Dividing by MAX(safeMantle, Y(ice_reactant)) instead
+            # clamps the ratio at 1.
+            ice_reactant = next(
+                (r for r in reactants if r in species_names and r.startswith(("#", "@"))),
+                None,
+            )
+            if ice_reactant is not None:
+                ode_bit += f"/MAX(safeMantle, Y({species_names.index(ice_reactant) + 1}))"
+            else:
+                ode_bit += "/safeMantle"
             if species == "DESOH2":
                 ode_bit += f"*Y({species_names.index('H') + 1})"
         elif species == "ED":

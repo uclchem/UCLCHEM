@@ -542,10 +542,17 @@ class NetworkBuilder:
                 new_reactions.append(Reaction(new_reac_list))
 
             # and the reverse, going from surface to bulk
-            new_reac_list[0] = species.get_name().replace("@", "#")
-            new_reac_list[1] = "SURFSWAP"
-            new_reac_list[3] = species.get_name()
-            new_reactions.append(Reaction(new_reac_list))
+            # H2 is not a trace species like H/He but the dominant ice
+            # reservoir, so the individual-swap rate (calibrated for trace
+            # species riding along with the bulk-exchange flux) is badly
+            # scale-mismatched for it. It already transfers correctly via the
+            # generic Garrod (2011) monolayer mechanism in GETYDOT, so this
+            # would only add a redundant, destabilizing reaction.
+            if species.get_name() != "@H2":
+                new_reac_list[0] = species.get_name().replace("@", "#")
+                new_reac_list[1] = "SURFSWAP"
+                new_reac_list[3] = species.get_name()
+                new_reactions.append(Reaction(new_reac_list))
         logger.debug(
             f"The following bulk reactions are added to the reactions: {new_reactions}"
         )

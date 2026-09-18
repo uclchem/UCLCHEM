@@ -83,7 +83,14 @@ SPECIES_NOT_PRESENT: int = 9997
 
 DTYPE_MAPPING = MappingProxyType(
     {
-        "fp128": np.float128,
+        # np.float128 is only defined when the platform's C "long double" is
+        # actually 128-bit (e.g. x86_64 Linux); on arm64 macOS and on Windows
+        # long double is the same size as float64, so numpy doesn't expose
+        # np.float128 at all. np.longdouble always exists and is the closest
+        # platform-appropriate fallback (the highest-precision float numpy
+        # has available here), even though on those platforms it degrades to
+        # float64 precision.
+        "fp128": getattr(np, "float128", np.longdouble),
         "fp64": np.float64,
         "fp32": np.float32,
         "fp16": np.float16,

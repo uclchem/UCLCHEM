@@ -1123,8 +1123,13 @@ def build_ode_string(
             real(dp) :: totalSwap, LOSS, PROD, alpha
             real(dp) :: safeMantle, safeBulk, ratioSurfaceToBulk, bulkLayersReciprocal
 
-            safeMantle = MAX(MIN_ABUND, sum(Y(surfaceList)))
-            safeBulk   = MAX(MIN_ABUND, sum(Y(bulkList)))
+            ! MAXVAL floor: sum() alone can undershoot an individual component when other
+            ! components have gone slightly negative (expected DVODE predictor overshoot).
+            ! Without it, safeMantle/safeBulk can end up smaller than one ice species' own
+            ! abundance, so that species' /safeMantle or /safeBulk normalized rate exceeds 1
+            ! and desorbs more of itself than exists.
+            safeMantle = MAX(MIN_ABUND, sum(Y(surfaceList)), MAXVAL(Y(surfaceList)))
+            safeBulk   = MAX(MIN_ABUND, sum(Y(bulkList)), MAXVAL(Y(bulkList)))
             if (refractoryList(1) > 0) then
                 safeBulk = MAX(MIN_ABUND, safeBulk - SUM(Y(refractoryList)))
             end if
