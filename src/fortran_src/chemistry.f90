@@ -277,6 +277,10 @@ contains
         do while((currentTime < targetTime) .and. (loopCounter < maxLoops))
             !allow option for dens to have been changed elsewhere.
             if (.not. freefall) abund(nSpec+2,dstep)=density(dstep)
+            !allow option for gasTemp to have been changed elsewhere (ydot(nSpec+1)=0
+            !unless heatingFlag, so DVODE never updates it on its own; without this a
+            !mid-loop retry would integrate at a stale temperature)
+            if (.not. heatingFlag) abund(nSpec+1,dstep)=gasTemp(dstep)
 
             !First sum the total column density over all points further towards edge of cloud
             if (dstep>1) then
@@ -425,6 +429,19 @@ contains
                             "CONSERVATION ERROR: element ", TRIM(elem_names(ie)), &
                             " changed by ", rel_err*100.0_dp, "% at t=", &
                             currentTime/SECONDS_PER_YEAR, " yr"
+                        write(*,"(A,ES12.4,A,ES12.4,A,ES12.4)") &
+                            "  gasTemp=", gasTemp(dstep), " dustTemp=", dustTemp(dstep), &
+                            " density=", density(dstep)
+                        write(*,"(A,ES12.4,A,ES12.4,A,ES12.4)") &
+                            "  safeMantle=", safeMantle, " safeBulk=", safeBulk, &
+                            " ratioSurfaceToBulk=", ratioSurfaceToBulk
+                        write(*,"(A,ES12.4,A,ES12.4)") &
+                            "  abund(nSurface)=", abund(nSurface,dstep), &
+                            " vs sum(surfaceList)=", sum(abund(surfaceList,dstep))
+                        write(*,"(A,ES12.4,A,ES12.4)") &
+                            "  abund(nBulk)=", abund(nBulk,dstep), &
+                            " vs sum(bulkList)=", sum(abund(bulkList,dstep))
+                        call reportTopContributors(ie, dstep)
                         successFlag = CONSERVATION_ERROR
                         return
                     end if
@@ -582,9 +599,13 @@ contains
                 !Successful as far as currentTime but many errors.
                 !Make targetTime smaller and just go again
                 write(*,*) "ISTATE -4 - shortening step"
+                write(*,*) "  worst-converging component (IMXER): ", &
+                    TRIM(component_name(dvode_istats(16)))
                 targetTime=currentTime+(targetTime-currentTime)*0.1_dp
             case(-5)
                 write(*,*) "ISTATE -5 - shortening step at time", timeInYears,"years"
+                write(*,*) "  worst-converging component (IMXER): ", &
+                    TRIM(component_name(dvode_istats(16)))
                 targetTime=currentTime+(targetTime-currentTime)*0.1_dp
             case default
                 ! Success: MXSTEP stays at whatever param_dict set (do not reset to hardcoded 10000)
@@ -796,5 +817,60 @@ contains
 
         initial_elem_abund(:, point_idx) = calculate_elemental_abundances(abund(:, point_idx))
     end subroutine resetConservationBaselineForPoint
+
+    ! Maps a DVODE state-vector index (IMXER, dvode_istats(16)) to a species
+    ! name, or to "gasTemp"/"density" for the two trailing physical slots.
+    pure function component_name(idx) result(name)
+        integer, intent(in) :: idx
+        character(len=7) :: name
+
+        if (idx >= 1 .AND. idx <= nSpec) then
+            name = specName(idx)
+        else if (idx == nSpec+1) then
+            name = "gasTemp"
+        else if (idx == nSpec+2) then
+            name = "density"
+        else
+            name = "unknown"
+        end if
+    end function component_name
+
+    ! Diagnostic for CONSERVATION ERROR reports: prints the gas/ice split of
+    ! element ie's total abundance and its top-5 contributing species, so a
+    ! negative contributor (past the negative-abundance clamp) or mass stuck
+    ! on the grain can be told apart from mass genuinely created from nothing.
+    subroutine reportTopContributors(ie, point_idx)
+        integer, intent(in) :: ie, point_idx
+        real(dp) :: contributions(nSpec)
+        real(dp) :: gasTotal, iceTotal
+        integer :: order(nSpec)
+        integer :: k, top_idx, tmp_i
+        logical :: is_ice(nSpec)
+
+        contributions = real(elem_count(:, ie), dp) * abund(1:nSpec, point_idx)
+        is_ice = .false.
+        is_ice(surfaceList) = .true.
+        if (bulkList(1) > 0) is_ice(bulkList) = .true.
+
+        gasTotal = sum(contributions, MASK=(.not. is_ice))
+        iceTotal = sum(contributions, MASK=is_ice)
+        write(*,"(A,ES12.4,A,ES12.4)") &
+            "  gas-phase total=", gasTotal, "   ice (surface+bulk) total=", iceTotal
+
+        order = [(k, k=1,nSpec)]
+        ! simple partial selection sort: only need the top 5 by |contribution|
+        do k = 1, MIN(5, nSpec)
+            top_idx = k
+            do tmp_i = k+1, nSpec
+                if (ABS(contributions(order(tmp_i))) > ABS(contributions(order(top_idx)))) top_idx = tmp_i
+            end do
+            tmp_i = order(k); order(k) = order(top_idx); order(top_idx) = tmp_i
+            write(*,"(A,I0,A,A7,A,ES12.4)") &
+                "  #", k, " ", specName(order(k)), " contributes ", contributions(order(k))
+            if (contributions(order(k)) < 0.0_dp) then
+                write(*,*) "    (negative contributor)"
+            end if
+        end do
+    end subroutine reportTopContributors
 
 end module chemistry
