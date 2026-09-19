@@ -5,14 +5,14 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Any
 
+import numpy as np
 import pandas as pd
 
 if TYPE_CHECKING:
     import matplotlib.pyplot as plt
 
-from uclchem.style import format_chemical_formula, format_reaction_label
-
 from ._helpers import _color_for
+from .style import format_chemical_formula, format_reaction_label
 
 #: CV threshold above which a rate constant is considered time-varying.
 _K_VARY_THRESHOLD = 0.01
@@ -22,6 +22,7 @@ def plot_species(
     ax: plt.Axes,
     df: pd.DataFrame,
     species: list[str],
+    *,
     legend: bool = True,
     plot_kwargs: dict[str, Any] | None = None,
 ) -> plt.Axes:
@@ -33,8 +34,8 @@ def plot_species(
         An axis object to plot on
     df : pd.DataFrame
         A dataframe created by
-        ``uclchem.analysis.read_output_file``, ``uclchem.model.load_model`` or
-        ``uclchem.model.Model.get_dataframes``.
+        :func:`uclchem.analysis.read_output_file`, :func:`uclchem.model.load_model` or
+        :meth:`uclchem.model.Model.get_joined_dataframes`.
     species : list[str]
         A list of species names to be plotted.
         If species name starts with "$" instead of "#" or "@",
@@ -68,7 +69,7 @@ def plot_species(
         else:
             abundances = df[species_name]
         plot_kwargs["linestyle"] = linestyle
-        plot_kwargs["label"] = species_name
+        plot_kwargs["label"] = format_chemical_formula(species_name)
         # Support legacy code that use either "age" or "Time" as the time variable
         if "age" in df.columns:
             timecolumn = "age"
@@ -165,7 +166,7 @@ def draw_panel_abundances(
             alpha=0.85 if in_rxns else 0.5,
             linestyle=sp_ls[sp],
         )
-    ax.set_ylabel("Abundance (w.r.t. H)")
+    ax.set_ylabel("Abundance (wrt H)")
     ax.text(
         0.02,
         0.98,
@@ -301,7 +302,7 @@ def _draw_reaction_time_series(
         handlelength=3.5,
     )
     for handle in leg.legend_handles:
-        handle.set_linewidth(1.75)
+        handle.set_linewidth(1.75)  # type: ignore[union-attr]
     ax.set_xlabel("Time / years")
     ax.set_ylabel(ylabel)
     ax.text(
@@ -395,7 +396,7 @@ def draw_panel_rates(
         top_dest,
         color_registry,
         ylabel=r"Reaction rate (abundance wrt H s$^{-1}$)",
-        panel_label="B",
+        panel_label="C",
     )
 
 
@@ -483,8 +484,6 @@ def draw_panel_rate_constants(
         )
 
     # Bar mode: warn for time-varying rate constants, then plot means.
-    import numpy as np  # noqa: PLC0415
-
     top_prod_k = [r for r in top_prod if r in prod_k.columns]
     top_dest_k = [r for r in top_dest if r in dest_k.columns]
 
@@ -513,15 +512,15 @@ def draw_panel_rate_constants(
     x_dest = np.arange(n_prod_k, n_prod_k + n_dest_k)
     prod_colors = [_color_for(rxn, color_registry) for rxn in top_prod_k]
     dest_colors = [_color_for(rxn, color_registry) for rxn in top_dest_k]
-    ax.bar(x_prod, prod_k_mean.values, width=0.75, color=prod_colors, alpha=0.85)
-    ax.bar(x_dest, dest_k_mean.values, width=0.75, color=dest_colors, alpha=0.85)
+    ax.bar(x_prod, prod_k_mean.values, width=0.75, color=prod_colors, alpha=0.85)  # type: ignore[arg-type]
+    ax.bar(x_dest, dest_k_mean.values, width=0.75, color=dest_colors, alpha=0.85)  # type: ignore[arg-type]
     ax.set_xticks([n_prod_k / 2.0 - 0.5, n_prod_k + n_dest_k / 2.0 - 0.5])
     ax.set_xticklabels(["Formation", "Destruction"])
     ax.set_ylabel(r"Mean $k$ (s$^{-1}$)")
     ax.text(
         0.02,
         0.98,
-        "C",
+        "B",
         transform=ax.transAxes,
         fontsize=10,
         verticalalignment="top",

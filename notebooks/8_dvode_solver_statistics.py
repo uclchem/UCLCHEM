@@ -40,7 +40,6 @@ params = {
     "initialTemp": 10.0,
     "finalTime": 3e6,
     "writetimestep": True,
-
 }
 
 model = uclchem.model.Cloud(param_dict=params)
@@ -56,7 +55,7 @@ print(f"Model completed with flag: {model.success_flag}")
 df = model.get_joined_dataframes(with_stats=True)
 print(f"DataFrame shape: {df.shape}")
 print(f"\nSolver stat columns: {uclchem.constants.DVODE_STAT_NAMES}")
-df[["Time"] + uclchem.constants.DVODE_STAT_NAMES].head(10)
+df[["Time", *uclchem.constants.DVODE_STAT_NAMES]].head(10)
 
 # %% [markdown]
 # ## Plotting Solver Effort Over Time
@@ -123,7 +122,7 @@ plt.show()
 
 # %%
 if model.stats_array is None:
-    msg = f"Statistics array of model is None"
+    msg = "Statistics array of model is None"
     raise ValueError(msg)
 print(f"Stats array shape: {model.stats_array.shape}")
 print(f"Total function evaluations: {model.stats_array[:, 0, 6].sum():.0f}")
@@ -147,7 +146,7 @@ ax.set_xlabel("Time (years)")
 ax.set_ylabel("Function Evaluations (NFE)")
 ax.set_xscale("log")
 ax.set_yscale("log")
-ax.set_title("Solver Effort: Static vs Freefall")
+ax.set_title("Solver Effort: 10 vs 50 K")
 ax.legend()
 plt.tight_layout()
 plt.show()

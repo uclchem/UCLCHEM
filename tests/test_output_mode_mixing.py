@@ -9,10 +9,6 @@ These tests check the pre_flight_checklist function in model.py to ensure:
 3. starting_chemistry requires return_array or return_dataframe
 """
 
-import shutil
-import tempfile
-from pathlib import Path
-
 import numpy as np
 import pytest
 
@@ -30,14 +26,6 @@ def test_import_uclchem():
         pytest.fail(
             "uclchem module could not be imported, make sure your environment is loaded and UCLCHEM is installed correctly."
         )
-
-
-@pytest.fixture(scope="function")
-def temp_output_directory():
-    """Create a temporary directory for each test"""
-    temp_dir = Path(tempfile.mkdtemp())
-    yield temp_dir
-    shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 @pytest.fixture
@@ -102,12 +90,10 @@ def test_starting_chemistry_with_memory_mode(basic_params):
 
 
 # Test 4: return_rate_constants requires memory mode
-def test_return_rate_constants_with_file_raises_error(
-    basic_params, temp_output_directory
-):
+def test_return_rate_constants_with_file_raises_error(basic_params, tmp_path):
     """Test that return_rate_constants with file output raises error"""
     params = basic_params.copy()
-    params["outputFile"] = temp_output_directory / "test_output.dat"
+    params["outputFile"] = tmp_path / "test_output.dat"
 
     with pytest.raises(
         RuntimeError,
@@ -122,7 +108,7 @@ def test_multiple_memory_models_succeed(basic_params):
     params = basic_params.copy()
 
     # Run first in-memory model
-    physics1, chemistry1, rates1, heating1, abundances1, return_code1 = (
+    _physics1, _chemistry1, _rates1, _heating1, _abundances1, return_code1 = (
         uclchem.functional.cloud(
             param_dict=params, return_array=True, return_rate_constants=True
         )
@@ -130,24 +116,24 @@ def test_multiple_memory_models_succeed(basic_params):
     assert return_code1 == uclchem.utils.SuccessFlag.SUCCESS
 
     # Run second in-memory model - should succeed
-    physics2, chemistry2, rates2, heating2, abundances2, return_code2 = (
+    _physics2, _chemistry2, _rates2, _heating2, _abundances2, return_code2 = (
         uclchem.functional.cloud(param_dict=params, return_dataframe=True)
     )
     assert return_code2 == uclchem.utils.SuccessFlag.SUCCESS
 
 
 # Test 8: Multiple disk models succeed
-def test_multiple_disk_models_succeed(basic_params, temp_output_directory):
+def test_multiple_disk_models_succeed(basic_params, tmp_path):
     """Test that running multiple disk-based models in sequence works"""
     # Run first disk-based model
     params1 = basic_params.copy()
-    params1["outputFile"] = temp_output_directory / "test1.dat"
+    params1["outputFile"] = tmp_path / "test1.dat"
     result1 = uclchem.functional.cloud(param_dict=params1)
     assert result1[0] == uclchem.utils.SuccessFlag.SUCCESS
 
     # Run second disk-based model - should succeed
     params2 = basic_params.copy()
-    params2["outputFile"] = temp_output_directory / "test2.dat"
+    params2["outputFile"] = tmp_path / "test2.dat"
     result2 = uclchem.functional.cloud(param_dict=params2)
     assert result2[0] == uclchem.utils.SuccessFlag.SUCCESS
 
@@ -178,7 +164,7 @@ def test_chained_models_in_memory(basic_params):
         "freefall": False,
         "freezeFactor": 0.0,
     }
-    _, _, _, _, final_abundances2, result2 = uclchem.functional.prestellar_core(
+    _, _, _, _, _final_abundances2, result2 = uclchem.functional.prestellar_core(
         temp_index=3,
         max_temperature=300.0,
         param_dict=params_stage2,
@@ -186,12 +172,3 @@ def test_chained_models_in_memory(basic_params):
         starting_chemistry=final_abundances,
     )
     assert result2 == uclchem.utils.SuccessFlag.SUCCESS
-
-
-def main():
-    """Run the tests using pytest"""
-    pytest.main(["-v", __file__])
-
-
-if __name__ == "__main__":
-    main()

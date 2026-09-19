@@ -1,92 +1,105 @@
 ! Cloud.f90 is our most basic physics module
 ! It simulates a static or collapsing cloud of isothermal gas.
 ! It is useful for static models or for producing initial abundances for the other modules.
-MODULE cloud_mod
-    USE constants
-    USE DEFAULTPARAMETERS
+module cloud_mod
+    use constants, only: dp, SECONDS_PER_YEAR, PC, ZERO_INNER_RADIUS_ERROR
+    use DEFAULTPARAMETERS
+    use f2py_constants, only: nSpec
     !f2py INTEGER, parameter :: dp
-    USE physicscore, only: points, dstep, cloudsize, radfield, h2crprate, improvedH2CRPDissociation, &
-    & zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, densdot, gastemp, dusttemp, av,&
-    &coldens, density_max, ngas_r, initialDens_r, findcoldens_edge2core, coldens_external, initialDens_array, parcel_radius, &
-    &outer_coldens_for_current_step
-    USE network
-    use f2py_constants
-    IMPLICIT NONE
-    REAL(dp), allocatable :: parcelRadius(:)
-    REAL(dp), allocatable :: coldens_obs(:)
+    use physicscore, only: points, dstep, cloudsize, radfield, h2CRPRateConstant, improvedH2CRPDissociation, &
+        zeta, currentTime, currentTimeold, targetTime, timeinyears, freefall, density, ion, &
+        gastemp, dusttemp, av, coldens, density_max, get_ngas_r, get_initialDens_r, findcoldens_edge2core, &
+        get_coldens_external, initialDens_array, parcel_radius, outer_coldens_for_current_step, get_av
+
+    implicit none
+
+    private
+    public :: updateTargetTime, initializePhysics, updatePhysics, sublimation
+
+    real(dp), allocatable :: parcelRadius(:)
+    real(dp), allocatable :: coldens_obs(:)
 
     ! Time sampling control parameters
-    REAL(dp) :: timestep_resolution_factor_early = 0.5_dp   ! For 0 < t < 10 yr: samples per decade (snapped to k*10^n grid)
-    REAL(dp) :: timestep_resolution_factor_mid = 1.0_dp      ! For 10 yr < t < 1 Myr: dt = 10^floor(log_10(t)) / factor
-    REAL(dp) :: timestep_fixed_late_years = 1.0d5            ! For t > 1 Myr: dt = fixed timestep in years
+    real(dp) :: timestep_resolution_factor_early = 0.5_dp   ! For 0 < t < 10 yr: samples per decade (snapped to k*10^n grid)
+    real(dp) :: timestep_resolution_factor_mid = 1.0_dp      ! For 10 yr < t < 1 Myr: dt = 10^floor(log_10(t)) / factor
+    real(dp) :: timestep_fixed_late_years = 1.0e5_dp            ! For t > 1 Myr: dt = fixed timestep in years
 
     ! Radial grid spacing: .false. = linear (default), .true. = logarithmic
-    LOGICAL :: log_radius_sampling = .false.
+    logical :: log_radius_sampling = .false.
 
-CONTAINS
+contains
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! Called at start of UCLCHEM run
     ! Uses values in defaultparamters.f90 and any inputs to set initial values        !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    SUBROUTINE initializePhysics(successFlag)
-        INTEGER, INTENT(OUT) :: successFlag
+    subroutine initializePhysics(successFlag)
+        integer, intent(out) :: successFlag
         successFlag=0
 
         !Set up basic physics variables
-        cloudSize=(rout-rin)*pc
+        cloudSize=(rout-rin)*PC
 
-        IF (enable_radiative_transfer .AND. points.gt.1 .AND. rin .le. 0.0_dp) THEN
+        if (enable_radiative_transfer .AND. points>1 .AND. rin <= 0.0_dp) then
             write(*,*) "ERROR: rin must be > 0 when enable_radiative_transfer=True (innermost parcel would be at r=0)"
             successFlag=ZERO_INNER_RADIUS_ERROR
-            RETURN
-        END IF
+            return
+        end if
 
         ! Allocate 1D arrays if 1D radiative transfer is enabled
-        IF (enable_radiative_transfer .AND. points.gt.1) THEN
-            IF (ALLOCATED(parcelRadius)) DEALLOCATE(parcelRadius)
-            ALLOCATE(parcelRadius(points))
+        if (enable_radiative_transfer .AND. points>1) then
+            if (ALLOCATED(parcelRadius)) deallocate(parcelRadius)
+            allocate(parcelRadius(points))
 
-            IF (ALLOCATED(coldens_obs)) DEALLOCATE(coldens_obs)
-            ALLOCATE(coldens_obs(points))
+            if (ALLOCATED(coldens_obs)) deallocate(coldens_obs)
+            allocate(coldens_obs(points))
 
-            DO dstep=1,points
-                IF (points .gt. 1) THEN
-                    IF (log_radius_sampling) THEN
-                        parcelRadius(dstep)=rin*(rout/rin)**((float(dstep)-1.0d0)/float(points-1))
-                    ELSE
+            do dstep=1,points
+                if (points > 1) then
+                    if (log_radius_sampling) then
+                        parcelRadius(dstep)=rin*(rout/rin)**((float(dstep)-1.0e0_dp)/float(points-1))
+                    else
                         parcelRadius(dstep)=rin+(dstep-1)*(rout-rin)/float(points-1)
-                    END IF
-                ELSE
+                    end if
+                else
                     parcelRadius(dstep)=rout
-                END IF
+                end if
                 parcel_radius(dstep)=parcelRadius(dstep)
-                density_max(dstep)=ngas_r(parcelRadius(dstep),finalDens,density_scale_radius,density_power_index)
-            END DO
-        END IF
+                density_max(dstep)=get_ngas_r(parcelRadius(dstep),finalDens,density_scale_radius,density_power_index)
+            end do
+        end if
 
         ! Set up densities (use radial profile if 1D radiative transfer enabled)
-        DO dstep=1,points
-            IF (enable_radiative_transfer .AND. points.gt.1) THEN
+        do dstep=1,points
+            if (enable_radiative_transfer .AND. points>1) then
                 ! Store the raw profile density (without 1.001 bump) so densdot
                 ! sees density(dstep) > initialDens_array(dstep) and freefall fires.
-                initialDens_array(dstep)=initialDens_r(parcelRadius(dstep)*pc,density_power_index)
-                density(dstep)=1.001*initialDens_array(dstep)
-            ELSE
-                density(dstep)=1.001*initialDens
-            END IF
-        END DO
-        
-        DO dstep=1,points
-            IF (enable_radiative_transfer .AND. points.gt.1) THEN
-                coldens(dstep) = coldens_external(parcelRadius(dstep), initialDens)
-            ELSE
-                coldens(dstep) = real(points-dstep+1)*cloudSize/real(points)*initialDens
-            END IF
-            av(dstep) = baseAv + coldens(dstep) / 1.6d21
-        END DO
+                initialDens_array(dstep)=get_initialDens_r(parcelRadius(dstep)*PC,density_power_index)
 
-    END SUBROUTINE initializePhysics
+                if (freefall) then
+                    density(dstep)=1.001_dp*initialDens_array(dstep)
+                else
+                    density(dstep)=initialDens_array(dstep)
+                end if
+            else
+                if (freefall) then
+                    density(dstep)=1.001_dp*initialDens
+                else
+                    density(dstep)=initialDens
+                end if
+            end if
+        end do
+
+        do dstep=1,points
+            if (enable_radiative_transfer .AND. points>1) then
+                coldens(dstep) = get_coldens_external(parcelRadius(dstep), initialDens)
+            else
+                coldens(dstep) = real(points-dstep+1)*cloudSize/real(points)*initialDens
+            end if
+            av(dstep) = get_av(baseAv, coldens(dstep))
+        end do
+
+    end subroutine initializePhysics
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !Called every time loop in main.f90. Sets the timestep for the next output from   !
@@ -94,73 +107,72 @@ CONTAINS
     !but the integrator itself chooses an integration timestep.                       !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-    SUBROUTINE updateTargetTime
+    subroutine updateTargetTime
         real(dp) :: orderMagnitude, stepSize
-        IF (timeInYears .ge. 1.0d6) THEN
+        if (timeInYears >= 1.0e6_dp) then
             ! Beyond 1 Myr: use fixed time step
             targetTime = (timeInYears + timestep_fixed_late_years) * SECONDS_PER_YEAR
-        ELSE IF (timeInYears .gt. 10.0) THEN
+        else if (timeInYears > 10.0_dp) then
             ! Between 10 years and 1 Myr: linear steps within each decade
             ! Step size is one order of magnitude smaller, divided by steps_per_decade
-            orderMagnitude = 10.0_dp**(FLOOR(LOG10(timeInYears)))
+            orderMagnitude = 10.0_dp**(floor(log10(timeInYears)))
             stepSize = orderMagnitude / timestep_resolution_factor_mid
             targetTime = (timeInYears + stepSize) * SECONDS_PER_YEAR
-        ELSE IF (timeInYears .gt. 0.0) THEN
+        else if (timeInYears > 0.0_dp) then
             ! Below 10 years: logarithmic sampling snapped to a k*10^n grid.
             ! orderMagnitude is the decade floor (e.g. 1e-3 when t is in [1e-3, 1e-2)).
             ! stepSize = orderMagnitude / factor gives exactly `factor` steps per decade.
-            ! Snapping with FLOOR(t/stepSize)+1 ensures targets land on exact multiples
+            ! Snapping with floor(t/stepSize)+1 ensures targets land on exact multiples
             ! of stepSize, so decade boundaries (1, 10, 100 ...) are always hit cleanly.
             ! The 1e-10 epsilon guards against floating-point when t is already on a grid point.
-            orderMagnitude = 10.0_dp**(FLOOR(LOG10(timeInYears)))
+            orderMagnitude = 10.0_dp**(floor(log10(timeInYears)))
             stepSize = orderMagnitude / timestep_resolution_factor_early
-            targetTime = (FLOOR(timeInYears / stepSize + 1.0d-10) + 1.0_dp) * stepSize * SECONDS_PER_YEAR
-        ELSE
+            targetTime = (floor(timeInYears / stepSize + 1.0e-10_dp) + 1.0_dp) * stepSize * SECONDS_PER_YEAR
+        else
             ! Initial timestep: start at the bottom of the first sampled decade
-            targetTime = SECONDS_PER_YEAR * 1.0d-7
-        ENDIF
-    END SUBROUTINE updateTargetTime
+            targetTime = SECONDS_PER_YEAR * 1.0e-7_dp
+        end if
+    end subroutine updateTargetTime
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !This is called every time/depth step from main.f90                               !
     !Update the density, temperature and av to their values at currentTime            !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    SUBROUTINE updatePhysics
+    subroutine updatePhysics
         ! Calculate column densities and update physical parameters for 1D models
-        IF (enable_radiative_transfer .AND. points.gt.1) THEN
+        if (enable_radiative_transfer .AND. points>1) then
             call findcoldens_edge2core(coldens_obs(dstep),finalDens,density_scale_radius,density_power_index,parcelRadius(dstep))
 
             ! Calculate density profiles
-            density_max(dstep)=ngas_r(parcelRadius(dstep),finalDens,density_scale_radius,density_power_index)
+            density_max(dstep)=get_ngas_r(parcelRadius(dstep),finalDens,density_scale_radius,density_power_index)
 
-            IF (density(dstep).ge.density_max(dstep)) density(dstep)=density_max(dstep)
+            if (density(dstep)>=density_max(dstep)) density(dstep)=density_max(dstep)
 
             ! Recompute the coldens from physics-core.f90
             ! coldens should be amount of gas from edge to parcel
             coldens(dstep)=cloudSize/real(points)*density(dstep)
-            
+
             ! Add previous column densities to current as we move into cloud to get total.
             ! outer_coldens_for_current_step is set by wrap.f90 from coldens_history(dtime)
             ! before this subroutine is called, so the value is exact (no approximation).
-            IF (dstep .lt. points) THEN
+            if (dstep < points) then
                 coldens(dstep)=coldens(dstep)+outer_coldens_for_current_step
-            END IF
+            end if
 
-            ! Calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
-            av(dstep)= baseAv +coldens(dstep)/1.6d21
+            av(dstep) = get_av(baseAv, coldens(dstep))
 
             ! Diagnostic output
             ! print '(A,1PE12.3,A,0PF8.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3,A,1PE12.3)', &
             ! 't=',timeInYears, '  r=',parcelRadius(dstep), '  nH(t)=',density(dstep), '  nH(r)_max=',density_max(dstep), &
             ! '  NH(t)(edge->core)=',coldens(dstep), '  NH(r)(edge->core)=', coldens_obs(dstep), '  av(t)=',av(dstep)
-        END IF
-    END SUBROUTINE updatePhysics
+        end if
+    end subroutine updatePhysics
 
     !This is a dummy subroutine.
-    SUBROUTINE sublimation(abund, lpoints)
-        INTEGER, INTENT(IN) :: lpoints
-        REAL(dp), INTENT(INOUT) :: abund(nspec+1,lpoints)
-    END SUBROUTINE sublimation
-END MODULE cloud_mod
+    subroutine sublimation(abund, lpoints)
+        integer, intent(in) :: lpoints
+        real(dp), intent(inout) :: abund(nspec+1,lpoints)
+    end subroutine sublimation
+end module cloud_mod
 
 

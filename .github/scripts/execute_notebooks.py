@@ -31,7 +31,7 @@ py_files = [str(path) for path in SRC_DIR.glob("*.py")]
 if py_files:
     try:
         subprocess.check_call(
-            [sys.executable, "-m", "jupytext", "--to", "ipynb"] + py_files
+            [sys.executable, "-m", "jupytext", "--to", "ipynb", *py_files]
         )
         with LOG.open("a") as lf:
             lf.write(f"Converted {len(py_files)} .py -> .ipynb\n")

@@ -20,9 +20,8 @@ chemical abundances and reaction rates from UCLCHEM models.
     >>> model.check_error()
     Model ran successfully
     >>>
-    >>> physics_df, chemistry_df, rate_constants_df = model.get_dataframes(
+    >>> physics_df, chemistry_df, rate_constants_df = model.get_split_dataframes(
     ...     with_rate_constants=True,
-    ...     joined=False,
     ... )
     >>> # Making a plot of the abundances over time
     >>> fig, ax = uclchem.plot.create_abundance_plot(
@@ -64,6 +63,7 @@ via methods like :meth:`~uclchem.model.AbstractModel.create_abundance_plot`.
 
 """
 
+from . import style as style
 from .compositions import create_abundance_plot, plot_rate_summary, plot_rates_deepdive
 from .panels import (
     draw_panel_abundances,

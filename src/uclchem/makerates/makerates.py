@@ -7,7 +7,7 @@ from typing import Literal
 
 from uclchem.makerates import io_functions as io
 from uclchem.makerates._output_resolver import resolve_output_dirs
-from uclchem.makerates.config import MakeratesConfig
+from uclchem.makerates.config import MakeratesConfig, ReactionFileTypes
 from uclchem.makerates.network import Network
 
 logger = logging.getLogger(__name__)
@@ -16,18 +16,19 @@ logger = logging.getLogger(__name__)
 LogLevel = Literal[10, 20, 30, 40, 50]
 
 # Optional parameters that don't raise errors if missing
-optional_params = [
+optional_params = (
     "grain_assisted_recombination_file",
     "output_directory",
     "three_phase",
     "gas_phase_extrapolation",
-]
+)
 
 
 def run_makerates(
     configuration_file: str | bytes | Path | MakeratesConfig = "user_settings.yaml",
-    write_files: bool = True,
     output_directory: str | os.PathLike | None = None,
+    *,
+    write_files: bool = True,
 ) -> Network:
     """Run makerates.
 
@@ -39,13 +40,13 @@ def run_makerates(
     configuration_file : str | bytes | Path | MakeratesConfig
         Path to YAML configuration file, or just a configuration.
         Defaults to "user_settings.yaml".
-    write_files : bool
-        Whether to write fortran files to src/fortran_src.
-        Defaults to True.
     output_directory : str | os.PathLike | None
         Optional override for the output directory
         where files should be written. If None, uses the 'output_directory'
         from the config (if present) or the package defaults.
+    write_files : bool
+        Whether to write fortran files to src/fortran_src.
+        Defaults to True.
 
     Returns
     -------
@@ -133,9 +134,9 @@ def run_makerates(
             )
             raise ValueError(msg)
         try:
-            _coolants = io.read_coolants_file(coolants_path)
-            logger.info(f"Loaded {len(_coolants)} coolants from {coolants_path}")
-            coolants_to_write = _coolants
+            coolants = io.read_coolants_file(coolants_path)
+            logger.info(f"Loaded {len(coolants)} coolants from {coolants_path}")
+            coolants_to_write = coolants
         except Exception as exc:
             msg = f"Error reading coolants_file {coolants_path}: {exc}"
             raise ValueError(msg) from exc
@@ -167,16 +168,16 @@ def run_makerates(
                 raise ValueError(msg)
             # Get all the individual ions that can recombine
             gar_ions = [gar.get_reactants()[0] for gar in gar_reactions]
-            _gar_parameters = io.read_grain_assisted_recombination_file(gar_file)
-            if not set(gar_ions).issubset(set(_gar_parameters.keys())):
-                missing_ions = set(gar_ions) - set(_gar_parameters.keys())
+            gar_parameters_ = io.read_grain_assisted_recombination_file(gar_file)
+            if not set(gar_ions).issubset(set(gar_parameters_.keys())):
+                missing_ions = set(gar_ions) - set(gar_parameters_.keys())
                 msg = (
                     f"You have GAR reactions for ions {missing_ions} but "
                     f"they are not defined in your gar_file {gar_file}"
                 )
                 raise ValueError(msg)
             # Save the gar parameters in the correct order
-            gar_parameters = {ion: _gar_parameters[ion] for ion in gar_ions}
+            gar_parameters = {ion: gar_parameters_[ion] for ion in gar_ions}
 
         # Pass resolved output directories and other parameters to write_outputs
         io.write_outputs(
@@ -258,19 +259,19 @@ def get_network(
 
     if path_to_input_file:
         return run_makerates(path_to_input_file, write_files=False)
-    else:
-        # If we load the species/reactions directly from UCLCHEM we can skip the checks
-        return Network.from_csv(path_to_species_file, path_to_reaction_file)
+    # If we load the species/reactions directly from UCLCHEM we can skip the checks
+    return Network.from_csv(path_to_species_file, path_to_reaction_file)
 
 
 def _get_network_from_files(
     species_file: Path,
-    reaction_files: list[Path],
-    reaction_types: list[Literal["UMIST", "KIDA", "UCL"]],
-    gas_phase_extrapolation: bool,
-    add_crp_photo_to_grain: bool,
-    derive_reaction_exothermicity: bool | str | list[str],
+    reaction_files: Path | list[Path],
+    reaction_types: ReactionFileTypes | list[ReactionFileTypes],
     database_reaction_exothermicity: list[Path] | None = None,
+    *,
+    derive_reaction_exothermicity: bool | str | set[str] = False,
+    gas_phase_extrapolation: bool = False,
+    add_crp_photo_to_grain: bool = False,
 ) -> tuple[Network, list[list[str]]]:
     logger.info(
         f"_get_network_from_files called with database_reaction_exothermicity={database_reaction_exothermicity}"

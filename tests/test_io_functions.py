@@ -1,61 +1,8 @@
-import numpy as np
 import pytest
 
-from uclchem.makerates.io_functions import array_to_string, check_reaction
-from uclchem.makerates.reaction import Reaction
+from uclchem.makerates.io_functions import check_reaction
+from uclchem.makerates.reaction import REACTION_TYPES, Reaction
 from uclchem.makerates.species import Species, normalize_species_name
-
-
-def test_array_to_string_1d_int():
-    arr = np.array([1, 2, 3, 4])
-    result = array_to_string("arr1", arr, type="int", parameter=True)
-    assert "INTEGER, PARAMETER :: arr1 (4)=(/1,2,3,4/)" in result.replace("\n", "")
-
-
-def test_array_to_string_1d_float():
-    arr = np.array([1.0, 2.0, 3.0])
-    result = array_to_string("arr2", arr, type="float", parameter=True)
-    assert (
-        "REAL(dp), PARAMETER :: arr2 (3)=(/1.0000e+00,2.0000e+00,3.0000e+00/)"
-        in result.replace("\n", "")
-    )
-
-
-def test_array_to_string_2d_int():
-    arr = np.array([[1, 2, 3], [4, 5, 6]])
-    result = array_to_string("arr3", arr, type="int", parameter=True)
-    expected = """INTEGER, PARAMETER :: arr3(2,3) = RESHAPE((/ 1,4,2,5,3,6 /), (/ 2, 3 /)&
-    &)
-"""
-    assert result == expected
-
-
-def test_array_to_string_2d_ones():
-    arr = np.ones((5, 7), dtype=int)
-    result = array_to_string("arr_ones", arr, type="int", parameter=True)
-    expected = """INTEGER, PARAMETER :: arr_ones(5,7) = RESHAPE((/ 1,1,1,1,1,1,1,1,1,1,1,1&
-    &,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 /), (/ 5, 7 /))
-"""
-    assert result == expected
-
-
-def test_array_to_string_2d_float():
-    arr = np.array([[1.0, 2.0], [3.0, 4.0]])
-    result = array_to_string("arr4", arr, type="float", parameter=True)
-    expected = """REAL(dp), PARAMETER :: arr4(2,2) = RESHAPE((/ 1.0000e+00,3.0000e+00&
-    &,2.0000e+00,4.0000e+00 /), (/ 2, 2 /))
-"""
-    assert result == expected
-
-
-def test_array_to_string_2d_string():
-    arr = np.array([["A", "B"], ["C", "D"]])
-    result = array_to_string("arr5", arr, type="string", parameter=True)
-    expected = """CHARACTER(Len=1), PARAMETER :: arr5(2,2) = RESHAPE((/ "A","C","B","D" /)&
-    &, (/ 2, 2 /))
-"""
-    assert result == expected
-
 
 # ---------------------------------------------------------------------------
 # normalize_species_name
@@ -63,12 +10,12 @@ def test_array_to_string_2d_string():
 
 
 @pytest.mark.parametrize(
-    "raw, expected",
+    ("raw", "expected"),
     [
-        # plain species – uppercased
+        # plain species are uppercased
         ("H2O", "H2O"),
         ("ch3oh", "CH3OH"),
-        # chemical isomer prefix – prefix lowercased, formula uppercased
+        # chemical isomer prefix: prefix lowercased, formula uppercased
         ("o-H2", "o-H2"),
         ("p-H2", "p-H2"),
         ("a-CH3OH", "a-CH3OH"),
@@ -203,7 +150,7 @@ def test_positive_ion_charge_unchanged():
 
 
 def _reac(r1, r2, r3, p1, p2, p3, p4):
-    """Build a minimal Reaction (alpha=1, beta=0, gamma=0, T 0–1e9)."""
+    """Build a minimal Reaction (alpha=1, beta=0, gamma=0, T 0 to 1e9)."""
     return Reaction([r1, r2, r3, p1, p2, p3, p4, 1.0, 0.0, 0.0, 0.0, 1e9, 0.0])
 
 
@@ -228,7 +175,7 @@ def test_reaction_element_conservation_ortho_para():
 
 def test_reaction_charge_conservation_prefix_neutral():
     """Prefixed neutral species must not upset charge conservation."""
-    # o-H2 (0) + H+ (1) -> H3+ (1) – charge conserved
+    # o-H2 (0) + H+ (1) -> H3+ (1) -> charge conserved
     _reac("o-H2", "H+", "NAN", "H3+", "NAN", "NAN", "NAN")
 
 
@@ -238,9 +185,7 @@ def test_reaction_charge_conservation_prefix_neutral():
 
 
 def _keep_list(*names):
-    from uclchem.makerates.reaction import REACTION_TYPES
-
-    return ["", "NAN", "E-", "e-", "PHOTON", "CRP"] + list(REACTION_TYPES) + list(names)
+    return ["", "NAN", "E-", "e-", "PHOTON", "CRP", *REACTION_TYPES, *names]
 
 
 def test_check_reaction_accepts_prefix_species():

@@ -1,4 +1,3 @@
-# TODO v4.0: Remove this module and all its usages.
 """Compatibility layer for old Network and LoadedNetwork APIs.
 
 This module provides backward compatibility wrappers for the old Network
@@ -21,7 +20,7 @@ from uclchem.makerates.reaction import Reaction
 from uclchem.makerates.species import Species
 
 
-def Network(  # noqa: N802
+def Network(  # ruff: ignore[invalid-function-name]
     species: list[Species] | None = None,
     reactions: list[Reaction] | None = None,
     **kwargs: Any,
@@ -207,18 +206,17 @@ class LoadedNetwork:
             )
 
             return NewNetwork.from_lists(species, reactions)
-        else:
-            # Loading from files
-            warnings.warn(
-                "LoadedNetwork(species_filepath=..., reactions_filepath=...) is deprecated. "
-                "Use Network.from_csv(species_path, reactions_path) or "
-                "load_network_from_csv(species_path, reactions_path) instead. "
-                "This will be removed in v4.0.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
+        # Loading from files
+        warnings.warn(
+            "LoadedNetwork(species_filepath=..., reactions_filepath=...) is deprecated. "
+            "Use Network.from_csv(species_path, reactions_path) or "
+            "load_network_from_csv(species_path, reactions_path) instead. "
+            "This will be removed in v4.0.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
-            return NewNetwork.from_csv(species_filepath, reactions_filepath)
+        return NewNetwork.from_csv(species_filepath, reactions_filepath)
 
 
 class NetworkState:

@@ -19,14 +19,15 @@
 
 # %%
 # ty: ignore[unresolved-attribute]
-import os
+
+import pathlib
 
 import uclchem
 from uclchem import advanced
 
 # Ensure output directory exists
-if not os.path.exists("output_6"):
-    os.makedirs("output_6")
+if not pathlib.Path("output_6").exists():
+    pathlib.Path("output_6").mkdir(parents=True)
 
 # %% [markdown]
 # ## Using GeneralSettings Instead of param_dict
@@ -56,7 +57,7 @@ print(f"Current initial temperature: {settings.defaultparameters.initialtemp.get
 # Set model parameters
 settings.defaultparameters.initialdens = 1e4  # type: ignore[attr-defined]
 settings.defaultparameters.initialtemp = 10.0  # type: ignore[attr-defined]
-settings.defaultparameters.finaltime = 1.0e6 # type: ignore[attr-defined]
+settings.defaultparameters.finaltime = 1.0e6  # type: ignore[attr-defined]
 settings.defaultparameters.rout = 0.1  # type: ignore[attr-defined]
 settings.defaultparameters.baseav = 1.0  # type: ignore[attr-defined]
 settings.defaultparameters.freefall = False  # type: ignore[attr-defined]
@@ -70,10 +71,12 @@ print(f"New initial density: {settings.defaultparameters.initialdens.get()}")
 # These settings are exposed from the Fortran DEFAULTPARAMETERS module and can be
 # changed at runtime via GeneralSettings. Set a 10% relative tolerance for frequencies:
 try:
-    settings.defaultparameters.freq_rel_tol = 0.1 # type: ignore[attr-defined]
+    settings.defaultparameters.freq_rel_tol = 0.1  # type: ignore[attr-defined]
     print(f"Set freq_rel_tol to: {settings.defaultparameters.freq_rel_tol.get()}")
 except Exception:
-    print("Note: freq_rel_tol not available until Fortran modules are rebuilt; see README.")
+    print(
+        "Note: freq_rel_tol not available until Fortran modules are rebuilt; see README."
+    )
 # ---
 
 # %% [markdown]
@@ -83,8 +86,8 @@ except Exception:
 
 # %%
 # Ensure output directory exists
-if not os.path.exists("output_6"):
-    os.makedirs("output_6")
+if not pathlib.Path("output_6").exists():
+    pathlib.Path("output_6").mkdir(parents=True)
 
 # Note: Output file paths should be set via param_dict, not GeneralSettings
 # This is because file paths are handled specially by the model wrapper
@@ -112,12 +115,12 @@ settings.print_all_edited()
 
 # %%
 # Set a baseline density
-settings.defaultparameters.initialdens = 1e4 # type: ignore[attr-defined]
+settings.defaultparameters.initialdens = 1e4  # type: ignore[attr-defined]
 print(f"Baseline density: {settings.defaultparameters.initialdens.get()}")
 
 # Run model with temporary higher density
 with settings.temporary_changes():
-    settings.defaultparameters.initialdens = 1e5 # type: ignore[attr-defined]
+    settings.defaultparameters.initialdens = 1e5  # type: ignore[attr-defined]
     print(f"Inside context: {settings.defaultparameters.initialdens.get()}")
 
     # Use param_dict for file paths
