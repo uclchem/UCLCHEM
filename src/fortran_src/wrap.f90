@@ -1144,6 +1144,8 @@ contains
                     read(inputValue,*,iostat=successFlag) points
                 case("bm0")
                     read(inputValue,*,iostat=successFlag) bm0
+                case("gas_dust_mass_ratio")
+                    read(inputValue,*,iostat=successFlag) gas_dust_mass_ratio
                 case("density_scale_radius")
                     read(inputValue,*,iostat=successFlag) density_scale_radius
                 case("density_power_index")

@@ -8,6 +8,7 @@ module physicscore
     use DEFAULTPARAMETERS
     use extinction_module, only: extcurve_obs
     use numerics, only: evaluate_polynomial, integrate_trapezoid, logspace
+    use SurfaceReactions, only: RECOMPUTE_GAS_DUST_DENSITY_RATIO
     !f2py INTEGER, parameter :: dp
 
     implicit none
@@ -97,6 +98,9 @@ contains
     subroutine coreInitializePhysics(successFlag)
         integer, intent(out) :: successFlag
         timeInYears=currentTime/SECONDS_PER_YEAR
+
+        !keep gas_dust_density_ratio in sync in case gas_dust_mass_ratio was set via param_dict
+        CALL RECOMPUTE_GAS_DUST_DENSITY_RATIO()
 
         ! Modules not restarted in python wraps so best to reset everything manually.
         if (ALLOCATED(av)) deallocate(av,coldens,gasTemp,dustTemp,density,density_max)

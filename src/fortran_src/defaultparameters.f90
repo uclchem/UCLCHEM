@@ -30,6 +30,7 @@ module DEFAULTPARAMETERS
     real(dp) :: baseAv=2.0  !Extinction at cloud edge, Av of a parcel at rout.
     integer :: points=1  !Number of gas parcels equally spaced between rin to rout to consider
     real(dp) :: bm0=1.0  !magnetic parameter [microgauss]: B0 = bm0*sqrt(initialDens)
+    real(dp) :: gas_dust_mass_ratio=100.0  !Gas-to-dust mass ratio by mass.
     !Physical profiles for 1D model with pre-described gas density
     real(dp) :: density_scale_radius=0.05_dp  !unit of pc, distance below which the gas volume density is constant, and above which the gas density drops as n ~ r^{-a}
     real(dp) :: density_power_index=2.0  !Power-law index for density profile: n(r) = n0/(1 + (r/density_scale_radius)^density_power_index)
