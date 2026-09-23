@@ -76,7 +76,7 @@ Usage Patterns
 
 """
 
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -273,7 +273,7 @@ def __functional_return__(
             heating_list = []
             stats_list = []
             for pt in range(points):
-                res = model_object.get_dataframes(
+                res: tuple[pd.DataFrame, ...] = model_object.get_dataframes(  # type: ignore[assignment, ty:invalid-assignment]
                     point=pt,
                     joined=False,
                     with_rate_constants=return_rate_constants,
@@ -296,8 +296,8 @@ def __functional_return__(
                 if return_stats and len(res) > idx:
                     stats_list.append(res[idx].assign(Point=pt + 1))
 
-            phys_df = pd.concat(physics_list, ignore_index=True)
-            chem_df = pd.concat(chemistry_list, ignore_index=True)
+            phys_df: pd.DataFrame = pd.concat(physics_list, ignore_index=True)
+            chem_df: pd.DataFrame = pd.concat(chemistry_list, ignore_index=True)
             rate_constants_df = (
                 pd.concat(rate_constants_list, ignore_index=True)
                 if rate_constants_list
@@ -309,14 +309,14 @@ def __functional_return__(
             stats_df = pd.concat(stats_list, ignore_index=True) if stats_list else None
         else:
             # Single point: behave as before but include a Point column
-            result_dfs = model_object.get_dataframes(
+            result_dfs: tuple[pd.DataFrame, ...] = model_object.get_dataframes(  # type: ignore[assignment, ty:invalid-assignment]
                 joined=False,
                 with_rate_constants=return_rate_constants,
                 with_heating=return_heating,
                 with_stats=return_stats,
             )
-            phys_df = cast("pd.DataFrame", result_dfs[0])
-            chem_df = cast("pd.DataFrame", result_dfs[1])
+            phys_df = result_dfs[0]
+            chem_df = result_dfs[1]
             idx = 2
             if return_rate_constants and len(result_dfs) > idx:
                 rate_constants_df = result_dfs[idx]
