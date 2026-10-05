@@ -18,7 +18,8 @@ assert uclchemwrap.network.specname[surface_index].strip() == b"SURFACE"
 assert uclchemwrap.network.specname[bulk_index].strip() == b"BULK"
 
 
-def test_surfgrowthuncorrected_shrink():
+@pytest.mark.parametrize("bulk_scale", [2.0, 0.5], ids=["bulk_thicker", "bulk_thinner"])
+def test_surfgrowthuncorrected_shrink(bulk_scale):
     rate_constants = np.zeros(uclchem.constants.n_reactions)
     abundances = np.zeros(uclchem.constants.n_species + 2)
 
@@ -27,12 +28,18 @@ def test_surfgrowthuncorrected_shrink():
     species_list = _network.get_species_list()
     gas_h_index = species_list.index(Species(["H", *[0] * 12]))
     surf_h_index = species_list.index(Species(["#H", *[0] * 12]))
+    surface_species = [i for i, s in enumerate(species_list) if s.is_surface_species()]
+    bulk_species = [i for i, s in enumerate(species_list) if s.is_bulk_species()]
 
-    rate_constants[reaction_idx] = _rng.random()
-    abundances[:] = _rng.random(uclchem.constants.n_species + 2)
-
-    surface_index = uclchemwrap.network.nsurface - 1
-    bulk_index = uclchemwrap.network.nbulk - 1
+    rng = np.random.default_rng(seed=195)
+    rate_constants[reaction_idx] = rng.random()
+    abundances[:] = rng.random(uclchem.constants.n_species + 2)
+    # Fix the total bulk relative to the total surface, so that both regimes of the
+    # Garrod & Pauly (2011) transfer are tested deterministically.
+    total_surface = abundances[surface_species].sum()
+    abundances[bulk_species] *= (
+        bulk_scale * total_surface / abundances[bulk_species].sum()
+    )
 
     reaction_rate = rate_constants[reaction_idx] * abundances[surf_h_index]
 
@@ -50,15 +57,19 @@ def test_surfgrowthuncorrected_shrink():
     assert surfgrowthuncorrected == -reaction_rate
 
     # surfgrowthuncorrected is less than 0, so bulk should shrink to compensate
-    for species_idx, species in enumerate(species_list):
-        if species.is_bulk_species():
-            assert ydot[species_idx] < 0
+    for species_idx in bulk_species:
+        assert ydot[species_idx] < 0
 
     assert ydot[surface_index] + ydot[bulk_index] == pytest.approx(-reaction_rate)
 
-    # The surface should not shrink at all, because bulk compensates for its loss
-    assert ydot[surface_index] == pytest.approx(0)
-    assert ydot[bulk_index] == pytest.approx(-reaction_rate)
+    # Garrod & Pauly (2011): the fraction of lost surface that is replenished from
+    # the bulk is min(1, N_bulk / N_surface). A bulk thicker than the surface fully
+    # compensates the loss; a thinner bulk only compensates it partially.
+    replenished_fraction = min(1.0, bulk_scale)
+    assert ydot[bulk_index] == pytest.approx(-replenished_fraction * reaction_rate)
+    assert ydot[surface_index] == pytest.approx(
+        -(1.0 - replenished_fraction) * reaction_rate, abs=1e-12
+    )
 
 
 def test_surfgrowthuncorrected_growth():

@@ -37,6 +37,9 @@ heating.o: coolant_module.f90 heating.f90
 chemistry.o: photoreactions.f90 surfacereactions.f90 rates.f90 odes.f90  chemistry.f90
 	${FC} ${FFLAGS} -c chemistry.f90
 
+physics-core.o: surfacereactions.o physics-core.f90
+	${FC} ${FFLAGS} -c physics-core.f90
+
 sputtering.o: surfacereactions.o sputtering.f90
 	${FC} ${FFLAGS} -c sputtering.f90
 
