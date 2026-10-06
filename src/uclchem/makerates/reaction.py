@@ -1461,7 +1461,10 @@ def _generate_reaction_ode_bit(
             # totalSwap/safeMantle is only guaranteed <=1 if safeMantle never
             # transiently undershoots the total ice content it bounds; clamp
             # it explicitly rather than relying on that invariant.
-            ode_bit += "*MIN(1.0_dp, totalSwap/safeMantle)"
+            # It must also not become negative: totalSwap is negative when bulk
+            # abundances transiently undershoot zero, and dividing by an empty
+            # mantle then turns this loss into exponential growth.
+            ode_bit += "*MAX(0.0_dp, MIN(1.0_dp, totalSwap/safeMantle))"
         elif species in {"DEUVCR", "DESCR", "DESOH2", "ER", "ERDES"}:
             # Y(ice_reactant)/safeMantle is only <=1 if safeMantle never
             # transiently undershoots the true ice content it's meant to
