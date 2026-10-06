@@ -16,7 +16,7 @@ contains
         real(dp), intent(out) :: YDOT(nSpec+2)
         real(dp), intent(out) :: surfGrowthUncorrected
 
-        real(dp) :: totalSwap, LOSS, PROD, alpha
+        real(dp) :: totalSwap, LOSS, PROD, alpha, buriableMantle
         real(dp) :: safeMantle, safeBulk, ratioSurfaceToBulk, bulkLayersReciprocal
 
         ! MAXVAL floor: sum() alone can undershoot an individual component when other
@@ -6741,9 +6741,12 @@ if (YDOT(nSurface) < 0) then
         ! Real value of surfaceCoverage: surfaceCoverage = safeMantle / NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN
         ! However, the YDOTs calculated below need to be multiplied with Y(surfspec)/safeMantle, so we divide by safeMantle here to save time
         ! In chemistry.f90: surfaceCoverage = 1/NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN
-        alpha = MIN(1.0_dp, surfaceCoverage*safeMantle)/safeMantle
+        ! Species that are not buried (H2) are excluded from the normalization, so that the
+        ! buriable species make up for them. The floor prevents a surface that consists almost
+        ! entirely of non-buriable species from being drained at a fixed rate.
+        buriableMantle = MAX(MIN_ABUND, 0.1_dp*safeMantle, safeMantle - Y(168))
+        alpha = MIN(1.0_dp, surfaceCoverage*safeMantle)/buriableMantle
         YDOT(167)=YDOT(167)-YDOT(nSurface)*alpha*Y(167)
-        YDOT(168)=YDOT(168)-YDOT(nSurface)*alpha*Y(168)
         YDOT(169)=YDOT(169)-YDOT(nSurface)*alpha*Y(169)
         YDOT(170)=YDOT(170)-YDOT(nSurface)*alpha*Y(170)
         YDOT(171)=YDOT(171)-YDOT(nSurface)*alpha*Y(171)
@@ -6826,7 +6829,6 @@ if (YDOT(nSurface) < 0) then
         YDOT(248)=YDOT(248)-YDOT(nSurface)*alpha*Y(248)
         YDOT(249)=YDOT(249)-YDOT(nSurface)*alpha*Y(249)
         YDOT(250)=YDOT(250)+YDOT(nSurface)*alpha*Y(167)
-        YDOT(251)=YDOT(251)+YDOT(nSurface)*alpha*Y(168)
         YDOT(252)=YDOT(252)+YDOT(nSurface)*alpha*Y(169)
         YDOT(253)=YDOT(253)+YDOT(nSurface)*alpha*Y(170)
         YDOT(254)=YDOT(254)+YDOT(nSurface)*alpha*Y(171)

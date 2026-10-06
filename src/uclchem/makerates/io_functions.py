@@ -51,6 +51,13 @@ from uclchem.utils import (
 
 logger = logging.getLogger(__name__)
 
+# Surface species that are never transferred to the bulk when the surface grows.
+# H2 is only weakly bound, and burying it lets it build up a large bulk reservoir that is
+# released all at once when the ice is heated, which the solver cannot integrate.
+NON_BURIABLE_SURFACE_SPECIES = ("#H2",)
+# Lower limit on the buriable part of the surface, as a fraction of the total surface.
+MIN_BURIABLE_MANTLE_FRACTION = 0.1
+
 
 _safe_load = functools.partial(yaml.load, Loader=yaml.CSafeLoader)
 
@@ -1120,7 +1127,7 @@ def build_ode_string(
             real(dp), intent(out) :: YDOT(nSpec+2)
             real(dp), intent(out) :: surfGrowthUncorrected
 
-            real(dp) :: totalSwap, LOSS, PROD, alpha
+            real(dp) :: totalSwap, LOSS, PROD, alpha, buriableMantle
             real(dp) :: safeMantle, safeBulk, ratioSurfaceToBulk, bulkLayersReciprocal
 
             ! MAXVAL floor: sum() alone can undershoot an individual component when other
@@ -1199,7 +1206,27 @@ def build_ode_string(
     ode_string += "        ! Real value of surfaceCoverage: surfaceCoverage = safeMantle / NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN\n"
     ode_string += "        ! However, the YDOTs calculated below need to be multiplied with Y(surfspec)/safeMantle, so we divide by safeMantle here to save time\n"
     ode_string += "        ! In chemistry.f90: surfaceCoverage = 1/NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN\n"
-    ode_string += "        alpha = MIN(1.0_dp, surfaceCoverage*safeMantle)/safeMantle\n"
+    # Species in NON_BURIABLE_SURFACE_SPECIES are never buried. The total amount that is
+    # buried is unchanged (so the surface stays capped at NUM_MONOLAYERS_IS_SURFACE), but
+    # it is taken only from the buriable surface species.
+    non_buriable_indices = [
+        species_names.index(name)
+        for name in NON_BURIABLE_SURFACE_SPECIES
+        if name in species_names
+    ]
+    non_buriable_sum = "".join(f" - Y({idx + 1})" for idx in non_buriable_indices)
+    ode_string += "        ! Species that are not buried (H2) are excluded from the normalization, so that the\n"
+    ode_string += "        ! buriable species make up for them. The floor prevents a surface that consists almost\n"
+    ode_string += (
+        "        ! entirely of non-buriable species from being drained at a fixed rate.\n"
+    )
+    ode_string += truncate_line(
+        "        buriableMantle = MAX(MIN_ABUND, "
+        f"{MIN_BURIABLE_MANTLE_FRACTION}_dp*safeMantle, safeMantle{non_buriable_sum})\n"
+    )
+    ode_string += (
+        "        alpha = MIN(1.0_dp, surfaceCoverage*safeMantle)/buriableMantle\n"
+    )
     i = len(reaction_list)
     j = len(reaction_list) + len(surf_species)
     for n, species in enumerate(species_list):
@@ -1207,11 +1234,16 @@ def build_ode_string(
             i += 1
             j += 1
             surface_version = species_names.index(species.get_name().replace("@", "#"))
+            buriable = surface_version not in non_buriable_indices
             if enable_rates_storage:
                 ode_string += f"        REACTIONRATE({i}) = 0.0_dp\n"
-                ode_string += f"        REACTIONRATE({j}) = -YDOT(nSurface)*alpha*Y({surface_version + 1})\n"
-            ode_string += f"        YDOT({n + 1})=YDOT({n + 1})+YDOT(nSurface)*alpha*Y({surface_version + 1})\n"
-        if species.get_name()[0] == "#":
+                if buriable:
+                    ode_string += f"        REACTIONRATE({j}) = -YDOT(nSurface)*alpha*Y({surface_version + 1})\n"
+                else:
+                    ode_string += f"        REACTIONRATE({j}) = 0.0_dp\n"
+            if buriable:
+                ode_string += f"        YDOT({n + 1})=YDOT({n + 1})+YDOT(nSurface)*alpha*Y({surface_version + 1})\n"
+        if species.get_name()[0] == "#" and n not in non_buriable_indices:
             ode_string += (
                 f"        YDOT({n + 1})=YDOT({n + 1})-YDOT(nSurface)*alpha*Y({n + 1})\n"
             )
