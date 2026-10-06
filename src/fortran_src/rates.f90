@@ -202,7 +202,9 @@ contains
             if (h2StickingCoeffByh2Coverage) then
                 ! If all surface is H2, (i.e. x_#H2 = safeMantle), assume no H2 sticks
                 ! and so set the sticking coeff to 0. Linearly interpolate according to chance it will hit a H2 molecule on surface
-                rate_constants(nR_H2Freeze)=rate_constants(nR_H2Freeze)*(1.0_dp-abund(ngh2, dstep)/safeMantle)
+                ! safeMantle (from the SURFACE pseudo-species) can lag behind the surface species, so
+                ! clamp at 0 to prevent a negative (i.e. desorbing) freeze-out rate constant.
+                rate_constants(nR_H2Freeze)=rate_constants(nR_H2Freeze)*MAX(0.0_dp, 1.0_dp-abund(ngh2, dstep)/safeMantle)
             end if
 
             rate_constants(nR_HFreeze)=getStickingCoefficient(hStickingZero,hStickingTemp,gasTemp(dstep))* &
@@ -210,7 +212,7 @@ contains
             if (hStickingCoeffByh2Coverage) then
                 ! If all surface is H2, (i.e. x_#H2 = safeMantle), assume no H sticks
                 ! and so set the sticking coeff to 0. Linearly interpolate according to chance it will hit a H2 molecule on surface
-                rate_constants(nR_HFreeze)=rate_constants(nR_HFreeze)*(1.0_dp-abund(ngh2, dstep)/safeMantle)
+                rate_constants(nR_HFreeze)=rate_constants(nR_HFreeze)*MAX(0.0_dp, 1.0_dp-abund(ngh2, dstep)/safeMantle)
             end if
         end if
         ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
