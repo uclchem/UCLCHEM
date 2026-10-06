@@ -408,6 +408,13 @@ contains
                 rate_constants(idx1:idx2)=0.0
                 rate_constants(lhdesReacs(1):lhdesReacs(2))=0.0
             end if
+        else
+            ! Grain surface chemistry is disabled above maxGrainTemp or without a mantle.
+            ! rate_constants persists between calls, so without this the rate constants of
+            ! the last call below maxGrainTemp (with very fast diffusion) would be kept.
+            rate_constants(lhReacs(1):lhReacs(2))=0.0
+            rate_constants_lh_unsplit(lhReacs(1):lhReacs(2))=0.0
+            if (lhdesReacs(1) /= REAC_NOT_PRESENT) rate_constants(lhdesReacs(1):lhdesReacs(2))=0.0
         end if
     end if
 

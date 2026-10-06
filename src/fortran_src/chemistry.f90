@@ -634,8 +634,7 @@ contains
         ! Y_safe is deliberately not clamped. DVODE predictor steps can drive species to
         ! small negatives, but clamping them to MIN_ABUND here removes the linear terms
         ! that restore them, so the post-step clamp in integrateODESystem then creates
-        ! mass. Multi-body ice reactions instead use the positive part of each abundance
-        ! (see MakeRates), which is what prevents negative abundances from running away.
+        ! mass.
         real(WP), dimension(NEQUATIONS) :: Y_safe
         !Set D to the gas density for use in the ODEs
         D=y(nSpec+2)     !Gas density
