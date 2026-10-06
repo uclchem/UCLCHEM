@@ -1452,9 +1452,23 @@ def _generate_reaction_ode_bit(
         ode_bit += "*D"
 
     # then bring in factors of abundances
+    # For multi-body reactions involving ice, use the positive part of each abundance.
+    # DVODE predictor steps can make an abundance slightly negative. A product of two
+    # negative abundances (e.g. #H + #H) is then positive, driving the abundance further
+    # negative, and a single negative factor turns the losses of the other reactants
+    # into exponential growth. With the positive part, a species with a negative
+    # abundance does not react, while all species still see the same reaction rate
+    # (so elements stay conserved), and linear terms (e.g. desorption) still restore it.
+    species_reactants = [species for species in reactants if species in species_names]
+    positive_part = len(species_reactants) > 1 and any(
+        species.startswith(("#", "@")) for species in species_reactants
+    )
     for species in reactants:
         if species in species_names:
-            ode_bit += f"*Y({species_names.index(species) + 1})"
+            if positive_part:
+                ode_bit += f"*MAX(0.0_dp, Y({species_names.index(species) + 1}))"
+            else:
+                ode_bit += f"*Y({species_names.index(species) + 1})"
         elif species == "BULKSWAP":
             ode_bit += "*ratioSurfaceToBulk"
         elif species == "SURFSWAP":

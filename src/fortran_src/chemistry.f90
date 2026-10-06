@@ -631,10 +631,11 @@ contains
         real(dp) :: h2heatfac, h2_denom  ! H&M79 eq. 6.45 thermalization efficiency factor
 
         integer :: k
-        ! Y_safe clamps species abundances to MIN_ABUND during ODE evaluation.
-        ! DVODE predictor steps can drive species to small negatives; feeding those
-        ! negative values back into destruction terms compounds the overshoot.
-        ! Clamping here keeps the RHS physical without altering the accepted step.
+        ! Y_safe is deliberately not clamped. DVODE predictor steps can drive species to
+        ! small negatives, but clamping them to MIN_ABUND here removes the linear terms
+        ! that restore them, so the post-step clamp in integrateODESystem then creates
+        ! mass. Multi-body ice reactions instead use the positive part of each abundance
+        ! (see MakeRates), which is what prevents negative abundances from running away.
         real(WP), dimension(NEQUATIONS) :: Y_safe
         !Set D to the gas density for use in the ODEs
         D=y(nSpec+2)     !Gas density
@@ -642,7 +643,6 @@ contains
         ydot=0.0_dp
 
         Y_safe = Y
-        where(Y_safe(iceList) < MIN_ABUND) Y_safe(iceList) = MIN_ABUND
 
         ! Column densities are fixed for postprocessing data, so don't do this bit
         if (.not. lusecoldens) then
