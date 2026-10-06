@@ -642,7 +642,7 @@ contains
         ydot=0.0_dp
 
         Y_safe = Y
-        where(Y_safe(1:nSpec) < MIN_ABUND) Y_safe(1:nSpec) = MIN_ABUND
+        where(Y_safe(iceList) < MIN_ABUND) Y_safe(iceList) = MIN_ABUND
 
         ! Column densities are fixed for postprocessing data, so don't do this bit
         if (.not. lusecoldens) then
