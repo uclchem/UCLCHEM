@@ -131,7 +131,7 @@ contains
         integer :: i,j
         integer :: k
         real(dp) :: numMonolayers, bulkAttenuation
-        real(dp) :: dynamic_cap, effective_cap, min_cap_s, max_cap_s, phi_gar
+        real(dp) :: phi_gar
 
         !Calculate all reaction rate constants
         !Assuming the user has temperature changes or uses the desorption features of phase 1,
@@ -572,19 +572,6 @@ contains
     !     if (rate_constants(nR_H_ED)  > 0.0_dp .AND. rate_constants(nR_H_ED)  < min_desorption_rate_constant) then
     !         rate_constants(nR_H_ED)  = 0.0_dp
     !     end if
-    ! end if
-
-    ! ! Dynamic max cap: clamp thermal desorption k to prevent DVODE stiffness.
-    ! ! Three-regime: effective_cap = clamp(factor/Dt_outer, min_cap, max_cap)
-    ! !   k < min_s -> always kept;  k > max_cap_s -> always capped;  in between -> dynamic.
-    ! ! Cap bounds in yr^-1 are converted to s^-1; targetTime and currentTime are in seconds.
-    ! if (max_desorption_rate_constant_factor > 0.0_dp .AND. thermReacs(1) /= REAC_NOT_PRESENT) then
-    !     min_cap_s   = min_desorption_rate_constant_cap / SECONDS_PER_YEAR
-    !     max_cap_s   = max_desorption_rate_constant_cap / SECONDS_PER_YEAR
-    !     dynamic_cap = max_desorption_rate_constant_factor / MAX(1.0e-300_dp, targetTime - currentTime)
-    !     effective_cap = MIN(MAX(dynamic_cap, min_cap_s), max_cap_s)
-    !     where(rate_constants(thermReacs(1):thermReacs(2)) > effective_cap) &
-    !         rate_constants(thermReacs(1):thermReacs(2)) = effective_cap
     ! end if
 
     end subroutine calculateReactionRateConstants

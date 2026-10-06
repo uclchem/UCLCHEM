@@ -1276,12 +1276,6 @@ contains
                     read(inputValue,*,iostat=successFlag) diffToBindRatio
                 case("min_desorption_rate_constant")
                     read(inputValue,*,iostat=successFlag) min_desorption_rate_constant
-                case("max_desorption_rate_constant_factor")
-                    read(inputValue,*,iostat=successFlag) max_desorption_rate_constant_factor
-                case("min_desorption_rate_constant_cap")
-                    read(inputValue,*,iostat=successFlag) min_desorption_rate_constant_cap
-                case("max_desorption_rate_constant_cap")
-                    read(inputValue,*,iostat=successFlag) max_desorption_rate_constant_cap
                 case("enforcechargeconservation")
                     read(inputValue,*,iostat=successFlag) enforceChargeConservation
                 case("reltol")
