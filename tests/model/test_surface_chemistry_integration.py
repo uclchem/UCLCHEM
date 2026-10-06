@@ -99,9 +99,6 @@ def test_high_temp_CO_should_be_low() -> None:  # ruff: ignore[invalid-function-
         "finalTime": 5e5,
         "points": 1,  # Explicitly set to 0D mode to avoid state pollution from 1D tests
         "enable_radiative_transfer": False,  # Explicitly disable to avoid state pollution from 1D tests
-        "max_desorption_rate_constant_factor": 0.0,
-        "min_desorption_rate_constant_cap": 0.0,
-        "max_desorption_rate_constant_cap": 0.0,
     }
 
     result = uclchem.model.Cloud(param_dict=param_dict)
