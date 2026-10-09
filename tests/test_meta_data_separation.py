@@ -175,7 +175,7 @@ def test_physical_parameters_always_from_global():
     # Both should use the same global constant (can't be modified per-instance)
     from uclchem.constants import PHYSICAL_PARAMETERS as CONST
 
-    assert PHYSICAL_PARAMETERS == [
+    assert PHYSICAL_PARAMETERS == (
         "Time",
         "Density",
         "gasTemp",
@@ -187,7 +187,7 @@ def test_physical_parameters_always_from_global():
         "parcel_radius",
         "av_internal",
         "radfield_internal",
-    ], "PHYSICAL_PARAMETERS constant has been modified!"
+    ), "PHYSICAL_PARAMETERS constant has been modified!"
     assert list(PHYSICAL_PARAMETERS) == list(CONST), "PHYSICAL_PARAMETERS mismatch"
     assert len(PHYSICAL_PARAMETERS) >= 8, (
         "UCLCHEM having less than 8 physical parameters is suspicious"
@@ -220,12 +220,14 @@ def test_setattr_preserves_underscored_attributes():
 def test_scalar_meta_not_stored_in_dataset():
     """Non-array scalar values should be stored in _meta, not in xarray Dataset."""
     m = Cloud()
-    m.scalar_value = 42.5
-    m.string_value = "test"
+    test_value = 42.5
+    test_string = "test"
+    m.scalar_value = test_value
+    m.string_value = test_string
 
     # Should be in _meta, not in _data
-    assert m.scalar_value == 42.5, "Scalar value mismatch in _meta"
-    assert m.string_value == "test", "String value mismatch in _meta"
+    assert m.scalar_value == test_value, "Scalar value mismatch in _meta"
+    assert m.string_value == test_string, "String value mismatch in _meta"
     assert "scalar_value" in m._meta, "Scalar value not found in _meta"
     assert "string_value" in m._meta, "String value not found in _meta"
 

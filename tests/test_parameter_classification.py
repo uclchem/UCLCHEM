@@ -166,34 +166,3 @@ def test_user_parameters_modifiable():
         setting.set(float(original * 1.5))
         assert not np.allclose(setting.get(), original)
         setting.set(original)  # Restore
-
-
-if __name__ == "__main__":
-    """Run validation checks manually for debugging."""
-    print("Running Fortran variable classification validation...")
-
-    try:
-        test_all_fortran_variables_classified()
-        print("✓ All variables properly classified")
-    except AssertionError as e:
-        print(f"✗ Classification validation failed:\n{e}")
-
-    try:
-        test_parameter_immutability()
-        print("✓ PARAMETER immutability verified")
-    except AssertionError as e:
-        print(f"✗ PARAMETER immutability check failed:\n{e}")
-
-    try:
-        test_internal_parameters_exist()
-        print("✓ Internal parameters correctly classified")
-    except AssertionError as e:
-        print(f"✗ Internal parameter check failed:\n{e}")
-
-    try:
-        test_user_parameters_modifiable()
-        print("✓ User parameters are modifiable")
-    except AssertionError as e:
-        print(f"✗ User parameter check failed:\n{e}")
-
-    print("\nValidation complete!")

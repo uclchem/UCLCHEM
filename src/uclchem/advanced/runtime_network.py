@@ -28,9 +28,14 @@ import pandas as pd
 
 # Import the base network implementation from makerates
 from uclchem.makerates.network import BaseNetwork
-from uclchem.makerates.reaction import Reaction, skip_reaction_validation
+from uclchem.makerates.reaction import CoupledReaction, Reaction, skip_reaction_validation
 from uclchem.makerates.species import Species
-from uclchem.utils import UCLCHEM_ROOT_DIR, get_reaction_table, get_species_table
+from uclchem.utils import (
+    MISSING_VALUE_INTEGER,
+    UCLCHEM_ROOT_DIR,
+    get_reaction_table,
+    get_species_table,
+)
 
 
 class RuntimeNetwork(BaseNetwork):
@@ -85,7 +90,9 @@ class RuntimeNetwork(BaseNetwork):
     # (GAR, PHOTON, CRP, CRPHOT, etc.) instead of species indices
     _FORTRAN_KEYWORD_SENTINEL = 9999
 
-    _ARRAYS_TO_CACHE = {"alpha", "beta", "gama", "bindingenergy", "diffusionbarrier"}
+    _ARRAYS_TO_CACHE = frozenset(
+        {"alpha", "beta", "gama", "bindingenergy", "diffusionbarrier"}
+    )
 
     def __init__(self):
         """Initialize RuntimeNetwork by loading the compiled Fortran module.
@@ -101,7 +108,7 @@ class RuntimeNetwork(BaseNetwork):
         """
         # Import the compiled Fortran network module
         try:
-            from uclchemwrap import (  # noqa: PLC0415
+            from uclchemwrap import (  # ruff: ignore[import-outside-top-level]
                 network as network_module,  # optional compiled extension
             )
         except ImportError as err:
@@ -215,7 +222,7 @@ class RuntimeNetwork(BaseNetwork):
             mass = float(self._fortran.mass[i])
 
             # Optional fields with bounds checking
-            if name.startswith("#") or name.startswith("@"):
+            if name.startswith(("#", "@")):
                 ice_list_index = self._get_ice_list_index(name)
                 binding_energy = float(self._fortran.bindingenergy[ice_list_index])
                 diffusion_barrier = float(self._fortran.diffusionbarrier[ice_list_index])
@@ -353,6 +360,33 @@ class RuntimeNetwork(BaseNetwork):
                 reaction = Reaction(reaction_row)
                 reactions_dict[i] = reaction
 
+        reactions_dict = self._convert_coupled_reactions(reactions_dict)
+
+        return reactions_dict
+
+    def _convert_coupled_reactions(
+        self, reactions_dict: dict[int, Reaction]
+    ) -> dict[int, Reaction | CoupledReaction]:
+        """Convert reactions that should be coupled to CoupledReaction instances with partners.
+
+        Parameters
+        ----------
+        reactions_dict : dict[int, Reaction]
+            Dictionary with keys indices and values reactions.
+
+        Returns
+        -------
+        reactions_dict : dict[int, Reaction | CoupledReaction]
+            Reaction dictionary with coupled reactions turned into CoupledReactions
+
+        """
+        for idx, reaction in reactions_dict.items():
+            partner_idx = self._fortran.partnerindices[idx]
+            if partner_idx != MISSING_VALUE_INTEGER:
+                partner_idx -= 1  # Convert to python-like 0-indexed
+                coupled_reaction = CoupledReaction(reaction)
+                coupled_reaction.set_partner(reactions_dict[partner_idx])
+                reactions_dict[idx] = coupled_reaction
         return reactions_dict
 
     def _get_species_name(self, index: int) -> str:
@@ -730,17 +764,20 @@ class RuntimeNetwork(BaseNetwork):
         barrier : float
             New activation barrier in Kelvin
 
-        Raises
-        ------
-        RuntimeError
-            If reaction is not a reaction on the ices.
-
         """
-        if not reaction.is_ice_reaction():
-            msg = "Only ice reactions have modifiable barriers."
-            raise RuntimeError(msg)
         reaction_idx = self.get_reaction_index(reaction)
+        if isinstance(self._reactions_dict[reaction_idx], CoupledReaction):
+            warnings.warn(
+                f"Directly changing parameter of coupled reaction {self}. Consider instead changing parameter by changing its partner, {self._reactions_dict[reaction_idx].partner}.",  # type: ignore[attr-defined, ty:unresolved-attribute]
+                category=UserWarning,
+                stacklevel=2,
+            )
         self.modify_reaction_parameters(reaction_idx, gamma=barrier)
+
+        coupled_reactions = self.get_all_coupled_to_reaction(reaction)
+        for coupled_reaction in coupled_reactions:
+            reaction_idx = self.get_reaction_index(coupled_reaction)
+            self.modify_reaction_parameters(reaction_idx, gamma=barrier)
 
     # ========================================================================
     # RuntimeNetwork-Specific Methods

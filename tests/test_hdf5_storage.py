@@ -30,6 +30,7 @@ try:
         _read_array,
         load_model,
     )
+    from uclchem.utils import get_dtype
 
     uclchem_imported = True
 except ImportError:
@@ -169,8 +170,9 @@ class TestMultipleModelsInFile:
         fpath = str(tmp_path / "multi.h5")
         model_a.save_model(file=fpath, name="model_a", overwrite=True)
 
+        model_b_temp = 50
         model_b = Cloud(
-            param_dict=dict(_DEFAULT_PARAMS, initialTemp=50.0),
+            param_dict=dict(_DEFAULT_PARAMS, initialTemp=model_b_temp),
         )
         model_b.save_model(file=fpath, name="model_b", overwrite=True)
 
@@ -178,8 +180,8 @@ class TestMultipleModelsInFile:
         loaded_b = load_model(file=fpath, name="model_b")
 
         # Both should be loadable and have correct initial temp
-        assert loaded_a._param_dict["initialtemp"] == 10.0
-        assert loaded_b._param_dict["initialtemp"] == 50.0
+        assert loaded_a._param_dict["initialtemp"] == _DEFAULT_PARAMS["initialTemp"]
+        assert loaded_b._param_dict["initialtemp"] == model_b_temp
 
 
 # ============================================================================
@@ -230,13 +232,14 @@ class TestOverwrite:
         model_v1.save_model(file=fpath, name="model", overwrite=True)
 
         # Create a second model with different params
-        params_v2 = dict(params_v1, initialTemp=50.0)
+        v2_temp = 50.0
+        params_v2 = dict(params_v1, initialTemp=v2_temp)
         model_v2 = Cloud(param_dict=params_v2)
         model_v2.save_model(file=fpath, name="model", overwrite=True)
 
         loaded = load_model(file=fpath, name="model")
         # The loaded model should have the v2 initial temp
-        assert loaded._param_dict["initialtemp"] == 50.0, (
+        assert loaded._param_dict["initialtemp"] == v2_temp, (
             "Overwritten model should have new initialTemp"
         )
 
@@ -298,23 +301,29 @@ class TestHDF5Structure:
 # _write_array / _read_array low-level tests
 # ============================================================================
 
+dtypes = ["fp64", "fp32", "fp16", np.float64]
+
 
 class TestWriteReadArray:
     """Test the static _write_array and module-level _read_array helpers."""
 
-    def test_numeric_array_roundtrip(self, tmp_path):
+    @pytest.mark.parametrize("dtype", dtypes)
+    def test_numeric_array_roundtrip(self, tmp_path, dtype):
         """Numeric arrays should roundtrip exactly."""
         fpath = str(tmp_path / "arrays.h5")
         original = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
         xr_var = xr.Variable(["row", "col"], original)
 
+        dtype = get_dtype(dtype)
+
         with h5py.File(fpath, "w") as f:
             grp = f.create_group("test")
-            AbstractModel._write_array(grp, "numeric", xr_var)
+            AbstractModel._write_array(grp, "numeric", xr_var, float_dtype=dtype)
 
         with h5py.File(fpath, "r") as f:
             result = _read_array(f["test"], "numeric")
-            np.testing.assert_array_equal(result.values, original)
+            assert result.dtype == dtype
+            np.testing.assert_array_equal(result.to_numpy(), original)
             assert list(result.dims) == ["row", "col"]
 
     def test_unicode_string_roundtrip(self, tmp_path):
@@ -338,15 +347,18 @@ class TestWriteReadArray:
             np.testing.assert_array_equal(result.values, original)
             assert result.values.dtype.kind == "U", "Read-back strings should be Unicode"
 
-    def test_scalar_in_1d_array_roundtrip(self, tmp_path):
+    @pytest.mark.parametrize("dtype", dtypes)
+    def test_scalar_in_1d_array_roundtrip(self, tmp_path, dtype):
         """A 1-element array (like JSON blobs) should roundtrip."""
         fpath = str(tmp_path / "scalar.h5")
         original = np.array([json.dumps({"key": "value"})])
         xr_var = xr.Variable(["dim_0"], original)
 
+        dtype = get_dtype(dtype)
+
         with h5py.File(fpath, "w") as f:
             grp = f.create_group("test")
-            AbstractModel._write_array(grp, "json_blob", xr_var)
+            AbstractModel._write_array(grp, "json_blob", xr_var, float_dtype=dtype)
 
         with h5py.File(fpath, "r") as f:
             result = _read_array(f["test"], "json_blob")
@@ -595,16 +607,3 @@ class TestEngineParameterRemoved:
         fpath, _, _, _, _ = saved_model_file
         with pytest.raises(TypeError):
             load_model(file=fpath, name="default", engine="h5netcdf")
-
-
-# ============================================================================
-# Entry point
-# ============================================================================
-
-
-def main():
-    pytest.main(["-v", __file__])
-
-
-if __name__ == "__main__":
-    main()

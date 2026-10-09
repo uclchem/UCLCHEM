@@ -13,7 +13,7 @@ if __name__ == "__main__":
         lines = []
         ignore_lines = False
         with Path(mdx_file).open() as f:
-            for line in f.readlines():
+            for line in f:
                 # if a line has style in it, change the flag
                 # this way, <style> makes the code start ignoring lines until </style>
                 if "style" in line:

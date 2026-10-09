@@ -30,7 +30,7 @@ def test_package_installation():
     try:
         import uclchem
     except ImportError as e:
-        assert False, f"Failed to import the installed package, with ImportError: {e}"
+        pytest.fail(f"Failed to import the installed package, with ImportError: {e}")
 
     # Test generating a network with the small_chemistry configuration
     try:
@@ -40,7 +40,7 @@ def test_package_installation():
         # run_makerates will automatically find the project src/ directory
         run_makerates(str(settings_path), write_files=True)
     except Exception as e:
-        assert False, f"Installing an alternative network failed: {e}"
+        pytest.fail(f"Installing an alternative network failed: {e}")
 
     result = subprocess.run(install_command, shell=True, text=True, capture_output=True)
 
@@ -51,12 +51,6 @@ def test_package_installation():
 
     # Import the package and test if it can be imported
     try:
-        import uclchem  # noqa: F401
+        import uclchem  # ruff: ignore[unused-import]
     except ImportError:
-        assert False, "Failed to import the installed package"
-
-
-if __name__ == "__main__":
-    import pytest
-
-    pytest.main()
+        pytest.fail("Failed to import the installed package")

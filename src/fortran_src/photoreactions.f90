@@ -1,139 +1,153 @@
-MODULE photoreactions
-    USE constants
-    USE DEFAULTPARAMETERS
+module photoreactions
+    use constants, only: dp, HABING_TO_DRAINE
+    use DEFAULTPARAMETERS
+    use numerics, only: is_equal
     !f2py INTEGER, parameter :: dp
-IMPLICIT NONE
-    REAL(dp) :: UV_FAC=3.02
 
-    !Below are arrays for self-shielding of CO and H2
-    LOGICAL :: start=.True.
-    INTEGER :: NUM_LAMBDA=30
-    REAL(dp), DIMENSION(30) :: LAMBDA_GRID=(/ &
-      &  910.0D0, 950.0D0,1000.0D0,1050.0D0,1110.0D0, &
-      & 1180.0D0,1250.0D0,1390.0D0,1490.0D0,1600.0D0, &
-      & 1700.0D0,1800.0D0,1900.0D0,2000.0D0,2100.0D0, &
-      & 2190.0D0,2300.0D0,2400.0D0,2500.0D0,2740.0D0, &
-      & 3440.0D0,4000.0D0,4400.0D0,5500.0D0,7000.0D0, &
-      & 9000.0D0,12500.0D0,22000.0D0,34000.0D0,1.0D9/)
-    REAL(dp), DIMENSION(30) :: XLAMBDA_GRID=(/ &
-      & 5.76D0,5.18D0,4.65D0,4.16D0,3.73D0, &
-      & 3.40D0,3.11D0,2.74D0,2.63D0,2.62D0, &
-      & 2.54D0,2.50D0,2.58D0,2.78D0,3.01D0, &
-      & 3.12D0,2.86D0,2.58D0,2.35D0,2.00D0, &
-      & 1.58D0,1.42D0,1.32D0,1.00D0,0.75D0, &
-      & 0.48D0,0.28D0,0.12D0,0.05D0,0.00D0/)
-    REAL(dp), DIMENSION(30) :: XLAMBDA_DERIV
+    implicit none
 
-    logical :: startr=.True.
+    public
+
+    real(dp) :: UV_FAC=3.02_dp
+
+    ! Below are arrays for self-shielding of CO and H2
+    ! They cannot be parameters, because they can be adjusted
+    ! at runtime from within python.
+    logical :: start=.true.
+    integer, parameter :: MAX_NUM_LAMBDA = 30
+    integer :: NUM_LAMBDA = MAX_NUM_LAMBDA  ! Initialize with maximum number of wavelengths
+    real(dp), dimension(MAX_NUM_LAMBDA) :: LAMBDA_GRID=(/ &
+      &  910.0_dp, 950.0_dp,1000.0_dp,1050.0_dp,1110.0_dp, &
+      & 1180.0_dp,1250.0_dp,1390.0_dp,1490.0_dp,1600.0_dp, &
+      & 1700.0_dp,1800.0_dp,1900.0_dp,2000.0_dp,2100.0_dp, &
+      & 2190.0_dp,2300.0_dp,2400.0_dp,2500.0_dp,2740.0_dp, &
+      & 3440.0_dp,4000.0_dp,4400.0_dp,5500.0_dp,7000.0_dp, &
+      & 9000.0_dp,12500.0_dp,22000.0_dp,34000.0_dp,1.0e9_dp/)
+    real(dp), dimension(MAX_NUM_LAMBDA) :: XLAMBDA_GRID=(/ &
+      & 5.76_dp,5.18_dp,4.65_dp,4.16_dp,3.73_dp, &
+      & 3.40_dp,3.11_dp,2.74_dp,2.63_dp,2.62_dp, &
+      & 2.54_dp,2.50_dp,2.58_dp,2.78_dp,3.01_dp, &
+      & 3.12_dp,2.86_dp,2.58_dp,2.35_dp,2.00_dp, &
+      & 1.58_dp,1.42_dp,1.32_dp,1.00_dp,0.75_dp, &
+      & 0.48_dp,0.28_dp,0.12_dp,0.05_dp,0.00_dp/)
+    real(dp), dimension(MAX_NUM_LAMBDA) :: XLAMBDA_DERIV
+
+    logical :: startr=.true.
 
     !  12CO line shielding data from van Dishoeck & Black (1988, ApJ, 334, 771, Table 5)
-    INTEGER, PARAMETER ::  DIMCO=7, DIMH2=6
-    REAL(KIND=DP), DIMENSION(8) :: NCO_GRID=(/12.0D0,13.0D0,14.0D0,15.0D0,16.0D0,17.0D0,18.0D0,19.0D0/)
-    REAL(KIND=DP), DIMENSION(6) :: NH2_GRID=(/18.0D0,19.0D0,20.0D0,21.0D0,22.0D0,23.0D0/)
-    REAL(KIND=DP), DIMENSION(8,6) :: SCO_GRID=RESHAPE((/ &
-      &  0.000D+00,-1.408D-02,-1.099D-01,-4.400D-01,-1.154D+00,-1.888D+00,-2.760D+00,-4.001D+00, &
-      & -8.539D-02,-1.015D-01,-2.104D-01,-5.608D-01,-1.272D+00,-1.973D+00,-2.818D+00,-4.055D+00, &
-      & -1.451D-01,-1.612D-01,-2.708D-01,-6.273D-01,-1.355D+00,-2.057D+00,-2.902D+00,-4.122D+00, &
-      & -4.559D-01,-4.666D-01,-5.432D-01,-8.665D-01,-1.602D+00,-2.303D+00,-3.146D+00,-4.421D+00, &
-      & -1.303D+00,-1.312D+00,-1.367D+00,-1.676D+00,-2.305D+00,-3.034D+00,-3.758D+00,-5.077D+00, &
-      & -3.883D+00,-3.888D+00,-3.936D+00,-4.197D+00,-4.739D+00,-5.165D+00,-5.441D+00,-6.446D+00/), (/8,6/))
-    REAL(KIND=DP), DIMENSION(8,6) :: SCO_DERIV
+    integer, parameter ::  DIMCO=8, DIMH2=6
+    real(dp), dimension(DIMCO) :: NCO_GRID=(/12.0_dp,13.0_dp,14.0_dp,15.0_dp,16.0_dp,17.0_dp,18.0_dp,19.0_dp/)
+    real(dp), dimension(DIMH2) :: NH2_GRID=(/18.0_dp,19.0_dp,20.0_dp,21.0_dp,22.0_dp,23.0_dp/)
+    real(dp), dimension(DIMCO,DIMH2) :: SCO_GRID=RESHAPE((/ &
+      &  0.000e+00_dp,-1.408e-02_dp,-1.099e-01_dp,-4.400e-01_dp,-1.154e+00_dp,-1.888e+00_dp,-2.760e+00_dp,-4.001e+00_dp, &
+      & -8.539e-02_dp,-1.015e-01_dp,-2.104e-01_dp,-5.608e-01_dp,-1.272e+00_dp,-1.973e+00_dp,-2.818e+00_dp,-4.055e+00_dp, &
+      & -1.451e-01_dp,-1.612e-01_dp,-2.708e-01_dp,-6.273e-01_dp,-1.355e+00_dp,-2.057e+00_dp,-2.902e+00_dp,-4.122e+00_dp, &
+      & -4.559e-01_dp,-4.666e-01_dp,-5.432e-01_dp,-8.665e-01_dp,-1.602e+00_dp,-2.303e+00_dp,-3.146e+00_dp,-4.421e+00_dp, &
+      & -1.303e+00_dp,-1.312e+00_dp,-1.367e+00_dp,-1.676e+00_dp,-2.305e+00_dp,-3.034e+00_dp,-3.758e+00_dp,-5.077e+00_dp, &
+      & -3.883e+00_dp,-3.888e+00_dp,-3.936e+00_dp,-4.197e+00_dp,-4.739e+00_dp,-5.165e+00_dp,-5.441e+00_dp,-6.446e+00_dp/),&
+        & (/DIMCO,DIMH2/))
+    real(dp), dimension(DIMCO,DIMH2) :: SCO_DERIV
 
-    REAL(dp) :: ICE_GAS_PHOTO_CROSSSECTION_RATIO = 0.3 ! Kalvans 2018
-CONTAINS
+    real(dp) :: ICE_GAS_PHOTO_CROSSSECTION_RATIO = 0.3_dp  ! Kalvans 2018
+contains
 
 !photodissociation rate of H2  accounting for self-shielding
-REAL(dp) FUNCTION H2PhotoDissRate(NH2,radField,av,turbVel)
+function getH2PhotoDissRateConstant(NH2,radField,av,turbVel) result(H2PhotoDissRateConstant)
     !H2 Column density to surface, UV at that surface, visual extinction to surface, and turbulent velocity of cloud
-    REAL(dp), INTENT(IN) :: NH2 ,radField,av ,turbVel
+    real(dp), intent(in) :: NH2 ,radField,av ,turbVel
+    real(dp) :: H2PhotoDissRateConstant
     !unshielded reaction rate, characteristic wavelendth of radiation, radiative linewidth
-    REAL(dp), PARAMETER :: baseRate=5.18d-11,xl=1000.0,radWidth=8.0d7 
-    REAL(dp) :: dopplerWidth
+    real(dp), parameter :: baseRateConstant=5.18e-11_dp,xl=1000.0,radWidth=8.0e7_dp
+    real(dp) :: dopplerWidth
 
-    dopplerWidth=turbVel/(xl*1.0d-8)
-    H2PhotoDissRate = baseRate * (radField/1.7) * scatter(xl,av) * H2SelfShielding(NH2,dopplerWidth,radWidth)
-END FUNCTION H2PhotoDissRate 
+    dopplerWidth=turbVel/(xl*1.0e-8_dp)
+    H2PhotoDissRateConstant = baseRateConstant * (radField*HABING_TO_DRAINE) * calculate_grain_scatter(xl,av) * &
+        calculateH2SelfShielding(NH2,dopplerWidth,radWidth)
+end function getH2PhotoDissRateConstant
 
-REAL(dp) FUNCTION COPhotoDissRate(NH2,NCO,radField,av)
-    REAL(dp), INTENT(IN) :: NH2,NCO,radField,av!column densities of H2 and CO
-    REAL(dp) :: ssf,lba,sca
+function getCOPhotoDissRateConstant(NH2,NCO,radField,av) result(COPhotoDissRateConstant)
+    real(dp), intent(in) :: NH2,NCO,radField,av  !column densities of H2 and CO
+    real(dp) :: COPhotoDissRateConstant
+
+    real(dp) :: ssf,lba,sca
     !calculate photodissociation rates for co (species # nco; reaction
     !# nrco) according to van dishoeck and black (apj 334, p771 (1988))
     !cocol is the co column density (in cm-2); the scaling of the pdrate
     !by a factor of 1.8 is due to the change from draine's is uv field
     !to the habing field
-    ssf = COSelfShielding(NH2,NCO)
-    lba = lbar(NCO,NH2)
-    sca = scatter(lba,av)
+    ssf = calculateCOSelfShielding(NH2,NCO)
+    lba = calculate_lbar(NCO,NH2)
+    sca = calculate_grain_scatter(lba,av)
 
-    !The reason why rad is divided by 1.7 is that the alphas are for Draine and the rad is in 
+    !The reason why rad is divided by 1.7 is that the alphas are for Draine and the rad is in
     !Habing units
-    COPhotoDissRate = (2.d-10) * (radfield/1.7) * ssf * sca
-END FUNCTION COPhotoDissRate
+    COPhotoDissRateConstant = (2.0e-10_dp) * (radfield*HABING_TO_DRAINE) * ssf * sca
+end function getCOPhotoDissRateConstant
 
-FUNCTION cIonizationRate(alpha,gamma,gasTemp,NC,NH2,av,radfield) RESULT(RATE)
-   REAL(DP) :: RATE
-   REAL(DP), INTENT(IN) :: alpha,gamma,gasTemp,NC,NH2,av,radField
-   REAL(DP) :: TAUC
+pure function getCarbonIonizationRateConstant(alpha,gamma,gasTemp,NC,NH2,av,radfield) &
+        result(carbonIonizationRateConstant)
+   real(dp), intent(in) :: alpha,gamma,gasTemp,NC,NH2,av,radField
+   real(dp) :: carbonIonizationRateConstant
+   real(dp) :: TAUC
 
 !  Calculate the optical depth in the CI absorption band, accounting
 !  for grain extinction and shielding by CI and overlapping H2 lines
-!  1.1D-17 seems the value of the ionization cross-section of C
-   TAUC=gamma*av+1.1D-17*NC+(0.9D0*gasTemp**0.27D0*(NH2/1.59D21)**0.45D0)
+!  1.1e-17_dp seems the value of the ionization cross-section of C
+   TAUC=gamma*av+1.1e-17_dp*NC+(0.9_dp*gasTemp**0.27_dp*(NH2/1.59e21_dp)**0.45_dp)
 !  Calculate the CI photoionization rate
-   RATE=alpha*(radfield/1.7)*EXP(-TAUC)
-   RETURN
-END FUNCTION cIonizationRate
- 
+   carbonIonizationRateConstant=alpha*(radfield*HABING_TO_DRAINE)*EXP(-TAUC)
+end function getCarbonIonizationRateConstant
+
 !-----------------------------------------------------------------------
 !  H2 line self-shielding, adopting the treatment of
 !  Federman, Glassgold & Kwan (1979, ApJ, 227, 466)
-!-----------------------------------------------------------------------        
-REAL(dp) FUNCTION H2SelfShielding(NH2,dopplerWidth,radWidth)
-    REAL(dp), INTENT(IN) :: NH2,dopplerWidth,radWidth
-    REAL(dp) ::  r, sj, sr, t, u, taud
-    REAL(dp), PARAMETER :: FPARA=0.5,FOSC  = 1.0d-2
+!-----------------------------------------------------------------------
+pure function calculateH2SelfShielding(NH2,dopplerWidth,radWidth) result(H2SelfShielding)
+    real(dp), intent(in) :: NH2,dopplerWidth,radWidth
+    real(dp) :: H2SelfShielding
+
+    real(dp) ::  r, sj, sr, t, u, taud
+    real(dp), parameter :: FPARA = 0.5_dp
+    real(dp), parameter :: FOSC  = 1.0e-2_dp
     !--------------------------------------------------------------
     !taud = opt. depth at line center (assuming ortho:para h2=1)
     !pi**0.5 * e2 / (m(electr) * c) = 1.5e-2 cm2/s
 
-    taud  = FPARA * NH2 * 1.5e-2 * FOSC / dopplerWidth
-     
+    taud  = FPARA * NH2 * 1.5e-2_dp * FOSC / dopplerWidth
+
     !calculate doppler contribution of self shielding function sj
-    IF (taud .eq. 0.0d0) THEN
-       sj = 1.0d0
-    ELSE IF (taud .lt. 2.0d0) THEN
-       sj = exp(-0.6666667d0*taud)
-    ELSE IF (taud .lt. 10.0d0) THEN
-       sj = 0.638d0*taud**(-1.25d0)
-    ELSE IF (taud .lt. 100.0d0) THEN
-       sj = 0.505d0*taud**(-1.15d0)
-    ELSE
-       sj = 0.344d0*taud**(-1.0667d0)
-    END IF
+    if (is_equal(taud, 0.0_dp)) then
+       sj = 1.0_dp
+    else if (taud < 2.0_dp) then
+       sj = exp(-0.6666667_dp*taud)
+    else if (taud < 10.0_dp) then
+       sj = 0.638_dp*taud**(-1.25_dp)
+    else if (taud < 100.0_dp) then
+       sj = 0.505_dp*taud**(-1.15_dp)
+    else
+       sj = 0.344_dp*taud**(-1.0667_dp)
+    end if
 
     !calculate wing contribution of self shielding function sr
-    !IF (taud.lt.0.0d0)  taud=0.0d0
-    IF (radWidth .eq. 0.0d0) then
-       sr = 0.0d0
-    ELSE
-       r  = radWidth/(1.7724539d0*dopplerWidth)
-       t  = 3.02d0 * ((r*1.0d+03)**(-0.064d0))
+    !IF (taud.lt.0.0_dp)  taud=0.0_dp
+    if (is_equal(radWidth, 0.0_dp)) then
+       sr = 0.0_dp
+    else
+       r  = radWidth/(1.7724539_dp*dopplerWidth)
+       t  = 3.02_dp * ((r*1.0e+03_dp)**(-0.064_dp))
        u  = SQRT(taud*r)/t
-       sr = r/(t*SQRT(0.78539816d0+u**2.0))
-    ENDIF
-    
+       sr = r/(t*SQRT(0.78539816_dp+u**2.0_dp))
+    end if
+
     !calculate total self shielding function fgk
     H2SelfShielding = sj + sr
-END FUNCTION H2SelfShielding
-     
+end function calculateH2SelfShielding
+
 
 
 !calculate the influence of dust extinction (g=0.8, omega=0.3)
-!wagenblast&hartquist, mnras237, 1019 (1989)     
-REAL(dp) FUNCTION scatter(x1,av)
-
-
+!wagenblast&hartquist, mnras237, 1019 (1989)
+function calculate_grain_scatter(x1,av) result(grain_scatter)
 !---------------------------------------------------------------------
 !         i/o variables type declaration
 !       scat   : factor describing the influence of grain scattering
@@ -141,7 +155,7 @@ REAL(dp) FUNCTION scatter(x1,av)
 !                density and wavelength of the uv radiation
 !       x1      : wavelength (in angstrom)
 !       cdntot : total h number density (in cm-2)
-!   
+!
 !         program variables
 !       av     : visual extinction in magnitudes (cf. savage et al.,
 !                 1977 apj 216, p.291)
@@ -149,14 +163,14 @@ REAL(dp) FUNCTION scatter(x1,av)
 !        i      : loop index
 !        tl     : tau(lambda)
 !        tv     : tau(visual=5500a)
-!        xlambda : function which calculates tl/tv
+!        calculate_xlambda : function which calculates tl/tv
 !        c(0)   : c(0) * exp(-k(0)*tau) : (rel.) intensity
 !                 decrease for 0<=tau<=1 caused by grain
-!                 scattering with g=0.8, omega=0.3
+!                 calculate_grain_scattering with g=0.8, omega=0.3
 !                 (approximation)
 !        c(i)   : sum (c(i) * exp(-k(i)*tau)) i=1,5  (rel.)
 !                 intensity decrease for 1<=tau<=oo caused by
-!                 grain scattering with g=0.8, omega=0.3.
+!                 grain calculate_grain_scattering with g=0.8, omega=0.3.
 !                 (cf. flannery, roberge, and rybicki 1980,
 !                 apj 236, p.598).
 !        k(0)   : see c0
@@ -164,37 +178,39 @@ REAL(dp) FUNCTION scatter(x1,av)
 !---------------------------------------------------------------------
 
 !   i/o variables type declaration
-    REAL(DP), INTENT(IN) :: x1,av
-    !   
+    real(dp), intent(in) :: x1, av
+    real(dp) :: grain_scatter
+    !
     !program variables type declaration
-    REAL(dp), dimension(6) :: c=(/1.0d0,2.006d0,-1.438d0,7.364d-01,-5.076d-01,-5.920d-02/)
-    REAL(dp), dimension(6) ::  k1=(/7.514d-01,8.490d-01,1.013d0,1.282d0,2.005d0,5.832d0/)
-    REAL(dp)  :: expo, tl, tv
-    INTEGER :: i
+    integer, parameter :: NUM_FIT_CONSTANTS = 6
+    real(dp), parameter, dimension(NUM_FIT_CONSTANTS) :: c=(/1.0_dp,2.006_dp,-1.438_dp,7.364e-01_dp,-5.076e-01_dp,-5.920e-02_dp/)
+    real(dp), parameter, dimension(NUM_FIT_CONSTANTS) :: k1=(/7.514e-01_dp,8.490e-01_dp,1.013_dp,1.282_dp,2.005_dp,5.832_dp/)
+    real(dp)  :: expo, tl, tv
+    integer :: i
 
     !optical depth in the visual
-    tv = av/ 1.086d0
-      
-    !make correction for the wavelength considered
-    tl = tv * xlambda(x1)
-       
-    !calculate attuentuation  due to dust scattering
-    scatter = 0.0d0
-    IF (tl.lt.1.0d0) THEN
-        expo = k1(1)*tl
-        IF (expo.lt.100.0d0) THEN
-            scatter = c(1) * EXP(-expo)
-        ENDIF
-    ELSE
-        DO i=2,6
-            expo = k1(i)*tl
-            IF (expo.lt.100.0d0) THEN
-            scatter = scatter + c(i)*EXP(-expo)
-            ENDIF
-        END DO
-    ENDIF
+    tv = av / 1.086_dp
 
-END FUNCTION scatter
+    !make correction for the wavelength considered
+    tl = tv * calculate_xlambda(x1)
+
+    !calculate attuentuation  due to dust calculate_grain_scattering
+    grain_scatter = 0.0_dp
+    if (tl<1.0_dp) then
+        expo = k1(1)*tl
+        if (expo<100.0_dp) then
+            grain_scatter = c(1) * EXP(-expo)
+        end if
+    else
+        do i=2,NUM_FIT_CONSTANTS
+            expo = k1(i)*tl
+            if (expo<100.0_dp) then
+            grain_scatter = grain_scatter + c(i)*EXP(-expo)
+            end if
+        end do
+    end if
+
+end function calculate_grain_scatter
 
 !=======================================================================
 !
@@ -223,88 +239,88 @@ END FUNCTION scatter
 !  SPLINT = 1-dimensional cubic spline interpolated value (in spline.f90)
 !
 !-----------------------------------------------------------------------
-REAL(dp) FUNCTION xlambda(LAMBDA)
-    IMPLICIT NONE
-    REAL(dp), INTENT(IN) :: LAMBDA
+function calculate_xlambda(LAMBDA) result(xlambda)
+    real(dp), intent(in) :: LAMBDA
+    real(dp) :: xlambda
 
-    REAL(dp) :: LAMBDA_VALUE
+    real(dp) :: LAMBDA_VALUE
 
-    IF (START) THEN
-      CALL SPLINE(LAMBDA_GRID,XLAMBDA_GRID,NUM_LAMBDA,1.0D30,1.0D30,XLAMBDA_DERIV)
-    ENDIF
+    if (START) then
+      call SPLINE(LAMBDA_GRID,XLAMBDA_GRID,NUM_LAMBDA,1.0e30_dp,1.0e30_dp,XLAMBDA_DERIV)
+    end if
 
     LAMBDA_VALUE=LAMBDA
-    IF(LAMBDA.LT.LAMBDA_GRID(1)) LAMBDA_VALUE=LAMBDA_GRID(1)
-    IF(LAMBDA.GT.LAMBDA_GRID(NUM_LAMBDA)) LAMBDA_VALUE=LAMBDA_GRID(NUM_LAMBDA)
+    if(LAMBDA<LAMBDA_GRID(1)) LAMBDA_VALUE=LAMBDA_GRID(1)
+    if(LAMBDA>LAMBDA_GRID(NUM_LAMBDA)) LAMBDA_VALUE=LAMBDA_GRID(NUM_LAMBDA)
 
-    CALL SPLINT(LAMBDA_GRID,XLAMBDA_GRID,XLAMBDA_DERIV,NUM_LAMBDA,LAMBDA_VALUE,xlambda)
-    IF(XLAMBDA.LT.0.0D0) XLAMBDA=0.0D0
+    call SPLINT(LAMBDA_GRID,XLAMBDA_GRID,XLAMBDA_DERIV,NUM_LAMBDA,LAMBDA_VALUE,xlambda)
+    if(xlambda<0.0_dp) xlambda=0.0_dp
 
-    RETURN
-END FUNCTION xlambda
+end function calculate_xlambda
 
 !-----------------------------------------------------------------------
 !self-shielding of CO due to 12CO self-shielding and H2 screening
-!Use Van Dishoeck & Black APJ 334, 1988 for value 
+!Use Van Dishoeck & Black APJ 334, 1988 for value
 !-----------------------------------------------------------------------
+function calculateCOSelfShielding(NH2,NCO) result(COSelfShielding)
+    real(dp), intent(in) :: NH2, NCO
+    real(dp) :: COSelfShielding
+    real(dp) :: lognco,lognh2
 
-
-REAL(dp) FUNCTION COSelfShielding(NH2,NCO)
-    REAL(dp), INTENT(IN) :: NH2, NCO
-    REAL(dp) :: lognco,lognh2
-
-    if (startr)  THEN
+    if (startr)  then
         call splie2(NCO_GRID,NH2_GRID,SCO_GRID,DIMCO,DIMH2,SCO_DERIV)
         startr = .false.
-    END IF
-   
-    lognco = dlog10(NCO+1.0)
-    lognh2 = dlog10(NH2+1.0)
-       
-    if (lognco.lt.NCO_GRID(1))      lognco = NCO_GRID(1)
-    if (lognh2.lt.NH2_GRID(1))      lognh2 = NH2_GRID(1)
-    if (lognco.gt.NCO_GRID(DIMCO))  lognco = NCO_GRID(DIMCO)
-    if (lognh2.gt.NH2_GRID(DIMH2))  lognh2 = NH2_GRID(DIMH2)
-       
+    end if
+
+    lognco = log10(NCO+1.0_dp)
+    lognh2 = log10(NH2+1.0_dp)
+
+    if (lognco<NCO_GRID(1))      lognco = NCO_GRID(1)
+    if (lognh2<NH2_GRID(1))      lognh2 = NH2_GRID(1)
+    if (lognco>NCO_GRID(DIMCO))  lognco = NCO_GRID(DIMCO)
+    if (lognh2>NH2_GRID(DIMH2))  lognh2 = NH2_GRID(DIMH2)
+
     call splin2(NCO_GRID,NH2_GRID,SCO_GRID,SCO_DERIV,DIMCO,DIMH2,lognco,&
     &               lognh2,COSelfShielding)
-    COSelfShielding = 10.0d0**COSelfShielding
-END FUNCTION COSelfShielding
-   
-   
-   
-REAL(dp) FUNCTION lbar(u,w)
+    COSelfShielding = 10.0_dp**COSelfShielding
+end function calculateCOSelfShielding
+
+
+
+pure function calculate_lbar(u,w) result(lbar)
 !calculate lambda bar (in a) according to equ. 4 of van dishoeck
 !and black, apj 334, p771 (1988)
 ! --------------------------------------------------------------
 !       i/o parameter
 !       u : co column density in (cm-2)
 !       w : h2 column density in (cm-2)
-   
+
 !        program variables
 !        lu : log10(co column density in cm-2)
 !        lw : log10(h2 column density in cm-2)
-   
-!--------------------------------------------------------------
-    !i/o parameter type declaration
-    REAL(dp)  u, w, lu, lw
 
-    lu = dlog10(dabs(u)+1.0d0)
-    lw = dlog10(dabs(w)+1.0d0)
-    
-    lbar = (5675.0d0 - 200.6d0*lw) - (571.6d0 - 24.09d0*lw)*lu +&
-    &(18.22d0 - 0.7664d0*lw)*lu**2
-       
-    !lbar represents the mean of the wavelengths of the 33
+!--------------------------------------------------------------
+    real(dp), intent(in) :: u, w
+    real(dp) :: lbar
+    !i/o parameter type declaration
+    real(dp) :: lu, lw
+
+    lu = log10(abs(u)+1.0_dp)
+    lw = log10(abs(w)+1.0_dp)
+
+    lbar = (5675.0_dp - 200.6_dp*lw) - (571.6_dp - 24.09_dp*lw)*lu +&
+    &(18.22_dp - 0.7664_dp*lw)*lu**2
+
+    !calculate_lbar represents the mean of the wavelengths of the 33
     !dissociating bands weighted by their fractional contribution
-    !to the total rate of each depth. lbar cannot be larger than
+    !to the total rate of each depth. calculate_lbar cannot be larger than
     !the wavelength of band 33 (1076.1a) and not be smaller than
     !the wavelength of band 1 (913.6a).
-    if (lbar.gt.1076.1d0)  lbar = 1076.1d0
-    if (lbar.lt. 913.6d0)  lbar =  913.6d0
-END FUNCTION lbar
+    if (lbar>1076.1_dp) lbar = 1076.1_dp
+    if (lbar< 913.6_dp) lbar =  913.6_dp
+end function calculate_lbar
 
-SUBROUTINE splie2(x1a,x2a,ya,m,n,y2a)
+pure subroutine splie2(x1a,x2a,ya,m,n,y2a)
 !given an m by n tabulated function ya, and tabulated indepen-
 !dent variables x1a (m values) and x2a (n values), this routine
 !constructs one-dimensional natural cubic splines of the rows
@@ -312,31 +328,34 @@ SUBROUTINE splie2(x1a,x2a,ya,m,n,y2a)
 !(copied from numerical recipes)
 
 !--------------------------------------------------------------
-!i/o parameter and program variables
-          integer           nn
-          parameter         (nn=100)
-          integer           m, n, j, k
-          REAL(dp)  x1a(m), x2a(n), ya(m,n), y2a(m,n), ytmp(nn),&
-     &                      y2tmp(nn)
+    integer, intent(in) :: m, n
+    real(dp), intent(in), dimension(m) :: x1a
+    real(dp), intent(in), dimension(n) :: x2a
+    real(dp), intent(in), dimension(m, n) :: ya
+    real(dp), intent(out), dimension(m, n) :: y2a
+
+    !i/o parameter and program variables
+    integer, parameter :: nn = 100
+    real(dp), dimension(nn) :: ytmp, y2tmp
+    integer :: j, k
 !--------------------------------------------------------------
-    DO j=1,m
-        DO k=1,n
+    do j=1,m
+        do k=1,n
             ytmp(k) = ya(j,k)
-        END DO
-        !values 1.0d30 signal a natural spline.
-        call spline(x2a,ytmp,n,1.0d30,1.0d30,y2tmp)
-        DO k=1,n
+        end do
+        !values 1.0e30_dp signal a natural spline.
+        call spline(x2a,ytmp,n,1.0e30_dp,1.0e30_dp,y2tmp)
+        do k=1,n
             y2a(j,k) = y2tmp(k)
-        END DO
-    END DO
-return
+        end do
+    end do
 !==============================================================
-END SUBROUTINE splie2
-  
-SUBROUTINE spline(x,y,n,yp1,ypn,y2)
+end subroutine splie2
+
+pure subroutine spline(x,y,n,yp1,ypn,y2)
 
 !calculate cubic spline for a set of points (x,y)
- 
+
 !(cf. "numerical recipes" 3.3 : routine spline)
 !given arrays x and y of length n containing a tabulated
 !function, i.e. y(i) = f(x(i)), with x(1) < x(2) < ... < x(n),
@@ -358,97 +377,107 @@ SUBROUTINE spline(x,y,n,yp1,ypn,y2)
 !ypn : 1. derivative of the interpolating function at point n
 !y2  : 2. derivative of the interpolating function
 !--------------------------------------------------------------
-   
+
 !i/o parameter type declaration
-    integer           n
-    REAL(dp)  x(n), y(n), yp1, ypn, y2(n)
-   
+    integer, intent(in)           :: n
+    real(dp), intent(in), dimension(n) :: x, y
+    real(dp), intent(in) :: yp1, ypn
+
+    real(dp), intent(out), dimension(n) :: y2
+
 !program variables type declaration
-    integer           i, k
-    REAL(dp)  p, qn, sig, u(100), un
+    integer, parameter :: nn = 100
+    integer           :: i, k
+    real(dp)  :: p, qn, sig, un
+    real(dp), dimension(nn) :: u
 !--------------------------------------------------------------
 
-    IF (yp1 .ge. 1.0d30) THEN
+    if (yp1 >= 1.0e30_dp) then
     !the lower boundary condition is set either to be
     !"natural"
-        y2(1) =  0.0d0
-        u(1)  =  0.0d0
-    ELSE
+        y2(1) =  0.0_dp
+        u(1)  =  0.0_dp
+    else
     !or else to have a specified first derivative.
-        y2(1) = -0.5d0
-        u(1)  = (3.0d0/(x(2)-x(1)))*((y(2)-y(1))/(x(2)-x(1))-yp1)
-    ENDIF
-   
+        y2(1) = -0.5_dp
+        u(1)  = (3.0_dp/(x(2)-x(1)))*((y(2)-y(1))/(x(2)-x(1))-yp1)
+    end if
+
     !this is the decomposition loop of the tridiagonal algorithm.
     !y2 and u are used for temporary storage of decomposed factors.
-    DO  i=2,n-1
+    do  i=2,n-1
         sig   = (x(i)-x(i-1))/(x(i+1)-x(i-1))
-        p     = sig*y2(i-1) + 2.0d0
-        y2(i) = (sig-1.0d0)/p
-        u(i)  = (6.0d0*((y(i+1)-y(i))/(x(i+1)-x(i))-(y(i)-y(i-1))&
+        p     = sig*y2(i-1) + 2.0_dp
+        y2(i) = (sig-1.0_dp)/p
+        u(i)  = (6.0_dp*((y(i+1)-y(i))/(x(i+1)-x(i))-(y(i)-y(i-1))&
         &                /(x(i)-x(i-1)))/(x(i+1)-x(i-1))-sig*u(i-1))/p
-    END DO
-       
-    IF (ypn .ge. 1.0d30) THEN
+    end do
+
+    if (ypn >= 1.0e30_dp) then
     !     the upper boundary condition is set either to be
     !     "natural"
-        qn = 0.0d0
-        un = 0.0d0
-    ELSE
+        qn = 0.0_dp
+        un = 0.0_dp
+    else
     !     or else to have a specified first derivative.
-        qn = 0.5d0
-        un = (3.0d0/(x(n)-x(n-1))) *&
+        qn = 0.5_dp
+        un = (3.0_dp/(x(n)-x(n-1))) *&
     &              (ypn-(y(n)-y(n-1))/(x(n)-x(n-1)))
-    ENDIF
-       
-    y2(n) = (un-qn*u(n-1))/(qn*y2(n-1)+1.0d0)
-       
+    end if
+
+    y2(n) = (un-qn*u(n-1))/(qn*y2(n-1)+1.0_dp)
+
     !this is the backsubstitution loop of the tridiagonal algorithm
-    DO k=n-1,1,-1
+    do k=n-1,1,-1
         y2(k)=y2(k)*y2(k+1)+u(k)
-    END DO
-END SUBROUTINE SPLINE
- 
-SUBROUTINE splin2(x1a,x2a,ya,y2a,m,n,x1,x2,y)
+    end do
+end subroutine SPLINE
+
+subroutine splin2(x1a,x2a,ya,y2a,m,n,x1,x2,y)
 !given x1a, x2a, ya, m, n as described in splie2 and y2a as
 !produced by that routine; and given a desired interpolating
 !point x1, x2; this routine returns an interpolated function
 !value y by bicubic spline interpolation.
-  
+
 !--------------------------------------------------------------
 !i/o parameter and program variables type declaration
-integer           nn
-parameter         (nn=100)
-integer           m, n, j, k
-REAL(dp)  x1a(m), x2a(n), ya(m,n), y2a(m,n), ytmp(nn),&
-&                      y2tmp(nn), yytmp(nn), x1, x2, y
+    integer, intent(in) :: m, n
+    real(dp), intent(in), dimension(m) :: x1a
+    real(dp), intent(in), dimension(n) :: x2a
+    real(dp), intent(in), dimension(m, n) :: ya, y2a
+    real(dp), intent(in) :: x1, x2
+    real(dp), intent(out) :: y
+
+    integer, parameter :: nn = 100
+    integer :: j, k
+    real(dp), dimension(nn) :: ytmp, y2tmp, yytmp
 !--------------------------------------------------------------
 
 ! perform m evaluations of the row splines constructed by splie2
 !using the one-dimensional spline evaluator splint.
-    DO j=1,m
-        DO k=1,n
+    do j=1,m
+        do k=1,n
             ytmp(k)  = ya(j,k)
             y2tmp(k) = y2a(j,k)
-        END DO
+        end do
         call splint(x2a,ytmp,y2tmp,n,x2,yytmp(j))
-    END DO
+    end do
 !construct the one-dimensional column spline and evaluate it.
-    call spline(x1a,yytmp,m,1.0d30,1.0d30,y2tmp)
+    call spline(x1a,yytmp,m,1.0e30_dp,1.0e30_dp,y2tmp)
     call splint(x1a,yytmp,y2tmp,m,x1,y)
-END SUBROUTINE splin2   
-     
-SUBROUTINE splint(xa,ya,y2a,n,x,y)
-SAVE
+end subroutine splin2
+
+subroutine splint(xa,ya,y2a,n,x,y)
+save
 !cubic spline interpolation
-   
+
 !(cf. "numerical recipes" 3.3 : routine splint, and 3.4.
 !routine hunt)
 !given the arrays xa and ya of length n, which tabulate a
 !function (with the xa(i)'s in order), and given the array y2a,
 !which is the output of routine cubspl, and given a value x,
 !this routine returns a cubic-spline interpolated value y.
-   
+
 !--------------------------------------------------------------
 !-i/o parameters
 !-xa  : vector for independent variable x; dimension xa(n)
@@ -458,108 +487,109 @@ SAVE
 !-x   : x value for which y is to be interpolated
 !-y   : result of interpolation
 !--------------------------------------------------------------
-   
+
 !--------------------------------------------------------------
     !i/o parameter type declaration
-    integer           n,nstore
-    REAL(dp)  x, xa(n), y, ya(n), y2a(n)
-       
+    integer, intent(in) :: n
+    real(dp), dimension(n), intent(in)  :: xa, ya, y2a
+
+    real(dp), intent(in) :: x
+    real(dp), intent(out) :: y
+
     !program variables type declaration
-    integer           inc, jhi, jlo, jm
-    REAL(dp)  h, a, b
-    logical           ascnd
-   
+    integer           :: nstore, inc, jhi, jlo, jm
+    real(dp)  :: h, a, b
+    logical           :: ascnd
+
     !find interval xa(jlo) <= x <= xa(jlo+1) = xa(jhi)
     !ascnd is true if ascending order of table, false otherwise
-    ascnd = xa(n).gt.xa(1)
-    if (jlo.le.0 .or. jlo.gt.n) then
+    ascnd = xa(n)>xa(1)
+    if (jlo<=0 .or. jlo>n) then
     !input guess not useful. go immediately to bisection.
         jlo = 0
         jhi = n+1
-    ELSE           
+    else
         !set the hunting increment
         inc = 1
-        
+
         !hunt up if ascending array or down if descending.
-        IF (x.ge.xa(jlo) .eqv. ascnd) THEN
+        if (x>=xa(jlo) .eqv. ascnd) then
             !hunt up:
             jhi=jlo+inc
-            IF (jhi .gt. n) THEN
+            if (jhi > n) then
                 !done hunting since off end of table
                 jhi=n+1
-            ELSE
+            else
                 !nstore is a work around for old 'go to' logic, if jhi exceeds n, that is fine
                 !but the do while loop will break so jhi equals n temporarily and nstore holds
                 !real value until we exit loop.
                 nstore=1
-                DO WHILE (((x.ge.xa(jhi)) .eqv. ascnd) .and. (jhi .lt. n))
+                do while (((x>=xa(jhi)) .eqv. ascnd) .and. (jhi < n))
                     !not done hunting
                     jlo=jhi
                     !so double increment
                     inc=inc+inc
                     !try again
                     jhi=jlo+inc
-                    IF (jhi .gt. n) THEN
+                    if (jhi > n) then
                         jhi=n
                         nstore=n+1
-                    ENDIF
-                END DO
-                IF (nstore .eq. n+1) jhi=nstore
+                    end if
+                end do
+                if (nstore == n+1) jhi=nstore
             !done hunting, value bracketed.
-            END IF      
-        ELSE
+            end if
+        else
             jhi = jlo
             !hunt down:
             jlo = jhi-inc
-            IF (jlo .lt. 1) THEN
+            if (jlo < 1) then
             jlo=0
-            ELSE
+            else
                 nstore=1
-                DO WHILE (((x.lt.xa(jlo)) .eqv. ascnd) .and. (jlo .gt. 1))
+                do while (((x<xa(jlo)) .eqv. ascnd) .and. (jlo > 1))
                     !not done hunting,
                     jhi = jlo
                     !so double the increment
                     inc = inc+inc
                     !and try again.
                     jlo = jhi-inc
-                    IF (jlo .lt. 1) THEN
+                    if (jlo < 1) then
                         jlo=1
                         nstore=0
-                    END IF
-                END DO
-                IF (nstore .eq. 0) jlo=nstore
-            END IF
+                    end if
+                end do
+                if (nstore == 0) jlo=nstore
+            end if
             !done hunting, since off end of table.
-        ENDIF
-    END IF   
-    DO WHILE (jhi-jlo.ne.1)  
+        end if
+    end if
+    do while (jhi-jlo/=1)
     !hunt is done, so begin final bisection phase:
         jm = (jhi+jlo)/2
-        IF (x.gt.xa(jm) .eqv. ascnd) THEN
+        if (x>xa(jm) .eqv. ascnd) then
            jlo = jm
-        ELSE
+        else
            jhi = jm
-        ENDIF    
-    END DO
-       
-    IF (jlo.eq.0)  THEN
+        end if
+    end do
+
+    if (jlo==0)  then
         jlo = 1
         jhi = 2
-    ENDIF
-       
+    end if
+
     !jlo and jhi now bracket the input value of x.
     !cubic spline polynomial is now evaluated.
-    IF (jlo.eq.n)  THEN
+    if (jlo==n)  then
         jlo = n-1
         jhi = n
-    ENDIF
+    end if
     h = xa(jhi) - xa(jlo)
     a = (xa(jhi) - x) / h
     b = (x - xa(jlo)) / h
     y = a*ya(jlo) + b*ya(jhi) +&
-    &  ((a**3-a)*y2a(jlo) + (b**3-b)*y2a(jhi)) * (h**2)/6.0d0
-END SUBROUTINE splint
+    &  ((a**3-a)*y2a(jlo) + (b**3-b)*y2a(jhi)) * (h**2)/6.0_dp
+end subroutine splint
 
-END MODULE photoreactions
-
-
+end module photoreactions

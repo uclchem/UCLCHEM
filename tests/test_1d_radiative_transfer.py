@@ -8,8 +8,6 @@ merged from the 1D_model branch, including:
 - Multi-point spatial models
 """
 
-import shutil
-import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -30,14 +28,6 @@ def test_import_uclchem():
             "uclchem module could not be imported, "
             "make sure your environment is loaded and UCLCHEM is installed."
         )
-
-
-@pytest.fixture(scope="module")
-def common_output_directory(request):
-    """Create temporary directory for test outputs."""
-    temp_dir = Path(tempfile.mkdtemp())
-    yield temp_dir
-    shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 @pytest.fixture
@@ -87,7 +77,7 @@ class Test1DCloud:
 
     def test_1d_cloud_return_array(self, base_1d_params):
         """Test 1D cloud model with return_array mode."""
-        physics, chemistry, rates, heating, abundances_start, return_code = (
+        physics, chemistry, _rates, _heating, _abundances_start, return_code = (
             uclchem.functional.cloud(
                 param_dict=base_1d_params,
                 return_array=True,
@@ -123,7 +113,7 @@ class Test1DCloud:
 
     def test_1d_cloud_return_dataframe(self, base_1d_params):
         """Test 1D cloud model with return_dataframe mode."""
-        physics_df, chem_df, rates_df, heating_df, abundances_start, return_code = (
+        physics_df, _chem_df, _rates_df, _heating_df, _abundances_start, return_code = (
             uclchem.functional.cloud(
                 param_dict=base_1d_params,
                 return_dataframe=True,
@@ -157,9 +147,9 @@ class Test1DCloud:
             "1D model should produce spatial density variation"
         )
 
-    def test_1d_cloud_disk_output(self, base_1d_params, common_output_directory):
+    def test_1d_cloud_disk_output(self, base_1d_params, tmp_path):
         """Test 1D cloud model writing to disk."""
-        output_file = common_output_directory / "test_1d_cloud.dat"
+        output_file = tmp_path / "test_1d_cloud.dat"
         params = base_1d_params.copy()
         params["outputFile"] = str(output_file)
 
@@ -279,13 +269,11 @@ class Test1DHotcore:
         params_high.update({"lum_star": 1e4, "temp_star": 3e4})
         code_high, radfield_high = _run_hotcore(params_high)
 
-        assert (
-            code_low == uclchem.utils.SuccessFlag.SUCCESS
-            and code_high == uclchem.utils.SuccessFlag.SUCCESS
-        ), "Both models should succeed"
+        assert code_low == uclchem.utils.SuccessFlag.SUCCESS, "Low model failed"
+        assert code_high == uclchem.utils.SuccessFlag.SUCCESS, "High model failed"
 
         # Internal radiation field scales with lum_star (G0 ∝ L_star / r²).
-        # lum_star=1e4 should give ~10× stronger internal field than lum_star=1e3.
+        # lum_star=1e4 should give ~10x stronger internal field than lum_star=1e3.
         assert np.mean(radfield_high) > np.mean(radfield_low), (
             "Higher stellar luminosity should produce a stronger internal radiation field"
         )
@@ -354,10 +342,10 @@ class Test1DParameterValidation:
             timepoints=2500,
         )
 
-        assert (
-            code_steep == uclchem.utils.SuccessFlag.SUCCESS
-            and code_shallow == uclchem.utils.SuccessFlag.SUCCESS
-        ), "Both profiles should succeed"
+        assert code_steep == uclchem.utils.SuccessFlag.SUCCESS, "Steep profile failed"
+        assert code_shallow == uclchem.utils.SuccessFlag.SUCCESS, (
+            "Shallow profiles failed"
+        )
 
         # Extract final densities
         dens_steep = physics_steep[-1, :, 1]
@@ -383,7 +371,7 @@ class Test1DParameterValidation:
             "enable_radiative_transfer": False,  # Explicitly disable 1D
         }
 
-        physics, chemistry, rates, heating, abundances_start, return_code = (
+        physics, _chemistry, _rates, _heating, _abundances_start, return_code = (
             uclchem.functional.cloud(
                 param_dict=params,
                 return_array=True,
@@ -405,7 +393,7 @@ class Test1DChemicalEvolution:
 
     def test_1d_abundance_spatial_variation(self, base_1d_params):
         """Test that abundances vary spatially in 1D model."""
-        physics, chemistry, rates, heating, abundances_start, return_code = (
+        _physics, chemistry, _rates, _heating, _abundances_start, return_code = (
             uclchem.functional.cloud(
                 param_dict=base_1d_params,
                 return_array=True,
@@ -440,11 +428,13 @@ class Test1DChemicalEvolution:
         params_phase1 = base_1d_params.copy()
         params_phase1["finalTime"] = 1.0e5
 
-        physics1, chem1, rates1, heating1, abund_start1, code1 = uclchem.functional.cloud(
-            param_dict=params_phase1,
-            return_array=True,
-            return_rate_constants=True,
-            timepoints=2500,
+        _physics1, chem1, _rates1, _heating1, abund_start1, code1 = (
+            uclchem.functional.cloud(
+                param_dict=params_phase1,
+                return_array=True,
+                return_rate_constants=True,
+                timepoints=2500,
+            )
         )
 
         assert code1 == uclchem.utils.SuccessFlag.SUCCESS, "Phase 1 should succeed"
@@ -454,12 +444,14 @@ class Test1DChemicalEvolution:
         params_phase2["finalTime"] = 2.0e5
         params_phase2["currentTime"] = 1.0e5
 
-        physics2, chem2, rates2, heating2, abund_start2, code2 = uclchem.functional.cloud(
-            param_dict=params_phase2,
-            return_array=True,
-            return_rate_constants=True,
-            starting_chemistry=abund_start1,
-            timepoints=2500,
+        _physics2, _chem2, _rates2, _heating2, _abund_start2, code2 = (
+            uclchem.functional.cloud(
+                param_dict=params_phase2,
+                return_array=True,
+                return_rate_constants=True,
+                starting_chemistry=abund_start1,
+                timepoints=2500,
+            )
         )
 
         assert code2 == uclchem.utils.SuccessFlag.SUCCESS, (
@@ -501,7 +493,7 @@ class TestOOCloud1D:
         assert model.physics_array.shape[1] == base_1d_params["points"]
 
     def test_oo_cloud_1d_dataframe_output(self, base_1d_params):
-        """Test that get_dataframes works properly for 1D models."""
+        """Test that get_split_dataframes works properly for 1D models."""
         model = uclchem.model.Cloud(
             param_dict=base_1d_params,
             timepoints=2500,
@@ -510,7 +502,7 @@ class TestOOCloud1D:
         model.check_error()
 
         # Get DataFrames
-        phys_df, chem_df = model.get_dataframes(joined=False)
+        phys_df, chem_df = model.get_split_dataframes()
 
         # Check Point column exists
         assert "Point" in phys_df.columns
@@ -535,7 +527,7 @@ class TestOOCloud1D:
         model.check_error()
 
         # Get data for first point only
-        phys_df_pt0, chem_df_pt0 = model.get_dataframes(point=0, joined=False)
+        phys_df_pt0, _chem_df_pt0 = model.get_split_dataframes(point=0)
 
         # Should only have data for one point
         assert phys_df_pt0["Point"].nunique() == 1
@@ -543,7 +535,7 @@ class TestOOCloud1D:
 
         # Get data for last point
         last_pt = base_1d_params["points"] - 1
-        phys_df_last, chem_df_last = model.get_dataframes(point=last_pt, joined=False)
+        phys_df_last, _chem_df_last = model.get_split_dataframes(point=last_pt)
 
         assert (phys_df_last["Point"] == base_1d_params["points"]).all()
 
@@ -562,11 +554,11 @@ class TestOOCloud1D:
         model.check_error()
 
         # Get DataFrames with stats
-        result = model.get_dataframes(joined=False, with_stats=True)
+        result = model.get_split_dataframes(with_stats=True)
 
         # Should return: phys, chem, stats
         assert len(result) == 3
-        phys_df, chem_df, stats_df = result
+        _phys_df, _chem_df, stats_df = result
 
         # Stats DataFrame should exist and have Point column
         assert stats_df is not None
@@ -669,7 +661,7 @@ class TestOOHotcore1D:
         assert model.success_flag == uclchem.utils.SuccessFlag.SUCCESS
 
         # Get final temperatures at each point
-        phys_df = model.get_dataframes(joined=False)[0]
+        phys_df = model.get_split_dataframes()[0]
         final_time = phys_df["Time"].max()
         final_temps = (
             phys_df[phys_df["Time"] == final_time].sort_values("Point")["gasTemp"].values
@@ -685,9 +677,9 @@ class TestOOHotcore1D:
 class TestOOModelSavingLoading1D:
     """Test saving and loading 1D models with OO interface."""
 
-    def test_oo_save_load_1d_model(self, base_1d_params, common_output_directory):
+    def test_oo_save_load_1d_model(self, base_1d_params, tmp_path):
         """Test that 1D models can be saved and loaded."""
-        save_file = common_output_directory / "test_oo_1d_model.json"
+        save_file = tmp_path / "test_oo_1d_model.json"
 
         # Run and save model
         model1 = uclchem.model.Cloud(
@@ -711,11 +703,9 @@ class TestOOModelSavingLoading1D:
             == model2._param_dict["enable_radiative_transfer"]
         )
 
-    def test_oo_save_load_preserves_point_column(
-        self, base_1d_params, common_output_directory
-    ):
+    def test_oo_save_load_preserves_point_column(self, base_1d_params, tmp_path):
         """Test that Point column is preserved after save/load."""
-        save_file = common_output_directory / "test_oo_1d_point_column.h5"
+        save_file = tmp_path / "test_oo_1d_point_column.h5"
 
         model1 = uclchem.model.Cloud(param_dict=base_1d_params, timepoints=2500)
         model1.check_error()
@@ -724,7 +714,7 @@ class TestOOModelSavingLoading1D:
         model2 = uclchem.model.Cloud.from_file(str(save_file))
 
         # Get DataFrames from loaded model
-        phys_df, chem_df = model2.get_dataframes(joined=False)
+        phys_df, _chem_df = model2.get_split_dataframes()
 
         # Point column should exist
         assert "Point" in phys_df.columns
@@ -759,7 +749,7 @@ class TestOOModelChaining1D:
         model2.check_error()
 
         # Verify time continuity
-        phys_df2 = model2.get_dataframes(joined=False)[0]
+        phys_df2 = model2.get_split_dataframes()[0]
         assert phys_df2["Time"].iloc[-1] >= 5.0e4
 
         # Verify handoff: next_starting_chemistry_array is what drives phase 2 and
@@ -824,7 +814,7 @@ class TestEndAtFinalDensity:
         model.check_error()
 
         # Get final density
-        phys_df = model.get_dataframes(joined=False)[0]
+        phys_df = model.get_split_dataframes()[0]
         final_density = phys_df["Density"].iloc[-1]
 
         # Should have stopped at or before finalDens
@@ -851,7 +841,7 @@ class TestEndAtFinalDensity:
         model.check_error()
 
         # Get final time
-        phys_df = model.get_dataframes(joined=False)[0]
+        phys_df = model.get_split_dataframes()[0]
         final_time = phys_df["Time"].iloc[-1]
 
         # Should have run to finalTime
@@ -886,7 +876,7 @@ class TestFunctionalVsOOConsistency:
 
     def test_functional_dataframe_point_column(self, base_1d_params):
         """Test that functional API returns DataFrames with Point column."""
-        phys_df, chem_df, _, _, _, flag = uclchem.functional.cloud(
+        phys_df, _chem_df, _, _, _, flag = uclchem.functional.cloud(
             param_dict=base_1d_params,
             return_dataframe=True,
             timepoints=2500,

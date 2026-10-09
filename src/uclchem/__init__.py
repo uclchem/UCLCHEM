@@ -12,7 +12,6 @@ The UCLCHEM python module is divided into several parts:
 
 from . import advanced as advanced
 from . import analysis as analysis
-from . import style as style
 
 # isort: off
 # The following contains the virtual submodule ``functional``,

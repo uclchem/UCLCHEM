@@ -4,16 +4,21 @@ from __future__ import annotations
 
 import logging
 from collections import Counter
-from typing import TYPE_CHECKING, Any
+from functools import cache
+from typing import TYPE_CHECKING
 from warnings import warn
 
 import numpy as np
 import pandas as pd
 
+from uclchem.makerates.utils import (
+    find_number_of_consecutive_digits,
+    normalize_species_name,
+    sanitize_input_float,
+)
 from uclchem.utils import (
     MISSING_VALUE_FLOAT,
     MISSING_VALUE_INTEGER,
-    find_number_of_consecutive_digits,
 )
 
 if TYPE_CHECKING:
@@ -21,7 +26,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-elementList = [
+elementList = (
     "H",
     "D",
     "HE",
@@ -42,8 +47,8 @@ elementList = [
     "18O",
     "E-",
     "FE",
-]
-elementMass = [
+)
+elementMass = (
     1,
     2,
     4,
@@ -64,58 +69,11 @@ elementMass = [
     18,
     0,
     56,
-]
-symbols = ["#", "@", "*", "+", "-", "(", ")"]
+)
+IGNORED_SPECIES_PARSING_SYMBOLS = frozenset({"#", "@", "*", "+", "-", "(", ")"})
 
 
-def normalize_species_name(name: str) -> str:
-    """Normalize a species name to a canonical form.
-
-    Empty strings are preserved as empty strings. Other falsy values (like None)
-    are converted to "NAN". Grain prefixes (#/@) are preserved as-is.
-    A chemical isomer prefix — a single alphabetic character followed by a hyphen
-    (e.g. 'o-', 'p-', 'a-', 'l-') — is lowercased so that input is case-insensitive.
-    The chemical formula part is uppercased. All other names are simply uppercased.
-
-    Parameters
-    ----------
-    name : str
-        Raw species name string to normalize.
-
-    Returns
-    -------
-    str
-        Normalized species name
-
-    Examples
-    --------
-    'o-H2'   -> 'o-H2'
-    'O-H2'   -> 'o-H2'   (case-normalized prefix)
-    '#o-H2'  -> '#o-H2'
-    'C-'     -> 'C-'     (negative ion: len==2, not a prefix)
-    'E-'     -> 'E-'     (electron: same rule)
-    'H2O'    -> 'H2O'
-    ''       -> ''       (empty string)
-    None     -> 'NAN'    (falsy non-string value)
-
-    """
-    # Preserve empty strings; convert other falsy values to "NAN"
-    if name == "":  # noqa: PLC1901
-        return ""
-    if not name:
-        return "NAN"
-    grain_prefix = ""
-    rest = name
-    if rest[0] in {"#", "@"}:
-        grain_prefix = rest[0]
-        rest = rest[1:]
-    # A chemical prefix is exactly one alpha char + '-' with more formula after it.
-    if len(rest) > 2 and rest[1] == "-" and rest[0].isalpha():  # noqa: PLR2004
-        return grain_prefix + rest[0].lower() + "-" + rest[2:].upper()
-    return grain_prefix + rest.upper()
-
-
-species_header = (
+SPECIES_HEADER = (
     "NAME",
     "MASS",
     "BINDING_ENERGY",
@@ -133,52 +91,248 @@ species_header = (
 )
 
 
-def is_number(s: Any) -> bool:
-    """Try to convert input to a float, if it succeeds, return True.
+def get_prefix_in_species_name(name: str) -> str:
+    """Detect the chemical isomer prefix in a species' name.
 
     Parameters
     ----------
-    s : Any
-        Input object to check
+    name : str
+        Name of the species.
 
     Returns
     -------
-    bool
-        True if a number, False if not.
+    prefix : str
+        Prefix. An empty string if no prefix is found.
+
+    Examples
+    --------
+    >>> get_prefix_in_species_name('o-H2')
+    'o'
+    >>> # Ignores phase indications
+    >>> get_prefix_in_species_name('#o-H2')
+    'o'
+    >>> # Returns an empty string if no prefix is found
+    >>> get_prefix_in_species_name('#H2')
+    ''
 
     """
-    try:
-        float(s)
-        return True
-    except ValueError:
-        return False
+    rest = name[1:] if name and name[0] in {"#", "@"} else name
+    prefix = rest[0] if (len(rest) > 2 and rest[1] == "-" and rest[0].islower()) else ""  # ruff: ignore[magic-value-comparison]
+    return prefix
 
 
-def sanitize_input_float(row: list[Any], index: int, default: Any = 0.0) -> float:
-    """Sanitize the input. If the index is out of bounds of the row or the value.
-
-    from the row cannot be turned into a float, use the `default` value.
-    Otherwise, just gets the value from the row.
+def strip_prefix_from_species_name(name: str) -> str:
+    """Strip a chemical isomer prefix from a species' name.
 
     Parameters
     ----------
-    row : list[Any]
-        list of objects
-    index : int
-        index within list to use
-    default : Any
-        default value to use. Default = 0.0.
+    name : str
+        Name of the species
 
     Returns
     -------
-    float
-        sanitized value.
+    name : str
+        Name, with the chemical isomer prefix removed.
+
+    Examples
+    --------
+    >>> strip_prefix_from_species_name('o-H2')
+    'H2'
+    >>> # Keeps indication of phase
+    >>> strip_prefix_from_species_name('#o-H2')
+    '#H2'
 
     """
-    output = default
-    if len(row) > index and is_number(row[index]):
-        output = float(row[index])
-    return output
+    prefix = get_prefix_in_species_name(name)
+    if prefix:
+        if name and name[0] in {"#", "@"}:
+            # keep the grain prefix, remove 'x-' immediately after it
+            name = name[0] + name[len(prefix) + 2 :]
+        else:
+            name = name[len(prefix) + 1 :]
+    return name
+
+
+def calculate_element_counts_per_species(
+    species_list: list[Species],
+) -> tuple[tuple[str, ...], np.typing.NDArray[np.int32]]:
+    """Get the number of times each element occurs in each species.
+
+    Generic element-count 2D array for runtime conservation checking.
+    Covers every element that appears at least once across all species.
+
+    Parameters
+    ----------
+    species_list : list[Species]
+        List of species
+
+    Returns
+    -------
+    unique_elements : tuple[str]
+        A sorted list of all the unique elements in the list of species.
+    elem_count_2d : np.typing.NDArray[np.int_]
+        2D array with shape ``n_spec * n_elem`` of how often each element
+        occurs in each species.
+
+    """
+    all_constituents: list[Counter[str]] = []
+    unique_elements_set: set[str] = set()
+    for species in species_list:
+        try:
+            constituents = species.find_constituents(quiet=True)
+            all_constituents.append(constituents)
+            unique_elements_set.update(
+                element for element, count in constituents.items() if count > 0
+            )
+        except (ValueError, Exception):
+            all_constituents.append(Counter())
+
+    unique_elements = tuple(
+        sorted(e for e in unique_elements_set if e.upper() not in {"E", "E-"})
+    )
+
+    n_elems = len(unique_elements)
+    elem_count_2d = np.zeros((len(species_list), n_elems), dtype=int)
+    for si, elem_constituents in enumerate(all_constituents):
+        for ei, elem in enumerate(unique_elements):
+            elem_count_2d[si, ei] = elem_constituents.get(elem, 0)
+
+    return unique_elements, elem_count_2d
+
+
+def determine_molecular_mass(constituents: Counter[str]) -> int:
+    """Determine the molecular mass for a set of atoms.
+
+    Parameters
+    ----------
+    constituents : Counter[str]
+        Counter of elemental makeup, for example obtained from
+        :func:`determine_constituents`.
+
+    Returns
+    -------
+    mass : int
+        Mass of the species.
+
+    """
+    mass = 0
+    for element, count in constituents.items():
+        mass += elementMass[elementList.index(element)] * count
+    return mass
+
+
+@cache
+def determine_constituents(normalized_species_name: str) -> Counter[str]:
+    """Loop through a species' name and work out what its constituent atoms are.
+
+    Parameters
+    ----------
+    normalized_species_name : str
+        Species name that has been normalized by :func:`normalize_species_name`
+        and :func:`strip_prefix_from_species_name` if necessary.
+
+    Returns
+    -------
+    Counter[str]
+        Counter of how many times each element is in the molecule.
+
+    Raises
+    ------
+    ValueError
+        If the species name is invalid, meaning contains species not in the
+        elements list, has an opening but no closing bracket, etc.
+
+    Examples
+    --------
+    >>> constituents = determine_constituents('H2')
+    >>> # Has the right number of H atoms
+    >>> constituents['H']
+    2
+    >>> # And 0 of the other atoms
+    >>> constituents['O']
+    0
+
+    >>> constituents = determine_constituents('(CH3)2')
+    >>> constituents['C'], constituents["H"]
+    (2, 6)
+
+    >>> constituents = determine_constituents('C60')
+    >>> constituents['C']
+    60
+
+    """
+    if normalized_species_name[0].isdigit():
+        msg = f"First character of formula {normalized_species_name} was a digit. Please put repeated parts in a bracket with number after, e.g. (CH3)2"
+        raise ValueError(msg)
+
+    char_idx = 0
+    atoms: list[str] = []
+    currently_in_bracket = False
+    bracket_content: list[str] = []
+    j = None
+    # loop over characters in species name to work out what it is made of
+    while char_idx < len(normalized_species_name):
+        # if character isn't a + or - then check it, otherwise move on
+        if normalized_species_name[char_idx] not in IGNORED_SPECIES_PARSING_SYMBOLS:
+            if (
+                char_idx + 1 < len(normalized_species_name)
+                and normalized_species_name[char_idx : char_idx + 2] in elementList
+            ):
+                # if next two characters are (eg) 'MG' then atom is Mg not M and G
+                j = char_idx + 2
+            # if there aren't two characters left just try next one
+            elif normalized_species_name[char_idx] in elementList:
+                j = char_idx + 1
+
+            # if we've found a new element check for numbers otherwise print error
+            if j is None or j <= char_idx:
+                msg = f"formula {normalized_species_name} contains element(s) not in element list"
+                raise ValueError(msg)
+
+            num_digits = find_number_of_consecutive_digits(normalized_species_name, j)
+            if num_digits == 0:
+                nrepeat = 1
+            else:
+                nrepeat = int(normalized_species_name[j : j + num_digits])
+            for _ in range(nrepeat):
+                if currently_in_bracket:
+                    bracket_content.append(normalized_species_name[char_idx:j])
+                else:
+                    atoms.append(normalized_species_name[char_idx:j])
+            char_idx = j + num_digits
+        else:
+            # if symbol is start of a bracketed part of molecule, keep track
+            if normalized_species_name[char_idx] == "(":
+                currently_in_bracket = True
+                bracket_content = []
+            # if it's the end then add bracket contents to list
+            elif normalized_species_name[char_idx] == ")":
+                if not currently_in_bracket:
+                    msg = f"Found closing bracket before opening bracket in formula {normalized_species_name}"
+                    raise ValueError(msg)
+                currently_in_bracket = False
+                num_digits = find_number_of_consecutive_digits(
+                    normalized_species_name, char_idx + 1
+                )
+                if num_digits == 0:
+                    nrepeat = 1
+                else:
+                    nrepeat = int(
+                        normalized_species_name[char_idx + 1 : char_idx + 1 + num_digits]
+                    )
+                for _ in range(nrepeat):
+                    atoms.extend(bracket_content)
+                char_idx += num_digits
+            char_idx += 1
+    if currently_in_bracket:
+        msg = f"Opening bracket was not closed in formula {normalized_species_name}"
+        raise ValueError(msg)
+
+    counter: Counter[str] = Counter()
+    for element in elementList:
+        counter[element] = atoms.count(element)
+
+    return counter
 
 
 class Species:
@@ -206,16 +360,11 @@ class Species:
 
         """
         if isinstance(input_row, pd.Series):
-            input_row = [input_row[field] for field in species_header]
+            input_row = [input_row[field] for field in SPECIES_HEADER]
 
         self.name = normalize_species_name(str(input_row[0]))
-        # Detect chemical isomer prefix (e.g. 'o' from 'o-H2' or '#o-H2').
-        _rest = self.name[1:] if self.name and self.name[0] in {"#", "@"} else self.name
-        self.prefix = (
-            _rest[0]
-            if (len(_rest) > 2 and _rest[1] == "-" and _rest[0].islower())  # noqa: PLR2004
-            else ""
-        )
+
+        self.prefix = get_prefix_in_species_name(self.name)
         self.mass = int(input_row[1])
 
         # binding energy and refractory handling
@@ -317,7 +466,7 @@ class Species:
 
         if "+" in self.get_name():
             return 1
-        elif self.get_name().endswith("-"):
+        if self.get_name().endswith("-"):
             return -1
         return 0
 
@@ -511,8 +660,7 @@ class Species:
         Yields
         ------
         tuple[list[str], float]
-            Iterator that returns all of the
-            freeze out reactions with ratios
+            Iterator that returns all of the freeze-out reactions with ratios
 
         """
         keys = self.freeze_products.keys()
@@ -634,11 +782,10 @@ class Species:
             freeze = ""
         self.set_freeze_products([freeze, "NAN", "NAN", "NAN"], 1.0)
 
-    def find_constituents(self, quiet: bool = False) -> Counter[str]:
-        """Loop through the species' name and work out what its constituent.
+    def find_constituents(self, *, quiet: bool = False) -> Counter[str]:
+        """Loop through the species' name and work out what its constituent atoms are.
 
-        atoms are. Then calculate mass and alert user if it doesn't match
-        input mass.
+        Then calculate mass and alert user if it doesn't match the input mass.
 
         Parameters
         ----------
@@ -649,12 +796,6 @@ class Species:
         -------
         Counter[str]
             Counter of how many times each element is in the molecule.
-
-        Raises
-        ------
-        ValueError
-            If the molecular formula is not valid, for example it has an
-            element not in the element list, has no closing bracket, or starts with a digit.
 
         Examples
         --------
@@ -678,85 +819,10 @@ class Species:
         60
 
         """
-        # Adapted from https://github.com/uclchem/UCLCHEM/blob/main/src/uclchem/makerates/species.py
-        name = self.name
-        # Strip chemical isomer prefix (e.g. 'o-' from 'o-H2' or '#o-H2') so the
-        # element parser only sees the plain formula.
-        if self.prefix:
-            if name and name[0] in {"#", "@"}:
-                # keep the grain prefix, remove 'x-' immediately after it
-                name = name[0] + name[len(self.prefix) + 2 :]
-            else:
-                name = name[len(self.prefix) + 1 :]
-        if name[0].isdigit():
-            msg = f"First character of formula {name} was a digit. Please put repeated parts in a bracket with number after, e.g. (CH3)2"
-            raise ValueError(msg)
+        name = strip_prefix_from_species_name(self.name)
 
-        char_idx = 0
-        atoms: list[str] = []
-        currently_in_bracket = False
-        bracket_content: list[str] = []
-        j = None
-        # loop over characters in species name to work out what it is made of
-        while char_idx < len(name):
-            # if character isn't a + or - then check it, otherwise move on
-            if name[char_idx] not in symbols:
-                if (
-                    char_idx + 1 < len(name)
-                    and name[char_idx : char_idx + 2] in elementList
-                ):
-                    # if next two characters are (eg) 'MG' then atom is Mg not M and G
-                    j = char_idx + 2
-                # if there aren't two characters left just try next one
-                elif name[char_idx] in elementList:
-                    j = char_idx + 1
-
-                # if we've found a new element check for numbers otherwise print error
-                if j is None or j <= char_idx:
-                    msg = f"formula {name} contains element(s) not in element list"
-                    raise ValueError(msg)
-
-                num_digits = find_number_of_consecutive_digits(name, j)
-                if num_digits == 0:
-                    nrepeat = 1
-                else:
-                    nrepeat = int(name[j : j + num_digits])
-                for _ in range(nrepeat):
-                    if currently_in_bracket:
-                        bracket_content.append(name[char_idx:j])
-                    else:
-                        atoms.append(name[char_idx:j])
-                char_idx = j + num_digits
-            else:
-                # if symbol is start of a bracketed part of molecule, keep track
-                if name[char_idx] == "(":
-                    currently_in_bracket = True
-                    bracket_content = []
-                # if it's the end then add bracket contents to list
-                elif name[char_idx] == ")":
-                    if not currently_in_bracket:
-                        msg = f"Found closing bracket before opening bracket in formula {name}"
-                        raise ValueError(msg)
-                    currently_in_bracket = False
-                    num_digits = find_number_of_consecutive_digits(name, char_idx + 1)
-                    if num_digits == 0:
-                        nrepeat = 1
-                    else:
-                        nrepeat = int(name[char_idx + 1 : char_idx + 1 + num_digits])
-                    for _ in range(nrepeat):
-                        atoms.extend(bracket_content)
-                    char_idx += num_digits
-                char_idx += 1
-        if currently_in_bracket:
-            msg = f"Opening bracket was not closed in formula {name}"
-            raise ValueError(msg)
-        counter: Counter[str] = Counter()
-        for element in elementList:
-            counter[element] = atoms.count(element)
-
-        mass = 0
-        for atom in atoms:
-            mass += elementMass[elementList.index(atom)]
+        counter = determine_constituents(name)
+        mass = determine_molecular_mass(counter)
         if mass != int(self.get_mass()):
             if not quiet:
                 logger.warning(
@@ -1042,10 +1108,9 @@ class Species:
         """
         if isinstance(other, Species):
             return self.get_name() == other.get_name()
-        elif isinstance(other, str):
+        if isinstance(other, str):
             return self.get_name() == other
-        else:
-            return NotImplemented
+        return NotImplemented
 
     def __hash__(self) -> int:
         """Hash based on species name, consistent with __eq__.
@@ -1149,12 +1214,11 @@ class Species:
                 * np.sqrt(self.Ix * self.Iy * self.Iz * amu**3 / 1e60)
                 * scaling_factor
             )
-        else:
-            return (
-                (1.0 / self.symmetry_factor)
-                * np.sqrt(self.Iy * self.Iz * amu**2 / 1e40)
-                * scaling_factor
-            )
+        return (
+            (1.0 / self.symmetry_factor)
+            * np.sqrt(self.Iy * self.Iz * amu**2 / 1e40)
+            * scaling_factor
+        )
 
     def is_linear(self) -> bool:
         """Check if molecule is linear based on moment of inertia.
@@ -1170,7 +1234,7 @@ class Species:
         if self.n_atoms == 1:
             # Atomic species are not linear (doesn't matter, filtered out anyway)
             return False
-        if self.n_atoms == 2:  # noqa: PLR2004
+        if self.n_atoms == 2:  # ruff: ignore[magic-value-comparison]
             # Diatomic molecules are always linear
             return True
         if MISSING_VALUE_FLOAT in {self.Ix, self.Iy, self.Iz}:
@@ -1179,7 +1243,7 @@ class Species:
         if not self.is_ice_species():
             # Only implement for grain species
             return False
-        return self.Ix == 0.0
+        return self.Ix == 0
 
     def check_symmetry_factor(self) -> None:
         """Check the symmetry factor provided by the user.
@@ -1190,17 +1254,17 @@ class Species:
         """
         if self.n_atoms == 1:  # Nothing to check
             return
-        if self.n_atoms > 2:  # noqa: PLR2004  # Can not correctly check everything
+        if self.n_atoms > 2:  # ruff: ignore[magic-value-comparison]  # Can not correctly check everything
             return
         constituents = self.find_constituents(quiet=True)
-        if len(constituents) == 2:  # noqa: PLR2004 # Two constituents, i.e. two different atoms.
+        if len(constituents) == 2:  # ruff: ignore[magic-value-comparison] # Two constituents, i.e. two different atoms.
             if self.symmetry_factor == 1:
                 return
             msg = f"For diatomic molecule consisting of two different atoms (in this case {self.name}), the symmetry factor should be 1, but was given to be {self.symmetry_factor}. Correcting to 1."
             logger.warning(msg)
             self.symmetry_factor = 1
             return
-        if self.symmetry_factor == 2:  # noqa: PLR2004
+        if self.symmetry_factor == 2:  # ruff: ignore[magic-value-comparison]
             return
         msg = f"For diatomic molecule consisting of two of the same atoms (in this case {self.name}), the symmetry factor should be 2, but was given to be {self.symmetry_factor}. Correcting to 2."
         logger.warning(msg)
