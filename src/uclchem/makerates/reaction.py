@@ -1441,6 +1441,18 @@ def _generate_reaction_ode_bit(
     str
         String fragment of the ODE term for this reaction.
 
+    Notes
+    -----
+    Warm-up stiffness guards: ``safeMantle``/``safeBulk`` (defined in
+    :func:`build_ode_string`) sit at the ``MIN_ABUND`` floor once ice has mostly thermally
+    desorbed, at which point ice-normalized ratios (``SURFSWAP``, ``DEUVCR``/``DESCR``/
+    ``DESOH2``/``ER``/``ERDES``) divide two floor-scale, solver-noise-dominated quantities
+    and can blow up. Two guards keep this bounded: every ice-phase reactant factor is
+    clamped non-negative (``MAX(0.0_dp, Y(...))``), and ``mantleEmpty``/``bulkEmpty``
+    (also from :func:`build_ode_string`) short-circuit these ratios to their correct
+    physical limit of zero once the mantle/bulk is numerically empty, instead of evaluating
+    the division.
+
     """
     ode_bit = f"+RATE_CONSTANTS({i + 1})"
     # every body after the first requires a factor of density
@@ -1454,31 +1466,34 @@ def _generate_reaction_ode_bit(
     # then bring in factors of abundances
     for species in reactants:
         if species in species_names:
-            ode_bit += f"*Y({species_names.index(species) + 1})"
+            if species.startswith(("#", "@")):
+                # Warm-up stiffness guard (see Notes): non-negativity clamp, ice phase only.
+                ode_bit += f"*MAX(0.0_dp, Y({species_names.index(species) + 1}))"
+            else:
+                ode_bit += f"*Y({species_names.index(species) + 1})"
         elif species == "BULKSWAP":
             ode_bit += "*ratioSurfaceToBulk"
         elif species == "SURFSWAP":
-            # totalSwap/safeMantle is only guaranteed <=1 if safeMantle never
-            # transiently undershoots the total ice content it bounds; clamp
-            # it explicitly rather than relying on that invariant.
-            ode_bit += "*MIN(1.0_dp, totalSwap/safeMantle)"
+            # Warm-up stiffness guard (see Notes): ratio -> 0 once mantle is empty.
+            ode_bit += "*MERGE(0.0_dp, MIN(1.0_dp, totalSwap/safeMantle), mantleEmpty)"
         elif species in {"DEUVCR", "DESCR", "DESOH2", "ER", "ERDES"}:
-            # Y(ice_reactant)/safeMantle is only <=1 if safeMantle never
-            # transiently undershoots the true ice content it's meant to
-            # bound. Dividing by MAX(safeMantle, Y(ice_reactant)) instead
-            # clamps the ratio at 1.
+            # Warm-up stiffness guard (see Notes): divide by a large value once mantle is
+            # empty, so the term collapses to zero instead of a noise-dominated ratio.
             ice_reactant = next(
                 (r for r in reactants if r in species_names and r.startswith(("#", "@"))),
                 None,
             )
             if ice_reactant is not None:
-                ode_bit += f"/MAX(safeMantle, Y({species_names.index(ice_reactant) + 1}))"
+                ode_bit += (
+                    "/MERGE(1.0e30_dp, MAX(safeMantle, "
+                    f"Y({species_names.index(ice_reactant) + 1})), mantleEmpty)"
+                )
             else:
-                ode_bit += "/safeMantle"
+                ode_bit += "/MERGE(1.0e30_dp, safeMantle, mantleEmpty)"
             if species == "DESOH2":
-                ode_bit += f"*Y({species_names.index('H') + 1})"
+                ode_bit += f"*MAX(0.0_dp, Y({species_names.index('H') + 1}))"
         elif species == "ED":
-            ode_bit += f"*Y({species_names.index('#H2') + 1})"
+            ode_bit += f"*MAX(0.0_dp, Y({species_names.index('#H2') + 1}))"
 
         if "H2FORM" in reactants:
             # only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation
