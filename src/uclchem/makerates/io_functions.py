@@ -1050,6 +1050,18 @@ def build_ode_string(
     ode_string : str
         One long string containing the entire ODE fortran code.
 
+    Notes
+    -----
+    Warm-up stiffness guards: ``safeMantle``/``safeBulk`` are floored at ``MIN_ABUND`` to
+    avoid literal division by zero, but once ice has mostly thermally desorbed they sit at
+    that same floor scale as the solver noise in every individual ice abundance. Ratios
+    built from them (here: the bulk-transfer ``alpha``; in
+    :func:`_generate_reaction_ode_bit`: ``SURFSWAP``, ``DEUVCR``/``DESCR``/``DESOH2``/
+    ``ER``/``ERDES``) then divide two noise-dominated quantities instead of computing a
+    meaningful fraction, which can destabilize the solver. ``mantleEmpty``/``bulkEmpty``
+    flag that regime so dependent terms resolve to their correct physical limit of zero
+    (no ice left -> no swap/transfer/partition) instead of evaluating the division.
+
     """
     # We create a string of losses and gains for each species so initialize them all as ""
     species_names = []
@@ -1122,6 +1134,7 @@ def build_ode_string(
 
             real(dp) :: totalSwap, LOSS, PROD, alpha
             real(dp) :: safeMantle, safeBulk, ratioSurfaceToBulk, bulkLayersReciprocal
+            logical :: mantleEmpty, bulkEmpty
 
             ! MAXVAL floor: sum() alone can undershoot an individual component when other
             ! components have gone slightly negative (expected DVODE predictor overshoot).
@@ -1133,6 +1146,9 @@ def build_ode_string(
             if (refractoryList(1) > 0) then
                 safeBulk = MAX(MIN_ABUND, safeBulk - SUM(Y(refractoryList)))
             end if
+            ! Warm-up stiffness guards (see Notes in build_ode_string's docstring).
+            mantleEmpty = (safeMantle <= 1.0e4_dp * MIN_ABUND)
+            bulkEmpty   = (safeBulk   <= 1.0e4_dp * MIN_ABUND)
             ratioSurfaceToBulk   = MIN(1.0_dp, safeMantle/safeBulk)
             bulkLayersReciprocal = MIN(1.0_dp, NUM_SITES_PER_GRAIN/(GAS_DUST_DENSITY_RATIO*safeBulk))
     """)
@@ -1161,11 +1177,15 @@ def build_ode_string(
     ! Update surface species for bulk growth
     if (YDOT(nSurface) < 0) then
         ! Since ydot(surface_index) is negative, bulk is lost and surface forms
-        if (useGarrod2011Transfer) then
-            ! Three-phase treatment of Garrod & Pauly 2011
+        if (bulkEmpty .or. mantleEmpty) then
+            ! Warm-up stiffness guard (see Notes in build_ode_string's docstring).
+            alpha = 0.0_dp
+        else if (useGarrod2011Transfer) then
+            ! Three-phase treatment of Garrod & Pauly 2011.
             ! Real value of alpha_des: alpha_des = MIN(1.0_dp, safeBulk / safeMantle).
-            ! However, the YDOTs calculated below need to be multiplied with Y(bulkspec)/safeBulk,
-            ! so we divide by safeBulk here to save time
+            ! The YDOTs below need Y(bulkspec)/safeBulk, so we divide by safeBulk here to
+            ! save a per-species division; each alpha*Y(...) usage is clamped to [0,1]
+            ! below as a second line of defense.
             alpha = MIN(1.0_dp, safeBulk/safeMantle)/safeBulk
         else
             ! Hasegawa & Herbst 1993
@@ -1186,20 +1206,26 @@ def build_ode_string(
             j += 1
             bulk_partner = species_names.index(species.get_name().replace("#", "@"))
             if enable_rates_storage:
-                ode_string += f"        REACTIONRATE({i}) = -YDOT(nSurface)*alpha*Y({bulk_partner + 1})\n"
+                ode_string += f"        REACTIONRATE({i}) = -YDOT(nSurface)*MAX(0.0_dp, MIN(1.0_dp, alpha*Y({bulk_partner + 1})))\n"
                 ode_string += f"        REACTIONRATE({j}) = 0.0_dp\n"
             if not species_list[bulk_partner].is_refractory:
-                ode_string += f"        YDOT({n + 1})=YDOT({n + 1})-YDOT(nSurface)*alpha*Y({bulk_partner + 1})\n"
+                ode_string += f"        YDOT({n + 1})=YDOT({n + 1})-YDOT(nSurface)*MAX(0.0_dp, MIN(1.0_dp, alpha*Y({bulk_partner + 1})))\n"
         if species.get_name()[0] == "@" and not species.is_refractory:
             ode_string += (
-                f"        YDOT({n + 1})=YDOT({n + 1})+YDOT(nSurface)*alpha*Y({n + 1})\n"
+                f"        YDOT({n + 1})=YDOT({n + 1})+YDOT(nSurface)*MAX(0.0_dp, MIN(1.0_dp, alpha*Y({n + 1})))\n"
             )
     ode_string += "    else\n"
-    ode_string += "        ! surfaceCoverage = fractional surface coverage\n"
-    ode_string += "        ! Real value of surfaceCoverage: surfaceCoverage = safeMantle / NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN\n"
-    ode_string += "        ! However, the YDOTs calculated below need to be multiplied with Y(surfspec)/safeMantle, so we divide by safeMantle here to save time\n"
-    ode_string += "        ! In chemistry.f90: surfaceCoverage = 1/NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN\n"
-    ode_string += "        alpha = MIN(1.0_dp, surfaceCoverage*safeMantle)/safeMantle\n"
+    ode_string += "        ! surfaceCoverage = fractional surface coverage.\n"
+    ode_string += "        ! Real value: surfaceCoverage = safeMantle / NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN\n"
+    ode_string += "        ! (computed in chemistry.f90 as 1/NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN).\n"
+    ode_string += "        ! The YDOTs below need Y(surfspec)/safeMantle, so we divide by safeMantle here to\n"
+    ode_string += "        ! save a per-species division; each alpha*Y(...) usage is clamped to [0,1] below.\n"
+    ode_string += "        ! Warm-up stiffness guard (see Notes in build_ode_string's docstring).\n"
+    ode_string += "        if (mantleEmpty) then\n"
+    ode_string += "            alpha = 0.0_dp\n"
+    ode_string += "        else\n"
+    ode_string += "            alpha = MIN(1.0_dp, surfaceCoverage*safeMantle)/safeMantle\n"
+    ode_string += "        end if\n"
     i = len(reaction_list)
     j = len(reaction_list) + len(surf_species)
     for n, species in enumerate(species_list):
@@ -1209,11 +1235,11 @@ def build_ode_string(
             surface_version = species_names.index(species.get_name().replace("@", "#"))
             if enable_rates_storage:
                 ode_string += f"        REACTIONRATE({i}) = 0.0_dp\n"
-                ode_string += f"        REACTIONRATE({j}) = -YDOT(nSurface)*alpha*Y({surface_version + 1})\n"
-            ode_string += f"        YDOT({n + 1})=YDOT({n + 1})+YDOT(nSurface)*alpha*Y({surface_version + 1})\n"
+                ode_string += f"        REACTIONRATE({j}) = -YDOT(nSurface)*MAX(0.0_dp, MIN(1.0_dp, alpha*Y({surface_version + 1})))\n"
+            ode_string += f"        YDOT({n + 1})=YDOT({n + 1})+YDOT(nSurface)*MAX(0.0_dp, MIN(1.0_dp, alpha*Y({surface_version + 1})))\n"
         if species.get_name()[0] == "#":
             ode_string += (
-                f"        YDOT({n + 1})=YDOT({n + 1})-YDOT(nSurface)*alpha*Y({n + 1})\n"
+                f"        YDOT({n + 1})=YDOT({n + 1})-YDOT(nSurface)*MAX(0.0_dp, MIN(1.0_dp, alpha*Y({n + 1})))\n"
             )
     ode_string += "    end if\n"
 
