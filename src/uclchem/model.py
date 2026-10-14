@@ -390,15 +390,19 @@ def _worker_entry(
             msg = f"Unrecognized model type '{model_class}'. Not in trusted registry."
             raise ValueError(msg)
         model = cls.worker_build(init_kwargs=init_kwargs, shm_desc=shm_descs)
-        with capture_fortran_output(label="last_model", log_file="./last_model_fortran.log"):
+        with capture_fortran_output(
+            label="last_model", log_file="./last_model_fortran.log"
+        ):
             output = model.run_fortran()
-    except BaseException as exc:  # noqa: BLE001 - must always notify the coordinator
+    except BaseException as exc:
         # The coordinator blocks on result_queue.get(); if a Python exception is
         # raised here and never queued, the coordinator hangs forever waiting
         # for a result that will never arrive. Always put *something* back,
         # carrying the formatted traceback so the coordinator can re-raise with
         # useful context instead of just a bare "worker died" message.
-        result_queue.put({"__worker_exception__": "".join(traceback.format_exception(exc))})
+        result_queue.put(
+            {"__worker_exception__": "".join(traceback.format_exception(exc))}
+        )
         return
     result_queue.put(output)
 
@@ -1632,9 +1636,10 @@ class AbstractModel(ABC):
                 self._proc_handle = None
 
             if isinstance(output, dict) and "__worker_exception__" in output:
+                worker_traceback = output["__worker_exception__"]
                 msg = (
                     "UCLCHEM worker process raised an exception while running "
-                    "the model:\n" + output["__worker_exception__"]
+                    f"the model:\n{worker_traceback}"
                 )
                 raise RuntimeError(msg)
         else:
