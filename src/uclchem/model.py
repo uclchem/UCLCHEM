@@ -2820,7 +2820,9 @@ class Cloud(AbstractModel):
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
-            abundancestart=self.starting_chemistry_array if self.give_start_abund else None,
+            abundancestart=self.starting_chemistry_array
+            if self.give_start_abund
+            else None,
         )
         success_flag = result[-1]
         return {
@@ -3069,7 +3071,9 @@ class Collapse(AbstractModel):
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
-            abundancestart=self.starting_chemistry_array if self.give_start_abund else None,
+            abundancestart=self.starting_chemistry_array
+            if self.give_start_abund
+            else None,
         )
         success_flag = result[-1]
         return {
@@ -3241,7 +3245,9 @@ class PrestellarCore(AbstractModel):
                 statsarray=self.stats_array,
                 levelpopulationsarray=self.level_populations_array,
                 sestatsarray=self.se_stats_array,
-                abundancestart=self.starting_chemistry_array if self.give_start_abund else None,
+                abundancestart=self.starting_chemistry_array
+                if self.give_start_abund
+                else None,
             )
         )
         return {
@@ -3421,7 +3427,9 @@ class CShock(AbstractModel):
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
-            abundancestart=self.starting_chemistry_array if self.give_start_abund else None,
+            abundancestart=self.starting_chemistry_array
+            if self.give_start_abund
+            else None,
         )
         dissipation_time = result[-3]
         success_flag = result[-1]
@@ -3587,7 +3595,9 @@ class JShock(AbstractModel):
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
-            abundancestart=self.starting_chemistry_array if self.give_start_abund else None,
+            abundancestart=self.starting_chemistry_array
+            if self.give_start_abund
+            else None,
         )
         success_flag = result[-1]
         return {
@@ -3869,7 +3879,9 @@ class Postprocess(AbstractModel):
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
-            abundancestart=self.starting_chemistry_array if self.give_start_abund else None,
+            abundancestart=self.starting_chemistry_array
+            if self.give_start_abund
+            else None,
         )
         success_flag = result[-1]
         return {
@@ -4101,7 +4113,9 @@ class Model(AbstractModel):
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
-            abundancestart=self.starting_chemistry_array if self.give_start_abund else None,
+            abundancestart=self.starting_chemistry_array
+            if self.give_start_abund
+            else None,
         )
         success_flag = result[-1]
         return {
