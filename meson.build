@@ -64,19 +64,20 @@ incdir_numpy = run_command(py,
   check : true
 ).stdout().strip()
 
-incdir_f2py = run_command(py,
-    ['-c', 'import os; os.chdir(".."); import numpy.f2py; print(numpy.f2py.get_include())'],
-    check : true
-).stdout().strip()
-
-inc_np = include_directories(incdir_numpy)
-np_dep = declare_dependency(include_directories: inc_np)
-
 incdir_f2py = incdir_numpy / '..' / '..' / 'f2py' / 'src'
-inc_f2py = include_directories(incdir_f2py)
 fortranobject_c = incdir_f2py / 'fortranobject.c'
 
-inc_np = include_directories(incdir_numpy, incdir_f2py)
+# incdir_numpy/incdir_f2py are absolute paths that can land inside the
+# source tree -- e.g. when the venv building this package lives at
+# <project_root>/.venv, which is the default location `uv venv`/`uv sync`
+# create it in. meson's include_directories() refuses an absolute path
+# under the source tree ("Tried to form an absolute path to a dir in the
+# source tree"), so pass these as raw compiler flags via a dependency
+# instead; this is the same workaround NumPy's own f2py/meson build
+# templates use.
+inc_np = declare_dependency(
+  compile_args: ['-I' + incdir_numpy, '-I' + incdir_f2py],
+)
 # gh-25000
 quadmath_dep = fc.find_library('quadmath', required: false)
 
@@ -125,12 +126,10 @@ py.extension_module('uclchemwrap',
                       uclchem_wrapper,
                       fortranobject_c
                      ],
-                     include_directories: [
-                     inc_np,
-                     ],
                      dependencies : [
                      py_dep,
                      quadmath_dep,
+                     inc_np,
                      ],
                      link_with : dvode_lib,
                      # fortran_args: ['-O3', '-fPIC', '-ffree-line-length-0'],
