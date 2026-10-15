@@ -271,7 +271,7 @@ get_species_names = SpeciesNameStore()
 def load_model(
     *,
     file_obj: h5py.File | None = None,
-    file: str | None = None,
+    file: str | Path | None = None,
     name: str = "default",
     debug: bool = False,
 ) -> AbstractModel:
@@ -281,7 +281,7 @@ def load_model(
     ----------
     file_obj : h5py.File | None
         open h5py file object. (Default value = None)
-    file : str | None
+    file : str | Path | None
         Path to a file that contains previously run and stored models. (Default value = None)
     name : str
         Name of the stored object, if none was provided `default` will have been used.
@@ -4553,7 +4553,7 @@ class GridRunner:
         model_type: str,
         full_parameters: dict | list,
         max_workers: int | None = None,
-        grid_file: str = "./default_grid_out.h5",
+        grid_file: str | Path = "./default_grid_out.h5",
         model_name_prefix: str = "",
         overwrite_models: bool = False,
         delay_run: bool = False,
@@ -4568,13 +4568,16 @@ class GridRunner:
         self.max_workers = get_number_of_grid_workers(max_workers)
         _logger.debug(f"Number of workers set to {self.max_workers}")
 
-        self.grid_file = grid_file if ".h5" in grid_file else grid_file + ".h5"
+        grid_file = Path(grid_file)
+        self.grid_file = (
+            grid_file if grid_file.suffix == ".h5" else grid_file.with_suffix(".h5")
+        )
 
         # TODO: Implement model appending to grid file
         # TODO: Implement option to append or overwrite grid file.
         # Initial placeholder statement to remove pre-existing grid files
-        if Path(self.grid_file).is_file():
-            Path(self.grid_file).unlink()
+        if self.grid_file.is_file():
+            self.grid_file.unlink()
         self.model_name_prefix = model_name_prefix
         self.overwrite_models = overwrite_models
         self.log_dir = log_dir

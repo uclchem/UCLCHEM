@@ -3,7 +3,7 @@ import numpy as np
 import uclchem
 
 
-def test_grid_matches_individual():
+def test_grid_matches_individual(tmp_path):
     dictionaries = {
         "param_dict": {
             "initialTemp": [10, 20, 30],
@@ -16,7 +16,7 @@ def test_grid_matches_individual():
         dictionaries,
         create_grid=False,
         max_workers=3,
-        grid_file="grid.h5",
+        grid_file=tmp_path,
     )
 
     for idx, grid_model in zip(
