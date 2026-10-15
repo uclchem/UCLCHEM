@@ -27,6 +27,7 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
         enable-cache: true
+        activate-environment: true
 
     - name: "[setup:env] Ubuntu: Update apt and install gfortran"
       # There is a bug in apt sometimes, where if it is overloaded,
@@ -47,12 +48,14 @@ runs:
       with:
         compiler: "gcc"
 
-    - name: "[setup:deps] Install test dependencies"
+    - name: "[setup:deps] Install build and test dependencies"
+      # uclchem is built without isolation ([tool.uv].no-build-isolation-package),
+      # so the "build" group (meson-python, meson, ninja, numpy) must be in the env.
       shell: bash
       run: |
-        uv pip install --system pytest pytest-timeout pytest-xdist pytest-github-actions-annotate-failures
+        uv pip install --group build pytest pytest-timeout pytest-xdist pytest-github-actions-annotate-failures
 
     - name: "[build:package] Install UCLCHEM package"
       if: ${{ inputs.install-package == 'true' }}
       shell: bash
-      run: uv pip install --system .
+      run: uv pip install .
