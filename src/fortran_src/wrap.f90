@@ -734,6 +734,30 @@ CONTAINS
         ! Initialize the chemistry
         CALL initializeChemistry(readAbunds, successFlag)
         IF (successFlag .lt. 0) RETURN
+        ! givestartabund promises one row of starting abundances per point. If the
+        ! array is absent, too short, or a row is all zeros (f2py passes zeros for
+        ! an omitted optional array), every species would start at the abundance
+        ! floor and the model would silently integrate an empty gas. Fail instead.
+        IF (givestartabund) THEN
+            IF (.NOT. PRESENT(abundanceStart)) THEN
+                successFlag=MISSING_START_ABUNDANCE_ERROR
+                WRITE(*,*) 'Error: givestartabund is set but no starting abundances were passed'
+                RETURN
+            END IF
+            IF (SIZE(abundanceStart, 1) .lt. points) THEN
+                successFlag=MISSING_START_ABUNDANCE_ERROR
+                WRITE(*,*) 'Error: starting abundances given for', SIZE(abundanceStart, 1), &
+                    &'points, but the model has', points
+                RETURN
+            END IF
+            DO l=1,points
+                IF (ALL(abundanceStart(l, :nspec) .eq. 0.0D0)) THEN
+                    successFlag=MISSING_START_ABUNDANCE_ERROR
+                    WRITE(*,*) 'Error: starting abundances for point', l, 'are all zero'
+                    RETURN
+                END IF
+            END DO
+        END IF
         IF (returnArray .AND. givestartabund) THEN
             ! In case we have custom abundances, set them here
             IF (enable_radiative_transfer .AND. points.gt.1) THEN
