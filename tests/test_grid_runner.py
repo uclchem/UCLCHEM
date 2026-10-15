@@ -41,6 +41,36 @@ def test_grid_matches_individual(prefix, tmp_path):
         assert np.allclose(model.chemical_abun_array, grid_model.chemical_abun_array)
 
 
+grid_data = [
+    ([10], [1e3]),
+    ([10, 20], [1e3, 1e4]),
+    ([10, 20, 30, 40], [1e3, 1e4]),
+    ([10, 20, 30, 40], [1e3]),
+]
+
+
+@pytest.mark.parametrize(("temperatures", "densities"), grid_data)
+def test_grid_runner_create_grid(temperatures, densities):
+    grid = uclchem.model.GridRunner(
+        "Cloud",
+        {"param_dict": {"initialTemp": temperatures, "initialDensity": densities}},
+        create_grid=True,
+        delay_run=True,
+    )
+    pending = list(
+        uclchem.model.GridRunner.grid_iter(
+            grid.full_parameters,
+            list(grid.parameters_to_grid.keys()),
+            grid.flat_grids,
+            grid.model_type,
+        )
+    )
+    assert len(pending) == len(temperatures) * len(densities)
+    for param_dict in pending:
+        assert param_dict["param_dict"]["initialTemp"] in temperatures
+        assert param_dict["param_dict"]["initialDensity"] in densities
+
+
 def test_invalid_model_name_raises():
     dictionaries = {
         "param_dict": {
