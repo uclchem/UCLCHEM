@@ -4771,24 +4771,11 @@ class GridRunner:
         if self.model_type == "SequentialRunner":
             msg = "Sequential Runner physics loading not implemented"
             raise NotImplementedError(msg)
-        for model in range(len(self.models)):
-            loaded_data = self._load_model_data(model=self.models[model]["Model"])
-            if self.physics_values is None:
-                self.physics_values = json.loads(loaded_data["attributes_dict"].item())[
-                    "physics_values"
-                ]
-            loaded_data = loaded_data.assign_coords(
-                {"physics_values": self.physics_values}
-            )
-            self.models[model]["physics_array"] = loaded_data["physics_array"]
+        for model_idx, model in enumerate(self.get_models()):
+            self.models[model_idx]["physics_array"] = model.physics_array
 
-    def load_chem(self, species: list[str]) -> None:
+    def load_chem(self) -> None:
         """Load the chemistry.
-
-        Parameters
-        ----------
-        species : list[str]
-            list of species to load abundances for.
 
         Raises
         ------
@@ -4799,18 +4786,22 @@ class GridRunner:
         if self.model_type == "SequentialRunner":
             msg = "Sequential Runner chemistry loading not implemented"
             raise NotImplementedError(msg)
-        for model in range(len(self.models)):
-            loaded_data = self._load_model_data(model=self.models[model]["Model"])
-            if self.chemical_abun_values is None:
-                self.chemical_abun_values = json.loads(
-                    loaded_data["attributes_dict"].item()
-                )["chemical_abun_values"]
-            loaded_data = loaded_data.assign_coords(
-                {"chemical_abun_values": self.chemical_abun_values}
-            )
-            self.models[model]["species_abundances_array"] = loaded_data[
-                "chemical_abun_array"
-            ].sel(chemical_abun_values=species)
+        for model_idx, model in enumerate(self.get_models()):
+            self.models[model_idx]["species_abundances_array"] = model.chemical_abun_array
+
+    def get_models(self) -> Iterator[AbstractModel]:
+        """Get an iterator that will yield over all the models in the grid.
+
+        Yields
+        ------
+        AbstractModel
+            Each model in the grid.
+
+        """
+        yield from (
+            self._load_model_data(model=self.models[model]["Model"])
+            for model in range(len(self.models))
+        )
 
     def _load_params(self) -> None:
         """Loop through the models present in the grid models self.models.
@@ -4876,7 +4867,7 @@ class GridRunner:
                     True if loaded_data.success_flag == 0 else loaded_data.success_flag
                 )
 
-    def _load_model_data(self, model: str):
+    def _load_model_data(self, model: str) -> AbstractModel:
         tmp_model = load_model(file=self.grid_file, name=model)
         return tmp_model
 
