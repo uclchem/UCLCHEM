@@ -4889,28 +4889,29 @@ class GridRunner:
             Defaults to True.
 
         """
-        if element_list is None:
-            element_list = default_elements_to_check
-        for model in range(len(self.models)):
-            tmp_model = load_model(file=self.grid_file, name=self.models[model]["Model"])
+        for model_idx, model in enumerate(self.get_models()):
             conserve_dicts: list[dict[str, str]] = []
-            if tmp_model._param_dict["points"] > 1:
-                for pt in range(tmp_model._param_dict["points"]):
-                    df = tmp_model.get_dataframes(pt)
+            if model._param_dict["points"] > 1:
+                for pt in range(model._param_dict["points"]):
+                    df = model.get_dataframes(pt)
                     if isinstance(df, pd.DataFrame):
                         conserve_dicts += [
-                            check_element_conservation(df, element_list, percent)
+                            check_element_conservation(
+                                df, element_list=element_list, percent=percent
+                            )
                         ]
             else:
-                df = tmp_model.get_dataframes(0)
+                df = model.get_dataframes(0)
                 if isinstance(df, pd.DataFrame):
                     conserve_dicts += [
-                        check_element_conservation(df, element_list, percent)
+                        check_element_conservation(
+                            df, element_list=element_list, percent=percent
+                        )
                     ]
             conserved = True
             for conserve_dict in conserve_dicts:
                 conserved = all(float(x[:1]) < 1 for x in conserve_dict.values())
-            self.models[model]["elements_conserved"] = conserved
+            self.models[model_idx]["elements_conserved"] = conserved
 
     def _handler(self, signum: Any, frame: Any) -> None:  # noqa: ARG002
         try:
