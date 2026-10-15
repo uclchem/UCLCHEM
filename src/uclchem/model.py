@@ -90,6 +90,7 @@ _logger = logging.getLogger(__name__)
 # Multiprocessing imports
 import multiprocessing as mp
 import os
+import queue
 import signal
 import traceback
 import warnings
@@ -383,13 +384,26 @@ def _worker_entry(
 
         restore_snapshot(advanced_snapshot)
 
-    cls = REGISTRY.get(model_class)
-    if cls is None:
-        msg = f"Unrecognized model type '{model_class}'. Not in trusted registry."
-        raise ValueError(msg)
-    model = cls.worker_build(init_kwargs=init_kwargs, shm_desc=shm_descs)
-    with capture_fortran_output(label="last_model", log_file="./last_model_fortran.log"):
-        output = model.run_fortran()
+    try:
+        cls = REGISTRY.get(model_class)
+        if cls is None:
+            msg = f"Unrecognized model type '{model_class}'. Not in trusted registry."
+            raise ValueError(msg)
+        model = cls.worker_build(init_kwargs=init_kwargs, shm_desc=shm_descs)
+        with capture_fortran_output(
+            label="last_model", log_file="./last_model_fortran.log"
+        ):
+            output = model.run_fortran()
+    except BaseException as exc:
+        # The coordinator blocks on result_queue.get(); if a Python exception is
+        # raised here and never queued, the coordinator hangs forever waiting
+        # for a result that will never arrive. Always put *something* back,
+        # carrying the formatted traceback so the coordinator can re-raise with
+        # useful context instead of just a bare "worker died" message.
+        result_queue.put(
+            {"__worker_exception__": "".join(traceback.format_exception(exc))}
+        )
+        return
     result_queue.put(output)
 
 
@@ -1591,11 +1605,43 @@ class AbstractModel(ABC):
                 daemon=False,
             )
             self._proc_handle.start()
-            output = result_queue.get()
-            result_queue.close()
-            self._proc_handle.join()
-            self._proc_handle.close()
-            self._proc_handle = None
+            try:
+                # Poll instead of a blocking get(): if the worker dies before it
+                # ever reaches result_queue.put() in _worker_entry (it crashed
+                # during process bootstrap/import, was OOM-killed, or segfaulted),
+                # a plain get() would block here forever with no way to notice.
+                while True:
+                    try:
+                        output = result_queue.get(timeout=1.0)
+                        break
+                    except queue.Empty:
+                        if not self._proc_handle.is_alive():
+                            exitcode = self._proc_handle.exitcode
+                            msg = (
+                                f"UCLCHEM worker process (run_type={self.run_type!r}) "
+                                f"exited with code {exitcode} without returning a "
+                                "result. This can happen if the model was "
+                                "constructed at module scope without an "
+                                "`if __name__ == '__main__':` guard (the spawn "
+                                "start method re-imports and re-runs the script "
+                                "in the child, which fails immediately), or if "
+                                "the worker crashed outright (e.g. a segfault or "
+                                "an out-of-memory kill)."
+                            )
+                            raise RuntimeError(msg) from None
+            finally:
+                result_queue.close()
+                self._proc_handle.join()
+                self._proc_handle.close()
+                self._proc_handle = None
+
+            if isinstance(output, dict) and "__worker_exception__" in output:
+                worker_traceback = output["__worker_exception__"]
+                msg = (
+                    "UCLCHEM worker process raised an exception while running "
+                    f"the model:\n{worker_traceback}"
+                )
+                raise RuntimeError(msg)
         else:
             msg = f"run_type of {self.run_type} is not a valid value."
             raise ValueError(msg)
@@ -2774,7 +2820,9 @@ class Cloud(AbstractModel):
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
-            abundancestart=self.starting_chemistry_array if self.give_start_abund else None,
+            abundancestart=self.starting_chemistry_array
+            if self.give_start_abund
+            else None,
         )
         success_flag = result[-1]
         return {
@@ -3023,7 +3071,9 @@ class Collapse(AbstractModel):
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
-            abundancestart=self.starting_chemistry_array if self.give_start_abund else None,
+            abundancestart=self.starting_chemistry_array
+            if self.give_start_abund
+            else None,
         )
         success_flag = result[-1]
         return {
@@ -3195,7 +3245,9 @@ class PrestellarCore(AbstractModel):
                 statsarray=self.stats_array,
                 levelpopulationsarray=self.level_populations_array,
                 sestatsarray=self.se_stats_array,
-                abundancestart=self.starting_chemistry_array if self.give_start_abund else None,
+                abundancestart=self.starting_chemistry_array
+                if self.give_start_abund
+                else None,
             )
         )
         return {
@@ -3375,7 +3427,9 @@ class CShock(AbstractModel):
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
-            abundancestart=self.starting_chemistry_array if self.give_start_abund else None,
+            abundancestart=self.starting_chemistry_array
+            if self.give_start_abund
+            else None,
         )
         dissipation_time = result[-3]
         success_flag = result[-1]
@@ -3541,7 +3595,9 @@ class JShock(AbstractModel):
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
-            abundancestart=self.starting_chemistry_array if self.give_start_abund else None,
+            abundancestart=self.starting_chemistry_array
+            if self.give_start_abund
+            else None,
         )
         success_flag = result[-1]
         return {
@@ -3823,7 +3879,9 @@ class Postprocess(AbstractModel):
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
-            abundancestart=self.starting_chemistry_array if self.give_start_abund else None,
+            abundancestart=self.starting_chemistry_array
+            if self.give_start_abund
+            else None,
         )
         success_flag = result[-1]
         return {
@@ -4055,7 +4113,9 @@ class Model(AbstractModel):
             statsarray=self.stats_array,
             levelpopulationsarray=self.level_populations_array,
             sestatsarray=self.se_stats_array,
-            abundancestart=self.starting_chemistry_array if self.give_start_abund else None,
+            abundancestart=self.starting_chemistry_array
+            if self.give_start_abund
+            else None,
         )
         success_flag = result[-1]
         return {

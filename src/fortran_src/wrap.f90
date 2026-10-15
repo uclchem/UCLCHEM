@@ -755,11 +755,14 @@ CONTAINS
         !CALL simpleDebug("Initialized")
 
         dstep = 1
-        dtime = 0  ! Start at 0 so first loop iteration writes to dtime=1
+        dtime = 0
         ! Set timeInYears for consistency
         timeInYears = currentTime / SECONDS_PER_YEAR
-        ! Don't call output here - let the first loop iteration handle it
-        ! This avoids duplicate output at t=0
+        ! The starting state (t=currentTime) is written as row 1 below, inside each
+        ! branch, since the RT and non-RT loops track their own row counters
+        ! (dtime_local per parcel vs. a shared dtime). This lets chained models
+        ! (previous_model=/starting_chemistry=) verify the handoff against the
+        ! actual starting abundances instead of the state after one solver step.
 
         ! One-time setup for the (points, time) loop order used in 1D RT models
         IF (enable_radiative_transfer .AND. points.gt.1) THEN
@@ -782,7 +785,7 @@ CONTAINS
                 ! -- per-parcel reset ------------------------------------------------
                 currentTime  = initialTime
                 timeInYears  = initialTime / SECONDS_PER_YEAR
-                dtime_local  = 0
+                dtime_local  = 1
                 parcelDone   = .FALSE.
                 coolant_levpop_force_recompute = .TRUE.
 
@@ -792,6 +795,21 @@ CONTAINS
 
                 ! Outermost shell has no outer neighbor; initialize to zero
                 IF (dstep .eq. points) outer_coldens_for_current_step = 0.0_dp
+
+                ! Write the starting state for this parcel as row 1 (t=initialTime),
+                ! mirroring the non-RT path below.
+                ! NOTE: coldens_history(1) is left at its initialized 0.0 rather than
+                ! this parcel's starting coldens(dstep), because the AV-accumulation
+                ! bookkeeping below only ever wrote post-update values at each step;
+                ! this has not been validated against the 1D radiative-transfer tests
+                ! and may need a second look from whoever owns that code.
+                IF (returnArray) THEN
+                    CALL output(returnArray, returnRateConstants, successflag, physicsarray, &
+                        chemicalabunarray, rateConstantsArray, heatarray, statsarray, &
+                        levelpopulationsarray, sestatsarray, dtime_local, timepoints)
+                ELSE
+                    CALL output(returnArray, returnRateConstants, successflag)
+                END IF
 
                 ! -- time integration for this parcel --------------------------------
                 DO WHILE ((successFlag .eq. 0) .AND. (timeInYears < finalTime) .AND. (.NOT. parcelDone))
@@ -898,6 +916,19 @@ CONTAINS
 
         ELSE
             ! -- non-RT path: original (time outer, points inner) loop ----------------
+            ! Write the starting abundances/physics as row 1 (t=currentTime) for
+            ! every point, so that chained models (previous_model=/starting_chemistry=)
+            ! can be verified against the handed-off state.
+            dtime = 1
+            DO dstep = 1, points
+                IF (returnArray) THEN
+                    CALL output(returnArray, returnRateConstants, successFlag, physicsarray, chemicalabunarray, rateConstantsArray,&
+                    &heatarray, statsarray, levelpopulationsarray, sestatsarray, dtime, timepoints)
+                ELSE
+                    CALL output(returnArray, returnRateConstants, successFlag)
+                END IF
+            END DO
+
             DO WHILE ((successFlag .eq. 0) .and. (timeInYears < finalTime))
                 dtime = dtime + 1
                 currentTimeold=currentTime
