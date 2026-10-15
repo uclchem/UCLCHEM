@@ -1,9 +1,16 @@
 import numpy as np
+import pytest
 
 import uclchem
 
+prefixes = [
+    "",
+    "prefix",
+]
 
-def test_grid_matches_individual(tmp_path):
+
+@pytest.mark.parametrize("prefix", prefixes)
+def test_grid_matches_individual(prefix, tmp_path):
     dictionaries = {
         "param_dict": {
             "initialTemp": [10, 20, 30],
@@ -17,6 +24,7 @@ def test_grid_matches_individual(tmp_path):
         create_grid=False,
         max_workers=3,
         grid_file=tmp_path,
+        model_name_prefix=prefix,
     )
 
     for idx, grid_model in zip(
@@ -31,3 +39,18 @@ def test_grid_matches_individual(tmp_path):
 
         assert np.allclose(model.physics_array, grid_model.physics_array)
         assert np.allclose(model.chemical_abun_array, grid_model.chemical_abun_array)
+
+
+def test_invalid_model_name_raises():
+    dictionaries = {
+        "param_dict": {
+            "initialTemp": [10, 20, 30],
+            "initialDens": [1e4, 1e3, 1e2],
+            "finalTime": [1e2, 1e2, 1e2],
+        }
+    }
+    with pytest.raises(uclchem.model.UnknownModelError):
+        _ = uclchem.model.GridRunner(
+            "UNKNOWN_MODEL",
+            dictionaries,
+        )
