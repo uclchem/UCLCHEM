@@ -22,7 +22,9 @@ cd UCLCHEM
 pip install .
 ```
 
-You can then `import uclchem` in any python script. You need to `pip install .` whenever you change your network with Makerates. 
+If you have [uv](https://docs.astral.sh/uv/) installed, `uv pip install .` is a drop-in, much faster replacement for the `pip install .` line above.
+
+You can then `import uclchem` in any python script. You need to `pip install .` (or `uv pip install .`) whenever you change your network with Makerates. 
 
 To see the contents of this python module, check our [Python API docs](https://uclchem.github.io/develop/api/index.html). To see some example notebooks, check the tutorial section of the docs or the notebooks in `Tutorials/`.
 
@@ -39,14 +41,25 @@ You can check a broad description of changes in each of the [releases](https://g
 This is an open source science code for the community and are open to pull requests. We are also happy to work with you to produce a physics module if none of the models available in the python module `uclchem.model` suit the modeling work you wish to do. If you are contributing, please try to work with our current code style. Feel free to checkout the latest developments with `git fetch; git checkout develop` We have the following general guidelines:
 
 ### Editable development Setup
-After cloning the repository, install the development dependencies and set up pre-commit hooks:
+After cloning the repository, install the development dependencies and set up pre-commit hooks.
+
+With [uv](https://docs.astral.sh/uv/) (recommended -- much faster, and `uv.lock` pins every dependency so everyone builds against the same versions):
+
+```bash
+uv sync --group build --extra dev # creates .venv with uclchem + dev tools, builds the Fortran extension
+uv run pre-commit install # linting, type checking and formatting
+```
+Re-run `uv sync --group build --extra dev` whenever you change your network with Makerates, or after pulling changes that touch the Fortran sources. Use `uv run <command>` (e.g. `uv run pytest`) to run anything inside `.venv` without activating it first, or `source .venv/bin/activate` as usual.
+
+Without uv, plain pip works the same way it always has:
 
 ```bash
 pip install meson-python meson ninja # dependencies 
 pip install -e ".[dev]" --no-build-isolation # uclchem
 pre-commit install # linting, type checking and formatting
 ```
-This last command will automatically run linting and formatting checks before each commit and save you time with failed CI/CD.
+
+Either way, the pre-commit install step will automatically run linting and formatting checks before each commit and save you time with failed CI/CD.
 This might introduce some weird behavior with fortran .mod files lingering if you quit compilation at any point, so beware!
 
 

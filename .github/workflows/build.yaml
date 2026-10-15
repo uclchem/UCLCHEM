@@ -32,7 +32,7 @@ jobs:
           install-package: 'false'
 
       - name: "[build:package] Install UCLCHEM package"
-        run: pip install .
+        run: uv pip install .
 
       - name: "[test:model] Run basic model script."
         run: python3 ./scripts/run_uclchem_tests.py

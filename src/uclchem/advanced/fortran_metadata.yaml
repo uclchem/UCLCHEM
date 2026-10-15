@@ -204,6 +204,7 @@ fortran_parameters:
   - km
   - lsun
   - mh
+  - missing_start_abundance_error
   - n_avogadro
   - negative_abundance_error
   - not_enough_timepoints_error

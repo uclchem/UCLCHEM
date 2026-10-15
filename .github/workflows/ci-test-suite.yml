@@ -31,7 +31,7 @@ jobs:
           install-package: "false"
 
       - name: "[build:package] Install UCLCHEM package"
-        run: pip install .
+        run: uv pip install .
 
       - name: "[test:install] Run installation tests"
         run: pytest tests/test_install.py -v
@@ -70,10 +70,10 @@ jobs:
           install-package: "false"
 
       - name: "[build:package] Install UCLCHEM package, and meson-python"
-        run: pip install . meson-python
+        run: uv pip install . meson-python
 
       - name: "[build:package] Install UCLCHEM package in editable mode"
-        run: pip install --no-build-isolation -e .
+        run: uv pip install --no-build-isolation -e .
 
       - name: "[test:doctest] Run doctests from docstrings"
         run: |
@@ -115,7 +115,7 @@ jobs:
 
       - name: "[setup:deps] Install notebook tools"
         run: |
-          pip install nbmake jupyter jupytext
+          uv pip install nbmake jupyter jupytext
 
       - name: "[build:notebooks] Generate notebooks from .py files"
         run: |
