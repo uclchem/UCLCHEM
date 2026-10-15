@@ -1,5 +1,6 @@
-import uclchem
 import numpy as np
+
+import uclchem
 
 
 def test_grid_matches_individual():
