@@ -27,7 +27,7 @@ repos:
         pass_filenames: false
 
   - repo: https://github.com/adhtruong/mirrors-typos
-    rev: v1.50.0
+    rev: v1.51.1
     hooks:
       - id: typos
         name: "[correctness] Check spelling errors"
@@ -46,7 +46,7 @@ repos:
 
   # Ruff: Code style, docstrings, etc
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.5
+    rev: v0.17.1
     hooks:
       - id: ruff
         name: "[correctness] Ruff linter"
@@ -54,7 +54,7 @@ repos:
         args: [--fix]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.3.1
+    rev: v2.4.0
     hooks:
       - id: mypy
         name: "[correctness] Mypy type checking"
@@ -64,13 +64,22 @@ repos:
         exclude: ^(notebooks|scripts)/
         additional_dependencies: [xarray]
 
+  - repo: https://github.com/astral-sh/ty-pre-commit
+    # ty version.
+    rev: v0.0.89
+    hooks:
+      - id: ty
+        name: "[correctness] ty type checking"
+        description: "Check for type errors"
+        args: [--all-extras]
+
 
   # ============================================================================
   # TIER 2: STYLE (Auto-fixable formatting and imports)
   # Purpose: Enforce consistent code style
   # ============================================================================
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.5
+    rev: v0.17.1
     hooks:
       - id: ruff-format
         name: "[style] Ruff formatter"

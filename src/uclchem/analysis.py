@@ -1134,7 +1134,7 @@ def rate_constants_to_dy_and_rates(
         raise ValueError(msg)
 
     # Compute the rate at each timestep, adding the appropriate header
-    dy = rate_by_reaction @ incidence
+    dy: pd.DataFrame = rate_by_reaction @ incidence
     dy.columns = [str(s) for s in species]
     # Compute the SURFACE and BULK:
     dy.loc[:, "SURFACE"] = dy.loc[:, dy.columns.str.startswith("#")].sum(axis=1)
@@ -1180,8 +1180,8 @@ def rate_constants_to_dy_and_rates(
                 bswap_rates[str(r_bswap).replace("SWAP", "SWAP_GEOMETRIC")] = bswap
                 sswap_rates[str(r_sswap).replace("SWAP", "SWAP_GEOMETRIC")] = 0.0
                 # Immedidiately correct dy:
-                bswap_r_col = dy.columns.get_loc(r_bswap.get_reactants()[0])
-                bswap_p_col = dy.columns.get_loc(r_bswap.get_products()[0])
+                bswap_r_col = int(dy.columns.get_loc(r_bswap.get_reactants()[0]))
+                bswap_p_col = int(dy.columns.get_loc(r_bswap.get_products()[0]))
                 dy.iloc[row_pos, bswap_r_col] -= bswap  # type: ignore[index]
                 dy.iloc[row_pos, bswap_p_col] += bswap  # type: ignore[index]
             else:
@@ -1194,8 +1194,8 @@ def rate_constants_to_dy_and_rates(
                 bswap_rates[str(r_bswap).replace("SWAP", "SWAP_GEOMETRIC")] = 0.0
                 sswap_rates[str(r_sswap).replace("SWAP", "SWAP_GEOMETRIC")] = sswap
                 # Immediately correct dy (surface grows → #X buried into @X):
-                sswap_r_col = dy.columns.get_loc(r_sswap.get_reactants()[0])
-                sswap_p_col = dy.columns.get_loc(r_sswap.get_products()[0])
+                sswap_r_col = int(dy.columns.get_loc(r_sswap.get_reactants()[0]))
+                sswap_p_col = int(dy.columns.get_loc(r_sswap.get_products()[0]))
                 dy.iloc[row_pos, sswap_r_col] -= sswap  # type: ignore[index]
                 dy.iloc[row_pos, sswap_p_col] += sswap  # type: ignore[index]
         swap_rate_correction = pd.concat(
@@ -1215,10 +1215,7 @@ def rate_constants_to_dy_and_rates(
     dy.loc[:, "SURFACE"] = dy.loc[:, dy.columns.str.startswith("#")].sum(axis=1)
     dy.loc[:, "BULK"] = dy.loc[:, dy.columns.str.startswith("@")].sum(axis=1)
     # Apply the new ratees to the ydots and compute a new ydot for surface and bulk:
-    return (
-        dy,
-        rate_by_reaction,
-    )
+    return dy, rate_by_reaction
 
 
 def compute_heating_per_reaction(
