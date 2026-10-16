@@ -6,7 +6,6 @@ It reads full UCLCHEM output and saves a plot of the abundances of select specie
 """
 
 from pathlib import Path
-from typing import cast
 
 import matplotlib.pyplot as plt
 import pandas as pd

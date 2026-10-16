@@ -76,7 +76,7 @@ def run_makerates(
     # Resolve output directories using tiered priority:
     # 1) explicit kwarg, 2) config field, 3) stored project root, 4) legacy relative paths
     explicit_dir = output_directory or config.output_directory
-    if explicit_dir:
+    if explicit_dir is not None:
         # Ensure the directory exists
         explicit_dir = Path(explicit_dir)
         if not explicit_dir.is_dir():

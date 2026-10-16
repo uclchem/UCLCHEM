@@ -1,6 +1,7 @@
 """Run doctests for uclchem modules as part of the unit test suite."""
 
 import doctest
+import types
 
 import uclchem.makerates.io_functions
 import uclchem.makerates.network
@@ -23,7 +24,7 @@ _MODULES = [
 _FLAGS = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
 
 
-def _run(module: object) -> None:
+def _run(module: types.ModuleType) -> None:
     results = doctest.testmod(module, verbose=False, optionflags=_FLAGS)  # type: ignore[arg-type]
     assert results.failed == 0, f"{results.failed} doctest(s) failed in {module}"  # type: ignore[union-attr]
 

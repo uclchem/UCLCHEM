@@ -466,6 +466,7 @@ class TestSaveCreatesFile:
         model = basic_cloud_copy
         physics_before = model.physics_array.copy()
         chem_before = model.chemical_abun_array.copy()
+        assert model._data is not None
         vars_before = set(model._data.variables)
 
         fpath = str(tmp_path / "non_destructive.h5")
@@ -476,6 +477,7 @@ class TestSaveCreatesFile:
         np.testing.assert_array_equal(model.chemical_abun_array, chem_before)
 
         # Dataset variables should be the same (no synthetic vars added, no scalars removed)
+        assert model._data is not None
         vars_after = set(model._data.variables)
         assert vars_before == vars_after, (
             f"save_model mutated _data variables: removed={vars_before - vars_after}, "
@@ -513,6 +515,7 @@ class TestCoordinatePreservation:
         """Coordinates in the xarray Dataset should be preserved."""
         model = basic_cloud_copy
         # Snapshot coords before destructive save
+        assert model._data is not None
         orig_coords = {k: v.values.copy() for k, v in model._data.coords.items()}
 
         fpath = str(tmp_path / "coords.h5")
@@ -520,6 +523,7 @@ class TestCoordinatePreservation:
         loaded = load_model(file=fpath, name="default")
 
         for coord_name, orig_values in orig_coords.items():
+            assert loaded._data is not None
             assert coord_name in loaded._data.coords, (
                 f"Coordinate '{coord_name}' missing after load"
             )
@@ -586,4 +590,4 @@ class TestEngineParameterRemoved:
         """load_model should not accept an 'engine' parameter."""
         fpath, _, _, _, _ = saved_model_file
         with pytest.raises(TypeError):
-            load_model(file=fpath, name="default", engine="h5netcdf")
+            load_model(file=fpath, name="default", engine="h5netcdf")  # ty: ignore[unknown-argument]
