@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 import uclchemwrap
 
+import uclchem
 import uclchem.advanced as advanced
 from uclchem.makerates.reaction import Reaction
 
@@ -13,6 +14,12 @@ class TestRuntimeNetwork:
     def network(self) -> advanced.RuntimeNetwork:
         """Create a RuntimeNetwork instance for testing."""
         return advanced.RuntimeNetwork()
+
+    def test_get_ice_list_index(self, network: advanced.RuntimeNetwork):
+        ice_list_index = network._get_ice_list_index("#H")
+        spec_index_from_ice_list = network.fortran_module.icelist[ice_list_index] - 1
+        spec_index_from_spec_list = network._get_species_index("#H")
+        assert spec_index_from_spec_list == spec_index_from_ice_list
 
     def test_initialization(self, network: advanced.RuntimeNetwork) -> None:
         """Test that RuntimeNetwork initializes correctly."""
@@ -160,3 +167,51 @@ class TestRuntimeNetwork:
         assert hasattr(network, "_reactions_csv")
         assert len(network._species_csv) == len(network.get_species_list())
         assert len(network._reactions_csv) == len(network.get_reaction_list())
+
+    def test_change_reaction_barrier_different_chemistry(
+        self, network: advanced.RuntimeNetwork
+    ) -> None:
+        network.reset_to_initial_state()
+
+        param_dict = {"initialTemp": 10, "initialDens": 1e4, "finalTime": 1e5}
+
+        model = uclchem.model.Cloud(param_dict)
+        _, chem_df = model.get_split_dataframes()
+
+        reaction = Reaction(["#H", "#H", "LH", "#H2", "NAN", "NAN", "NAN", *[0] * 10])
+        reaction_idx = network.get_reaction_index(reaction)
+        current_reaction = network.get_reaction(reaction_idx)
+        current_gamma = current_reaction.get_gamma()
+        assert current_gamma < 10000
+
+        network.change_reaction_barrier(reaction, 10000)
+
+        reaction_idx = network.get_reaction_index(reaction)
+        current_reaction = network.get_reaction(reaction_idx)
+        current_gamma = current_reaction.get_gamma()
+        assert current_gamma == 10000
+
+        model_adj = uclchem.model.Cloud(param_dict)
+        _, chem_df_adj = model_adj.get_split_dataframes()
+
+        print(chem_df.tail())
+        print(chem_df_adj.tail())
+        assert not np.allclose(chem_df.to_numpy(), chem_df_adj.to_numpy(), rtol=2)
+
+        network.reset_to_initial_state()
+
+    def test_change_diffusion_barrier_different_chemistry(
+        self, network: advanced.RuntimeNetwork
+    ) -> None:
+        param_dict = {"initialTemp": 10, "initialDens": 1e4, "finalTime": 1e3}
+
+        model = uclchem.model.Cloud(param_dict)
+        _, chem_df = model.get_split_dataframes()
+
+        network.change_diffusion_barrier("#H2", 10000)
+        model = uclchem.model.Cloud(param_dict)
+        _, chem_df_adj = model.get_split_dataframes()
+
+        assert not np.allclose(chem_df.to_numpy(), chem_df_adj.to_numpy(), rtol=2)
+
+        network.reset_to_initial_state()
