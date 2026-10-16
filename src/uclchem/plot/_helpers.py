@@ -9,7 +9,7 @@ import matplotlib as mpl
 if TYPE_CHECKING:
     import pandas as pd
 
-_TAB20_COLORS: list[str] = [mpl.colors.to_hex(c) for c in mpl.colormaps["tab20"].colors]
+_TAB20_COLORS: list[str] = [mpl.colors.to_hex(c) for c in mpl.colormaps["tab20"].colors]  # type: ignore[attr-defined]
 
 
 def _color_for(name: str, registry: dict[str, str]) -> str:
@@ -33,11 +33,11 @@ def _reactants_from_rxn(rxn: str) -> list[str]:
         tokens (``PHOTON``, ``CRP``, ``CRPHOT``, ``UV``, ``FREEZE``).
 
     """
-    _skip = {"PHOTON", "CRP", "CRPHOT", "UV", "FREEZE"}
+    skip = {"PHOTON", "CRP", "CRPHOT", "UV", "FREEZE"}
     if "->" not in rxn:
         return []
     lhs = rxn.split("->", maxsplit=1)[0]
-    return [p.strip() for p in lhs.split("+") if p.strip() and p.strip() not in _skip]
+    return [p.strip() for p in lhs.split("+") if p.strip() and p.strip() not in skip]
 
 
 def _filter_reactions(

@@ -17,7 +17,8 @@
 #
 # In the previous tutorial, we simply modeled the chemistry of a static cloud for 1 Myr. This is unlikely to meet everybody's modeling needs and UCLCHEM is capable of modeling much more complex environments such as prestellar cores and shocks. In this tutorial, we model both a prestellar core and a shock to explore how these models work and to demonstrate the workflow that the UCLCHEM team normally follow. In tutorial 2a, we approach the modeling in a more classic approach, by writing the outputs to files, before passing them to the subsequent model class. In tutorial 2b, we calculate the exact same models, but take advantage of the model objects in order to perform all calculations in memory, bypassing the file system entirely.
 
-import os
+
+import pathlib
 
 import matplotlib.pyplot as plt
 
@@ -44,8 +45,8 @@ param_dict = {
     "abundSaveFile": "output_2a/startcollapse.dat",  # save final abundances to file
     "outputFile": "output_2a/phase1.dat",
 }
-if not os.path.exists("output_2a/"):
-    os.makedirs("output_2a/")
+if not pathlib.Path("output_2a/").exists():
+    pathlib.Path("output_2a/").mkdir(parents=True)
 
 cloud = uclchem.model.Cloud(param_dict=param_dict)
 # The cloud model has completed and saved output to output_2a/phase1.dat
@@ -219,9 +220,7 @@ shock_vel = 10.0
 param_dict["abundLoadFile"] = "output_2a/shockstart.dat"
 param_dict["outputFile"] = "output_2a/jshock.dat"
 
-jshock = uclchem.model.JShock(
-    shock_vel=shock_vel, param_dict=param_dict, timepoints=1500
-)
+jshock = uclchem.model.JShock(shock_vel=shock_vel, param_dict=param_dict, timepoints=1500)
 # For file reading demonstration purposes, we will now delete the object.
 del jshock
 # -

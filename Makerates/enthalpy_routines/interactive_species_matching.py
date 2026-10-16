@@ -414,7 +414,7 @@ class SpeciesMatcher:
                     if continue_choice == "q":
                         print("Exiting without changes.")
                         return canonical_matches
-                    elif continue_choice == "c":
+                    if continue_choice == "c":
                         # Load previous session
                         try:
                             with session_file.open() as f:
@@ -491,8 +491,7 @@ class SpeciesMatcher:
                         }
                         print(f"Selected: {selected['atct_name']}")
                         break
-                    else:
-                        print(f"Invalid: use 1-{len(matches)}, s, or q")
+                    print(f"Invalid: use 1-{len(matches)}, s, or q")
 
                 except ValueError:
                     print(f"Invalid: use 1-{len(matches)}, s, or q")
@@ -738,7 +737,7 @@ class SpeciesMatcher:
 
             # Check if current value is non-zero (already has data)
             has_existing_value = (
-                pd.notna(current_enthalpy) and abs(current_enthalpy) > 1e-10  # noqa: PLR2004
+                pd.notna(current_enthalpy) and abs(current_enthalpy) > 1e-10  # ruff: ignore[magic-value-comparison]
             )
 
             if has_existing_value:
@@ -756,7 +755,7 @@ class SpeciesMatcher:
                 atct_enthalpy = mapping[species_name]["enthalpy_298k"]
                 if atct_enthalpy is not None:
                     # Convert kJ/mol to kcal/mol
-                    updated_df.at[idx, "ENTHALPY"] = atct_enthalpy / 4.184
+                    updated_df.loc[idx, "ENTHALPY"] = atct_enthalpy / 4.184
                     new_values_added += 1
 
         # Write back to original file

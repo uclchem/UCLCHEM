@@ -67,7 +67,7 @@ if __name__ == "__main__":
             result success code.
 
         """
-        row_index, row = (
+        _row_index, row = (
             index_and_row  # pandas iterrows actually come as tuples with the row number
         )
         # basic set of parameters we'll use for this grid.

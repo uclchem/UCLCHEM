@@ -38,8 +38,8 @@ if __name__ == "__main__":
     physics_df: pd.DataFrame
     chemistry_df: pd.DataFrame
     rate_constants_df: pd.DataFrame
-    physics_df, chemistry_df, rate_constants_df = model.get_dataframes(  # type: ignore[assignment]
-        with_rate_constants=True, joined=False
+    physics_df, chemistry_df, rate_constants_df = model.get_split_dataframes(
+        with_rate_constants=True,
     )
 
     # A loaded network is needed to convert rate constants to actual rates.
@@ -101,8 +101,7 @@ if __name__ == "__main__":
     #    committing to a full deepdive.
     # ---------------------------------------------------------------------------
 
-    rates: pd.DataFrame
-    _, rates = uclchem.analysis.rate_constants_to_dy_and_rates(  # type: ignore[assignment]
+    _, rates = uclchem.analysis.rate_constants_to_dy_and_rates(
         physics_df, chemistry_df, rate_constants_df, network=network
     )
     production_df, destruction_df = uclchem.analysis.get_production_and_destruction(
@@ -112,12 +111,13 @@ if __name__ == "__main__":
     axs = uclchem.plot.plot_rate_summary(
         production_df, destruction_df, step=TIMESTEP, top_k_rates=6
     )
+    fig = plt.gcf()
     axs[0].set_title(
         f"3 · plot_rate_summary — top reactions for {SPECIES_OF_INTEREST} at step {TIMESTEP}"
     )
-    axs[0].figure.tight_layout()
-    axs[0].figure.savefig(out_dir / "03_rate_summary.png")
-    plt.close(axs[0].figure)
+    plt.tight_layout()
+    plt.savefig(out_dir / "03_rate_summary.png")
+    plt.close(fig)
 
     # ---------------------------------------------------------------------------
     # 4. plot_rates_deepdive
@@ -144,9 +144,9 @@ if __name__ == "__main__":
         f"4 · plot_rates_deepdive — full chemical diagnostic for {SPECIES_OF_INTEREST}",
         y=1.01,
     )
-    fig.tight_layout()
-    fig.savefig(out_dir / "04_deepdive.png", bbox_inches="tight")
-    plt.close(fig)
+    plt.tight_layout()
+    plt.savefig(out_dir / "04_deepdive.png", bbox_inches="tight")
+    plt.close()
 
     # ---------------------------------------------------------------------------
     # 5. draw_panel_* (individual panels)

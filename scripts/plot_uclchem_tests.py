@@ -6,7 +6,6 @@ It reads full UCLCHEM output and saves a plot of the abundances of select specie
 """
 
 from pathlib import Path
-from typing import cast
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -55,7 +54,7 @@ if __name__ == "__main__":
     test_data: dict[str, pd.DataFrame] = {}
     for model in ["phase1", "phase2", "static"]:
         loaded = uclchem.model.load_model(file=str(save_file), name=model)
-        test_data[model] = cast("pd.DataFrame", loaded.get_dataframes())
+        test_data[model] = loaded.get_joined_dataframes()
         for spec in ["#SI", "@SI"]:
             if spec not in test_data[model]:
                 test_data[model][spec] = 1.0e-30
@@ -92,7 +91,7 @@ if __name__ == "__main__":
         ]:
             for model in ["phase1", "phase2", "static"]:
                 axis = axes[i]
-                data = cast("dict[str, pd.DataFrame]", data_dict)[model]
+                data = data_dict[model]
 
                 axis = uclchem.plot.plot_species(axis, data, species_names, legend=False)
                 if folder == "test-output/":
@@ -166,7 +165,7 @@ if __name__ == "__main__":
             ax1.set_xscale("log")
             ax1.set_yscale("log")
             ax1.set_xlim(1, 6e6)
-            ax1.grid(True, alpha=0.3)
+            ax1.grid(visible=True, alpha=0.3)
 
             color = "tab:blue"
             ax2.set_ylabel("Density [cm⁻³]", color=color)
@@ -209,7 +208,7 @@ if __name__ == "__main__":
         ax.set_xlabel("Time [yr]")
         ax.set_ylabel("Total abundance / initial")
         ax.set_title(model_names[model])
-        ax.grid(True, alpha=0.3)
+        ax.grid(visible=True, alpha=0.3)
         if j == 0:
             ax.legend(bbox_to_anchor=(-0.25, 0.5), loc="center right")
 

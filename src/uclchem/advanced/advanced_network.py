@@ -23,7 +23,7 @@ from types import ModuleType
 import numpy as np
 from uclchemwrap import network as network_module
 
-from uclchem.makerates.reaction import Reaction, reaction_header
+from uclchem.makerates.reaction import REACTION_HEADER, Reaction
 from uclchem.makerates.species import Species
 from uclchem.utils import UCLCHEM_ROOT_DIR, get_reaction_table, get_species_table
 
@@ -139,7 +139,7 @@ class RuntimeSpecies:
         name = self.get_name()
         if "+" in name:
             return 1
-        elif "-" in name:
+        if "-" in name:
             return -1
         return 0
 
@@ -488,7 +488,7 @@ class NetworkState:
 
         for _, row in self._reactions_df.iterrows():
             # Create Reaction object from CSV row
-            reaction_row = [row[field_name] for field_name in reaction_header]
+            reaction_row = [row[field_name] for field_name in REACTION_HEADER]
             reaction = Reaction(reaction_row)
             self.reaction_list.append(reaction)
 
@@ -532,7 +532,7 @@ class NetworkState:
                 errors.append(
                     f"Species name mismatch at index {i}: '{memory_name}' in memory vs '{disk_name}' on disk"
                 )
-                if len(errors) > 5:  # noqa: PLR2004 # Limit error output
+                if len(errors) > 5:  # ruff: ignore[magic-value-comparison] # Limit error output
                     errors.append("... (truncated)")
                     break
 
@@ -548,7 +548,7 @@ class NetworkState:
                 errors.append(
                     f"Reaction {i} alpha mismatch: {memory_alpha} in memory vs {disk_alpha} on disk"
                 )
-                if len(errors) > 10:  # noqa: PLR2004
+                if len(errors) > 10:  # ruff: ignore[magic-value-comparison]
                     errors.append("... (truncated)")
                     break
 
