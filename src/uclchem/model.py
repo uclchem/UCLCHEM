@@ -99,7 +99,7 @@ from datetime import datetime
 from multiprocessing import pool, shared_memory
 from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 import h5py
 import numpy as np
@@ -165,18 +165,20 @@ ABUNDANCE_VALUE_FORMAT = "%9.5E"
 # Model registration is intended to prevent code injection during loading time.
 REGISTRY: dict[str, type[AbstractModel]] = {}
 
+T = TypeVar("T", bound="AbstractModel")
 
-def register_model(cls: type[AbstractModel]) -> type[AbstractModel]:
+
+def register_model(cls: type[T]) -> type[T]:
     """Register a new model in the model registry.
 
     Parameters
     ----------
-    cls : type[AbstractModel]
+    cls : type[T]
         class to register.
 
     Returns
     -------
-    cls : type[AbstractModel]
+    cls : type[T]
         class
 
     Raises
@@ -573,8 +575,6 @@ class AbstractModel(ABC):
         self._on_negative_abundances = on_negative_abundances
         self._on_error = on_error
         self.success_flag: SuccessFlag | None = None
-        # Note: specname is now accessed via get_species_names() global function
-        # Note: PHYSICAL_PARAMETERS is now accessed via the global constant
 
         self.n_out = 0 if read_file is None else None
         self.timepoints = timepoints
@@ -1949,7 +1949,7 @@ class AbstractModel(ABC):
                 raise
 
     @abstractmethod
-    def run_fortran(self) -> dict[str, int | list]:  # ruff: ignore[undocumented-public-method]
+    def run_fortran(self) -> dict[str, int | list | None]:  # ruff: ignore[undocumented-public-method]
         raise NotImplementedError
 
     # /Methods to start run of model
@@ -2053,7 +2053,7 @@ class AbstractModel(ABC):
     def _write_array(
         model_group: h5py.Group,
         name: str,
-        xr_var: xr.DataArray,
+        xr_var: xr.DataArray | xr.Variable,
         float_dtype: np.typing.DTypeLike = np.dtypes.Float64DType,
     ) -> None:
         data = xr_var.to_numpy()
@@ -2117,8 +2117,6 @@ class AbstractModel(ABC):
                 if np.ndim(v) == 3 and "_array" in k:  # ruff: ignore[magic-value-comparison]
                     # Avoid colliding with existing 'time_step' dim sizes by
                     # making a per-variable time dim if necessary
-                    time_dim = "time_step"
-                    existing_time = None
                     try:
                         existing_time = self._data.sizes.get("time_step", None)
                     except Exception:
@@ -2538,12 +2536,22 @@ class AbstractModel(ABC):
             raise RuntimeError(msg)
 
     def _array_clean(self):
-        """Clean the arrays changed by UCLCHEM Fortran code."""
+        """Clean the arrays changed by UCLCHEM Fortran code.
+
+        Raises
+        ------
+        RuntimeError
+            If ``self._data`` is None.
+
+        """
         # Find the first element with all the zeros
         _logger.debug(f"in _array_clean: physics_array = {self.physics_array}")
         _logger.debug(f"in _array_clean: physics_array type = {type(self.physics_array)}")
 
         nonzero_indices = self.physics_array[:, 0, 0].nonzero()[0]
+        if self._data is None:
+            raise RuntimeError
+
         if len(nonzero_indices) == 0:
             # Model failed immediately, keep only the first row to indicate failure
             self._data = self._data.isel(time_step=slice(0, 1))
@@ -2567,12 +2575,19 @@ class AbstractModel(ABC):
         with array shapes. Only override coords from metadata when lengths match
         the corresponding array dimensions to avoid xarray dimension conflicts.
 
+        Raises
+        ------
+        RuntimeError
+            If ``self._data`` is None
+
         """
         # physics coords
         try:
             phys_len = self.physics_array.shape[-1]
         except Exception:
             phys_len = None
+        if self._data is None:
+            raise RuntimeError
         if phys_len is not None:
             if "physics_values" in self._data.coords:
                 if len(self._data.coords["physics_values"]) != phys_len:
@@ -3043,7 +3058,7 @@ class Cloud(AbstractModel):
         if self.run_type != "external" and not self.was_read:
             self.run()
 
-    def run_fortran(self) -> dict[str, int | list]:
+    def run_fortran(self) -> dict[str, int | list | None]:
         """Run the UCLCHEM model, first resetting the numpy arrays.
 
         Resetting uses `AbstractModel.run()`, then running the model. `check_error` and
@@ -3051,8 +3066,8 @@ class Cloud(AbstractModel):
 
         Returns
         -------
-        dict[str, int | list]
-            Dictionary with two keys:
+        dict[str, int | list | None]
+            Dictionary with one key:
             "success_flag" with value the success flag
 
         """
@@ -3290,7 +3305,7 @@ class Collapse(AbstractModel):
             if self.run_type != "external":
                 self.run()
 
-    def run_fortran(self) -> dict[str, int | list]:
+    def run_fortran(self) -> dict[str, int | list | None]:
         """Run the UCLCHEM model, first resetting the numpy arrays.
 
         Resetting uses `AbstractModel.run()`, then running the model. `check_error` and
@@ -3298,8 +3313,8 @@ class Collapse(AbstractModel):
 
         Returns
         -------
-        dict[str, int | list]
-            Dictionary with two keys:
+        dict[str, int | list | None]
+            Dictionary with one key:
             "success_flag" with value the success flag
 
         """
@@ -3458,7 +3473,7 @@ class PrestellarCore(AbstractModel):
             if self.run_type != "external":
                 self.run()
 
-    def run_fortran(self) -> dict[str, int | list]:
+    def run_fortran(self) -> dict[str, int | list | None]:
         """Run the UCLCHEM model, first resetting the numpy arrays.
 
         Resetting uses `AbstractModel.run()`, then running the model. `check_error` and
@@ -3466,8 +3481,8 @@ class PrestellarCore(AbstractModel):
 
         Returns
         -------
-        dict[str, int | list]
-            Dictionary with two keys:
+        dict[str, int | list | None]
+            Dictionary with one key:
             "success_flag" with value the success flag
 
         """
@@ -3632,7 +3647,7 @@ class CShock(AbstractModel):
             if self.run_type != "external":
                 self.run()
 
-    def run_fortran(self) -> dict[str, int | list]:
+    def run_fortran(self) -> dict[str, int | list | None]:
         """Run the UCLCHEM model, first resetting the numpy arrays.
 
         Resetting uses `AbstractModel.run()`, then running the model. `check_error` and
@@ -3640,9 +3655,11 @@ class CShock(AbstractModel):
 
         Returns
         -------
-        dict[str, int | list]
+        dict[str, int | list | None]
             Dictionary with two keys:
             "success_flag" with value the success flag
+            "dissipation_time" with value the dissipation time. Could be None if
+                the model failed.
 
         """
         result = wrap.cshock(
@@ -3794,7 +3811,7 @@ class JShock(AbstractModel):
             if self.run_type != "external":
                 self.run()
 
-    def run_fortran(self) -> dict[str, int | list]:
+    def run_fortran(self) -> dict[str, int | list | None]:
         """Run the UCLCHEM model, first resetting the numpy arrays.
 
         Resetting uses `AbstractModel.run()`, then running the model. `check_error` and
@@ -3802,8 +3819,8 @@ class JShock(AbstractModel):
 
         Returns
         -------
-        dict[str, int | list]
-            Dictionary with two keys:
+        dict[str, int | list | None]
+            Dictionary with one key:
             "success_flag" with value the success flag
 
         """
@@ -3867,31 +3884,31 @@ class Postprocess(AbstractModel):
     time_array : np.ndarray | None
         Represents the time grid to be used for the model.
         This sets the target timesteps for which outputs will be stored.
-    density_array : np.ndarray | None
+    density_array : np.ndarray | float | None
         Represents the value of the density at different
         timepoints found in time_array.
-    gas_temperature_array : np.ndarray | None
+    gas_temperature_array : np.ndarray | float | None
         Represents the value of the gas temperature
         at different timepoints found in time_array.
-    dust_temperature_array : np.ndarray | None
+    dust_temperature_array : np.ndarray | float | None
         Represents the value of the dust temperature
         at different timepoints found in time_array.
-    zeta_array : np.ndarray | None
+    zeta_array : np.ndarray | float | None
         Represents the value of the cosmic ray ionization rate
         at different timepoints found in time_array.
-    radfield_array : np.ndarray | None
+    radfield_array : np.ndarray | float | None
         Represents the value of the UV radiation field
         at different timepoints found in time_array.
-    coldens_H_array : np.ndarray | None
+    coldens_H_array : np.ndarray | float | None
         Represents the value of the column density of H
         at different timepoints found in time_array.
-    coldens_H2_array : np.ndarray | None
+    coldens_H2_array : np.ndarray | float | None
         Represents the value of the column density of H2
         at different timepoints found in time_array.
-    coldens_CO_array : np.ndarray | None
+    coldens_CO_array : np.ndarray | float | None
         Represents the value of the column density of CO
         at different timepoints found in time_array.
-    coldens_C_array : np.ndarray | None
+    coldens_C_array : np.ndarray | float | None
         Represents the value of the column density of C
         at different timepoints found in time_array.
     read_file : str | None
@@ -3907,16 +3924,16 @@ class Postprocess(AbstractModel):
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
         time_array: np.ndarray | None = None,
-        density_array: np.ndarray | None = None,
-        gas_temperature_array: np.ndarray | None = None,
-        dust_temperature_array: np.ndarray | None = None,
-        zeta_array: np.ndarray | None = None,
-        radfield_array: np.ndarray | None = None,
-        visual_extinction_array: np.ndarray | None = None,
-        coldens_H_array: np.ndarray | None = None,
-        coldens_H2_array: np.ndarray | None = None,
-        coldens_CO_array: np.ndarray | None = None,
-        coldens_C_array: np.ndarray | None = None,
+        density_array: np.ndarray | float | None = None,
+        gas_temperature_array: np.ndarray | float | None = None,
+        dust_temperature_array: np.ndarray | float | None = None,
+        zeta_array: np.ndarray | float | None = None,
+        radfield_array: np.ndarray | float | None = None,
+        visual_extinction_array: np.ndarray | float | None = None,
+        coldens_H_array: np.ndarray | float | None = None,
+        coldens_H2_array: np.ndarray | float | None = None,
+        coldens_CO_array: np.ndarray | float | None = None,
+        coldens_C_array: np.ndarray | float | None = None,
         read_file: str | None = None,
         run_type: Literal["managed", "external"] = "managed",
         on_negative_abundances: Literal["warning", "error", "raise"] | None = "warning",
@@ -3942,27 +3959,27 @@ class Postprocess(AbstractModel):
             for this model. Defaults to None.
         time_array : np.ndarray | None
             Time grid (years) at which model outputs are stored. Defaults to None.
-        density_array : np.ndarray | None
+        density_array : np.ndarray | float | None
             Number density (cm⁻³) at each timestep. Defaults to None.
-        gas_temperature_array : np.ndarray | None
+        gas_temperature_array : np.ndarray | float | None
             Gas temperature (K) at each timestep. Defaults to None.
-        dust_temperature_array : np.ndarray | None
+        dust_temperature_array : np.ndarray | float | None
             Dust temperature (K) at each timestep. Defaults to None.
-        zeta_array : np.ndarray | None
+        zeta_array : np.ndarray | float | None
             Cosmic-ray ionization rate (s⁻¹) at each timestep. Defaults to None.
-        radfield_array : np.ndarray | None
+        radfield_array : np.ndarray | float | None
             UV radiation field strength (Habing units) at each timestep. Defaults to None.
-        visual_extinction_array : np.ndarray | None
+        visual_extinction_array : np.ndarray | float | None
             Visual extinction (mag) at each timestep. Mutually exclusive with
             ``coldens_H_array``. Defaults to None.
-        coldens_H_array : np.ndarray | None
+        coldens_H_array : np.ndarray | float | None
             Atomic hydrogen column density (cm⁻²) at each timestep. Mutually exclusive with
             ``visual_extinction_array``. Defaults to None.
-        coldens_H2_array : np.ndarray | None
+        coldens_H2_array : np.ndarray | float | None
             Molecular hydrogen column density (cm⁻²) at each timestep. Defaults to None.
-        coldens_CO_array : np.ndarray | None
+        coldens_CO_array : np.ndarray | float | None
             CO column density (cm⁻²) at each timestep. Defaults to None.
-        coldens_C_array : np.ndarray | None
+        coldens_C_array : np.ndarray | float | None
             Atomic carbon column density (cm⁻²) at each timestep. Defaults to None.
         read_file : str | None
             Path to a previously saved model file to load instead of running. Defaults to None.
@@ -4060,7 +4077,7 @@ class Postprocess(AbstractModel):
             msg = f"time_array must be an array if read_file is None. A value of {time_array} with type {type(time_array)} was given."
             raise ValueError(msg)
 
-    def run_fortran(self) -> dict[str, int | list]:
+    def run_fortran(self) -> dict[str, int | list | None]:
         """Run the UCLCHEM model, first resetting the numpy arrays.
 
         Resetting uses `AbstractModel.run()`, then running the model. `check_error` and
@@ -4068,8 +4085,8 @@ class Postprocess(AbstractModel):
 
         Returns
         -------
-        dict[str, int | list]
-            Dictionary with two keys:
+        dict[str, int | list | None]
+            Dictionary with one key:
             "success_flag" with value the success flag
 
         """
@@ -4290,7 +4307,7 @@ class Model(AbstractModel):
             msg = f"time_array must be an array if read_file is None. A value of {time_array} with type {type(time_array)} was given."
             raise ValueError(msg)
 
-    def run_fortran(self) -> dict[str, int | list]:
+    def run_fortran(self) -> dict[str, int | list | None]:
         """Run the UCLCHEM model, first resetting the numpy arrays.
 
         Resetting uses `AbstractModel.run()`, then running the model. `check_error` and
@@ -4298,8 +4315,8 @@ class Model(AbstractModel):
 
         Returns
         -------
-        dict[str, int | list]
-            Dictionary with two keys:
+        dict[str, int | list | None]
+            Dictionary with one key:
             "success_flag" with value the success flag
 
         """
@@ -4340,8 +4357,8 @@ class Model(AbstractModel):
         }
 
 
-@register_model  # type: ignore[arg-type]  # SequentialRunner is a composite wrapper, not a direct AbstractModel subclass
-class SequentialRunner:
+@register_model  # ty: ignore[invalid-argument-type]
+class SequentialRunner:  # type: ignore[type-var] # SequentialRunner is a composite wrapper, not a direct AbstractModel subclass
     """The SequentialRunner class allows for multiple models to be run back to back.
 
     By defining a specific dictionary to hold the information of each model class to run in sequence, SewuentialModel allows

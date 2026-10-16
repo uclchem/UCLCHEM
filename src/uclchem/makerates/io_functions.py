@@ -1913,11 +1913,10 @@ def write_network_file(
         LHDEScorrespondingLHreacs = []
         for reaction in reaction_list:
             if reaction.get_reaction_type() == "LHDES":
-                if (
-                    hasattr(reaction, "get_partner")
-                    and reaction.get_partner() is not None
-                ):
+                if isinstance(reaction, CoupledReaction):
                     partner = reaction.get_partner()
+                    if partner is None:
+                        raise RuntimeError
                     reacIndex = reaction_list.index(partner) + 1
                     LHDEScorrespondingLHreacs.append(reacIndex)
                 else:
@@ -1946,11 +1945,10 @@ def write_network_file(
         ERDEScorrespondingERreacs = []
         for reaction in reaction_list:
             if reaction.get_reaction_type() == "ERDES":
-                if (
-                    hasattr(reaction, "get_partner")
-                    and reaction.get_partner() is not None
-                ):
+                if isinstance(reaction, CoupledReaction):
                     partner = reaction.get_partner()
+                    if partner is None:
+                        raise RuntimeError
                     reacIndex = reaction_list.index(partner) + 1
                     ERDEScorrespondingERreacs.append(reacIndex)
                 else:

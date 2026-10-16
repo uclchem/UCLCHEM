@@ -21,7 +21,7 @@ from uclchem.makerates.utils import normalize_species_name
 from uclchem.utils import MISSING_VALUE_FLOAT
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator, Sequence
+    from collections.abc import Generator, Iterable, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ _skip_reaction_validation = False
 
 
 @contextmanager
-def skip_reaction_validation() -> Iterator[None]:
+def skip_reaction_validation() -> Generator[None]:
     """Context manager to temporarily disable reaction validation.
 
     This is useful when loading pre-validated networks where you do not necessarily

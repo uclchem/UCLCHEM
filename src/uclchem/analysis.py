@@ -729,7 +729,7 @@ def _write_analysis(
     total_production: float,
     total_destruction: float,
     key_reactions: list[str],
-    key_changes: list[float],
+    key_changes: list[float] | np.ndarray,
 ) -> None:
     """Print key reactions to a file.
 
@@ -746,7 +746,7 @@ def _write_analysis(
     key_reactions : list[str]
         A list of all reactions that contribute
         to the total rate of change
-    key_changes : list[float]
+    key_changes : list[float] | np.ndarray
         A list of rates of change contributing to total
 
     """

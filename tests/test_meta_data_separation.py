@@ -62,6 +62,7 @@ def test_assignment_array_goes_to_dataset():
     m = Cloud()
     arr = np.zeros((3, 1, 4))
     m.test_array = arr
+    assert m._data is not None
     assert "test_array" in m._data, "Array attribute not stored in _data Dataset"
     # stored array should match the input
     np.testing.assert_array_equal(m._data["test_array"].values, arr)
@@ -73,7 +74,7 @@ def test_meta_survives_dataset_replace():
     # public scalar attributes (not PHYSICAL_PARAMETERS or specname which are global)
     run_type_to_store = "local"
     custom_flag_to_store = 42
-    m.run_type = run_type_to_store
+    m.run_type = run_type_to_store  # ty: ignore[invalid-assignment]
     m.custom_flag = custom_flag_to_store
 
     # Simulate dataset replacement (as happens on load/pickle)
@@ -124,6 +125,7 @@ def test_pickle_roundtrip_preserves_meta_and_arrays():
     assert m.some_meta == "meta", (
         "String metadata 'some_meta' not preserved after pickle/unpickle"
     )
+    assert m._data is not None
     assert "example_array" in m._data, (
         "Array attribute 'example_array' not preserved after pickle/unpickle"
     )
@@ -157,6 +159,7 @@ def test_legacy_read_infers_dstep_and_uses_global_constants(legacy_file_without_
     )
 
     # Coordinates should match global constants
+    assert model._data is not None
     assert list(model._data.coords["physics_values"].values) == list(
         PHYSICAL_PARAMETERS
     ), "physics_values coordinate mismatch after inferring dstep"
@@ -240,6 +243,7 @@ def test_dstep_inference_validation(legacy_file_without_dstep):
         model = Cloud(read_file=legacy_file_without_dstep)
 
     # Verify dstep was properly added
+    assert model._data is not None
     assert "dstep" in model._data.coords["physics_values"].values, (
         "dstep coordinate not found in physics_values"
     )

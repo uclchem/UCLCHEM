@@ -6,7 +6,6 @@ It reads full UCLCHEM output and saves a plot of the abundances of select specie
 """
 
 from pathlib import Path
-from typing import cast
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -92,7 +91,7 @@ if __name__ == "__main__":
         ]:
             for model in ["phase1", "phase2", "static"]:
                 axis = axes[i]
-                data = cast("dict[str, pd.DataFrame]", data_dict)[model]
+                data = data_dict[model]
 
                 axis = uclchem.plot.plot_species(axis, data, species_names, legend=False)
                 if folder == "test-output/":

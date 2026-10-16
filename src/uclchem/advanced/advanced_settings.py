@@ -31,7 +31,7 @@ import uclchemwrap
 from .constants import FILE_PATH_PARAMETERS, FORTRAN_PARAMETERS, INTERNAL_PARAMETERS
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator
     from types import ModuleType
 
 logger = logging.getLogger(__name__)
@@ -748,7 +748,7 @@ class GeneralSettings:
         logger.debug("All settings reset to defaults")
 
     @contextmanager
-    def temporary_changes(self) -> Iterator[GeneralSettings]:
+    def temporary_changes(self) -> Generator[GeneralSettings]:
         """Context manager for temporary setting modifications.
 
         Saves current state on entry and restores it on exit, even if an

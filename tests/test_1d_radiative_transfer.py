@@ -664,7 +664,9 @@ class TestOOHotcore1D:
         phys_df = model.get_split_dataframes()[0]
         final_time = phys_df["Time"].max()
         final_temps = (
-            phys_df[phys_df["Time"] == final_time].sort_values("Point")["gasTemp"].values
+            phys_df[phys_df["Time"] == final_time]
+            .sort_values("Point")["gasTemp"]
+            .to_numpy()
         )
 
         # Temperature should vary spatially
