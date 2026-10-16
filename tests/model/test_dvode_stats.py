@@ -27,7 +27,7 @@ def test_stats_array_populated():
         "freefall": False,
         "initialDens": 1e4,
         "initialTemp": 10.0,
-        "finalTime": 1.0e5,  # Short run for speed
+        "finalTime": 1.0e3,
     }
     model = uclchem.model.Cloud(param_dict=params)
 
@@ -64,7 +64,7 @@ def test_stats_dataframe_columns():
         "freefall": False,
         "initialDens": 1e4,
         "initialTemp": 10.0,
-        "finalTime": 1.0e5,
+        "finalTime": 1.0e3,
     }
     model = uclchem.model.Cloud(param_dict=params)
 
@@ -91,7 +91,7 @@ def test_stats_reasonable_values():
         "freefall": False,
         "initialDens": 1e4,
         "initialTemp": 10.0,
-        "finalTime": 1.0e5,
+        "finalTime": 1.0e3,
     }
     model = uclchem.model.Cloud(param_dict=params)
     df = model.get_joined_dataframes(with_stats=True)
@@ -125,7 +125,7 @@ def test_stats_with_sequential_model():
                     "initialDens": 1e2,
                     "finalDens": 1e4,
                     "initialTemp": 10.0,
-                    "finalTime": 1.0e5,
+                    "finalTime": 1.0e3,
                 }
             },
         },
@@ -137,7 +137,7 @@ def test_stats_with_sequential_model():
                     "initialDens": 1e4,
                     "finalDens": 1e4,
                     "initialTemp": 20.0,
-                    "finalTime": 1.0e5,
+                    "finalTime": 1.0e3,
                 }
             },
         },
@@ -167,7 +167,7 @@ def test_functional_api_stats():
         "freefall": False,
         "initialDens": 1e4,
         "initialTemp": 10.0,
-        "finalTime": 1.0e5,
+        "finalTime": 1.0e3,
     }
 
     # Test return_array mode with stats

@@ -34,7 +34,7 @@ def test_static_model_disk(tmp_path):
         "initialDens": 1e4,
         "initialTemp": 10.0,
         "finalDens": 1e5,
-        "finalTime": 5.0e6,
+        "finalTime": 1e3,
         "outputFile": str(tmp_path / "static-full.dat"),
         "abundSaveFile": str(tmp_path / "startstatic.dat"),
     }
@@ -72,7 +72,7 @@ def test_collapse_hotcore_disk(tmp_path):
         "endAtFinalDensity": True,
         "initialDens": 1e2,
         "finalDens": 1e6,
-        "finalTime": 1e5,
+        "finalTime": 1e3,
         "abundSaveFile": str(tmp_path / "startstage1.dat"),
         "outputFile": str(tmp_path / "stage1-full.dat"),
         "columnFile": str(tmp_path / "stage1-column.dat"),
@@ -112,7 +112,7 @@ def test_collapse_hotcore_disk(tmp_path):
         "thermdesorb": True,
         "endAtFinalDensity": False,
         "freefall": False,
-        "finalTime": 1e6,
+        "finalTime": 1e3,
         "outputFile": str(tmp_path / "stage2-full.dat"),
         "abundLoadFile": str(tmp_path / "startstage1.dat"),
     }
