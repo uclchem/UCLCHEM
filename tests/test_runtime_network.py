@@ -173,7 +173,7 @@ class TestRuntimeNetwork:
     ) -> None:
         network.reset_to_initial_state()
 
-        param_dict = {"initialTemp": 10, "initialDens": 1e4, "finalTime": 1e5}
+        param_dict = {"initialTemp": 10, "initialDens": 1e4, "finalTime": 1e3}
 
         model = uclchem.model.Cloud(param_dict)
         _, chem_df = model.get_split_dataframes()

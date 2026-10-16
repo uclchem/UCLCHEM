@@ -64,7 +64,7 @@ def finite_difference(x, y):
     return midpoints, slope
 
 
-def test_analysis_matches(tmp_path):
+def test_analysis_matches():
     """Test that the dy and reaction rates match, and that they match the actual
     slope of abundances calculated using finite differences.
     """

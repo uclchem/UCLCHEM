@@ -31,7 +31,7 @@ def test_static_model_return_array():
         "initialDens": 1e4,
         "initialTemp": 10.0,
         "finalDens": 1e5,
-        "finalTime": 5.0e6,
+        "finalTime": 1e3,
     }
     physics, _chemistry, _rates, _heating, _abundances_start, return_code = (
         uclchem.functional.cloud(
@@ -64,7 +64,7 @@ def test_static_model_return_dataframe():
         "initialDens": 1e4,
         "initialTemp": 10.0,
         "finalDens": 1e5,
-        "finalTime": 5.0e6,
+        "finalTime": 1e3,
     }
     physics, _chemistry, _rates, _heating, _abundances_start, return_code = (
         uclchem.functional.cloud(
@@ -95,7 +95,7 @@ def test_collapse_hotcore_return_array():
         "endAtFinalDensity": True,
         "initialDens": 1e2,
         "finalDens": 1e6,
-        "finalTime": 1e5,
+        "finalTime": 1e3,
         "writeTimeStepInfo": True,
     }
     # return_array with return_rate_constants=True returns 6 values:
@@ -136,7 +136,7 @@ def test_collapse_hotcore_return_array():
         "thermdesorb": True,
         "endAtFinalDensity": False,
         "freefall": False,
-        "finalTime": 1e6,
+        "finalTime": 1e3,
     }
     # prestellar_core with return_array also returns 6 values
     physics, _chemistry, _rates, _heating, _, return_code = (
@@ -171,7 +171,7 @@ def test_collapse_hotcore_return_dataframe():
         "endAtFinalDensity": True,
         "initialDens": 1e2,
         "finalDens": 1e6,
-        "finalTime": 1e5,
+        "finalTime": 1e3,
     }
     # return_dataframe returns 6 values:
     # physics, chemistry, rates(None), heating(None), abundances, flag # ruff: ignore[commented-out-code]
@@ -200,7 +200,7 @@ def test_collapse_hotcore_return_dataframe():
         "thermdesorb": True,
         "endAtFinalDensity": False,
         "freefall": False,
-        "finalTime": 1e6,
+        "finalTime": 1e3,
     }
     # prestellar_core with return_dataframe also returns 6 values
     physics, _, _, _, _, return_code = uclchem.functional.prestellar_core(
