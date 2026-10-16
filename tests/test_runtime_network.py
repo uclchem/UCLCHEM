@@ -194,8 +194,6 @@ class TestRuntimeNetwork:
         model_adj = uclchem.model.Cloud(param_dict)
         _, chem_df_adj = model_adj.get_split_dataframes()
 
-        print(chem_df.tail())
-        print(chem_df_adj.tail())
         assert not np.allclose(chem_df.to_numpy(), chem_df_adj.to_numpy(), rtol=2)
 
         network.reset_to_initial_state()
@@ -203,7 +201,11 @@ class TestRuntimeNetwork:
     def test_change_diffusion_barrier_different_chemistry(
         self, network: advanced.RuntimeNetwork
     ) -> None:
-        param_dict = {"initialTemp": 10, "initialDens": 1e4, "finalTime": 1e3}
+        param_dict = {
+            "initialTemp": 10,
+            "initialDens": 1e4,
+            "finalTime": 1e3,
+        }
 
         model = uclchem.model.Cloud(param_dict)
         _, chem_df = model.get_split_dataframes()
