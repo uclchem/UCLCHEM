@@ -837,13 +837,15 @@ def strip_comment(string: str, comment_char: str = "!") -> str:
     Examples
     --------
     >>> strip_comment('This is code ! This is a comment')
-    'This is code '
+    'This is code'
     >>> # Returns the string unchanged if there is no comment
     >>> strip_comment('This does not have a comment')
     'This does not have a comment'
     >>> # Ensures that string literal comment chars are not comments
     >>> strip_comment('This "!" is not a comment')
     'This "!" is not a comment'
+    >>> strip_comment("Removes trailing whitespace ! Comment")
+    'Removes trailing whitespace'
 
     """
     in_str = False
@@ -856,5 +858,5 @@ def strip_comment(string: str, comment_char: str = "!") -> str:
             in_str = True
             quote = ch
         elif ch == comment_char:
-            return string[:i]
-    return string
+            return string[:i].strip()
+    return string.strip()
