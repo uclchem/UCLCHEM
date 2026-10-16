@@ -20,7 +20,14 @@ description = "A package for the astrochemical modelling of gas-grain chemistrie
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 dependencies = [
-    "h5py", "pandas", "numpy", "pyyaml", "matplotlib", "xarray", "pydantic>=2.0"
+    "h5py",
+    "pandas",
+    "numpy",
+    "pyyaml",
+    "matplotlib",
+    "xarray",
+    "pydantic>=2.0",
+    "rapidfuzz",
 ]
 
 [project.urls]
@@ -173,7 +180,7 @@ rin = "rin"
 exclude = ["^notebooks/"]
 
 [[tool.mypy.overrides]]
-module = ["yaml", "uclchemwrap", "h5py", "nbconvert.*", "nbformat", "pytest", "matplotlib", "matplotlib.*", "xarray", "bs4", "pydantic", "uclchem._project_root"]
+module = ["yaml", "uclchemwrap", "h5py", "nbconvert.*", "nbformat", "pytest", "matplotlib", "matplotlib.*", "xarray", "bs4", "pydantic", "uclchem._project_root", "rapidfuzz"]
 ignore_missing_imports = true
 
 [tool.pymend]

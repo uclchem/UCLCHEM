@@ -53,8 +53,11 @@ Use :meth:`SuccessFlag.check_error` to get human-readable error messages.
 
 import enum
 import logging
+from collections.abc import Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Self
+
+import rapidfuzz
 
 if TYPE_CHECKING:
     from uclchem.model import Collapse
@@ -922,3 +925,34 @@ def get_protostellar_model_index(L_star: float) -> int:
     else:
         msg = f"L_star = {L_star:.3e} W is below the minimum of 1 L_sun = {L_SUN:.3e} W."
         raise ValueError(msg)
+
+
+def get_fuzzy_unknown_keys(
+    keys: Iterable[str], expected_keys: Iterable[str]
+) -> set[tuple[str, str]]:
+    """Get the unknown keys from a list of allowed keys with fuzzy matching.
+
+    Parameters
+    ----------
+    keys : Iterable[str]
+        Sequence of strings of keys in a dictionary.
+    expected_keys : Iterable[str]
+        Iterable of expected keys
+
+    Returns
+    -------
+    unknown_keys : set[tuple[str, str]]
+        Set of tuples of unknown keys and their closest matches in `expected_keys`.
+
+    """
+    PERFECT_MATCH_SCORE = 100
+    unknown_keys: set[tuple[str, str]] = set()
+    for key in keys:
+        choice, similarity, _ = rapidfuzz.process.extractOne(
+            key,
+            expected_keys,
+            scorer=rapidfuzz.fuzz.ratio,
+        )
+        if similarity != PERFECT_MATCH_SCORE:
+            unknown_keys.add((key, choice))
+    return unknown_keys
