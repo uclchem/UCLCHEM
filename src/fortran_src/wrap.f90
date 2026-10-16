@@ -1461,7 +1461,7 @@ contains
         end do
     end subroutine dictionaryParser
 
-    pure subroutine coefficientParser(coeffDictString,coeffArray)
+    pure subroutine coefficientParser(coeffDictString, coeffArray)
         !Similar to dictionaryParser, it reads a python dictionary
         !however, it's intended to read pairs of reaction indices and coefficient values
         !for the alpha, beta, and gama arrays.

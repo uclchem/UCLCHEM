@@ -1211,20 +1211,22 @@ def build_ode_string(
             if not species_list[bulk_partner].is_refractory:
                 ode_string += f"        YDOT({n + 1})=YDOT({n + 1})-YDOT(nSurface)*MAX(0.0_dp, MIN(1.0_dp, alpha*Y({bulk_partner + 1})))\n"
         if species.get_name()[0] == "@" and not species.is_refractory:
-            ode_string += (
-                f"        YDOT({n + 1})=YDOT({n + 1})+YDOT(nSurface)*MAX(0.0_dp, MIN(1.0_dp, alpha*Y({n + 1})))\n"
-            )
+            ode_string += f"        YDOT({n + 1})=YDOT({n + 1})+YDOT(nSurface)*MAX(0.0_dp, MIN(1.0_dp, alpha*Y({n + 1})))\n"
     ode_string += "    else\n"
     ode_string += "        ! surfaceCoverage = fractional surface coverage.\n"
     ode_string += "        ! Real value: surfaceCoverage = safeMantle / NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN\n"
     ode_string += "        ! (computed in chemistry.f90 as 1/NUM_MONOLAYERS_IS_SURFACE * GAS_DUST_DENSITY_RATIO / NUM_SITES_PER_GRAIN).\n"
     ode_string += "        ! The YDOTs below need Y(surfspec)/safeMantle, so we divide by safeMantle here to\n"
     ode_string += "        ! save a per-species division; each alpha*Y(...) usage is clamped to [0,1] below.\n"
-    ode_string += "        ! Warm-up stiffness guard (see Notes in build_ode_string's docstring).\n"
+    ode_string += (
+        "        ! Warm-up stiffness guard (see Notes in build_ode_string's docstring).\n"
+    )
     ode_string += "        if (mantleEmpty) then\n"
     ode_string += "            alpha = 0.0_dp\n"
     ode_string += "        else\n"
-    ode_string += "            alpha = MIN(1.0_dp, surfaceCoverage*safeMantle)/safeMantle\n"
+    ode_string += (
+        "            alpha = MIN(1.0_dp, surfaceCoverage*safeMantle)/safeMantle\n"
+    )
     ode_string += "        end if\n"
     i = len(reaction_list)
     j = len(reaction_list) + len(surf_species)
@@ -1238,9 +1240,7 @@ def build_ode_string(
                 ode_string += f"        REACTIONRATE({j}) = -YDOT(nSurface)*MAX(0.0_dp, MIN(1.0_dp, alpha*Y({surface_version + 1})))\n"
             ode_string += f"        YDOT({n + 1})=YDOT({n + 1})+YDOT(nSurface)*MAX(0.0_dp, MIN(1.0_dp, alpha*Y({surface_version + 1})))\n"
         if species.get_name()[0] == "#":
-            ode_string += (
-                f"        YDOT({n + 1})=YDOT({n + 1})-YDOT(nSurface)*MAX(0.0_dp, MIN(1.0_dp, alpha*Y({n + 1})))\n"
-            )
+            ode_string += f"        YDOT({n + 1})=YDOT({n + 1})-YDOT(nSurface)*MAX(0.0_dp, MIN(1.0_dp, alpha*Y({n + 1})))\n"
     ode_string += "    end if\n"
 
     # once bulk transfer has been added, odes for bulk and surface must account for it

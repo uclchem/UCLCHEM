@@ -864,7 +864,9 @@ contains
             do tmp_i = k+1, nSpec
                 if (ABS(contributions(order(tmp_i))) > ABS(contributions(order(top_idx)))) top_idx = tmp_i
             end do
-            tmp_i = order(k); order(k) = order(top_idx); order(top_idx) = tmp_i
+            tmp_i = order(k)
+            order(k) = order(top_idx)
+            order(top_idx) = tmp_i
             write(*,"(A,I0,A,A7,A,ES12.4)") &
                 "  #", k, " ", specName(order(k)), " contributes ", contributions(order(k))
             if (contributions(order(k)) < 0.0_dp) then
