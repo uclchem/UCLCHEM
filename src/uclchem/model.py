@@ -186,6 +186,35 @@ def register_model(cls: type[AbstractModel]) -> type[AbstractModel]:
     return cls
 
 
+def verify_model_type(model_type: str) -> str:
+    """Verify that the model type is valid.
+
+    Parameters
+    ----------
+    model_type : str
+        Model type
+
+    Returns
+    -------
+    str
+        Model type, if valid
+
+    Raises
+    ------
+    UnknownModelError
+        If not valid
+
+    """
+    if model_type in REGISTRY:
+        return model_type
+    msg = f"Invalid model name '{model_type}'. Valid model names are {list(REGISTRY.keys())}"
+    raise UnknownModelError(msg)
+
+
+class UnknownModelError(Exception):
+    """Class to indicate that the model type is not a valid name."""
+
+
 # /Global variables determining formats of write files
 
 
@@ -271,7 +300,7 @@ get_species_names = SpeciesNameStore()
 def load_model(
     *,
     file_obj: h5py.File | None = None,
-    file: str | None = None,
+    file: str | Path | None = None,
     name: str = "default",
     debug: bool = False,
 ) -> AbstractModel:
@@ -281,7 +310,7 @@ def load_model(
     ----------
     file_obj : h5py.File | None
         open h5py file object. (Default value = None)
-    file : str | None
+    file : str | Path | None
         Path to a file that contains previously run and stored models. (Default value = None)
     name : str
         Name of the stored object, if none was provided `default` will have been used.
@@ -333,10 +362,7 @@ def load_model(
         file_obj.close()
 
     model_class = json.loads(loaded_data["attributes_dict"].item())["model_type"]
-    cls = REGISTRY.get(model_class)
-    if cls is None:
-        msg = f"Unrecognized model type '{model_class}'. Not in trusted registry."
-        raise ValueError(msg)
+    cls = REGISTRY[verify_model_type(model_class)]
     return cls.load_from_dataset(model_ds=loaded_data, debug=debug)
 
 
@@ -4208,6 +4234,7 @@ class SequentialRunner:
             if stage_failed:
                 break
             for model_type, model_dict in base_model_dict.items():
+                model_type = verify_model_type(model_type)
                 model_dict["param_dict"] = {
                     k.lower(): v for k, v in model_dict["param_dict"].items()
                 }
@@ -4410,20 +4437,12 @@ def _run_grid_model(
     model_obj : object
         pickled model object
 
-    Raises
-    ------
-    KeyError
-        If ``model_type`` is not found in the model registry.
-
     """
     log_file = None
     if log_dir is not None:
         log_file = str(Path(log_dir) / f"model_{model_id}.log")
 
-    cls = REGISTRY.get(model_type)
-    if cls is None:
-        msg = f"Model type '{model_type}' is not registered."
-        raise KeyError(msg)
+    cls = REGISTRY[verify_model_type(model_type)]
     with capture_fortran_output(label=f"model_{model_id}", log_file=log_file):
         model_obj = cls(
             **pending_model,
@@ -4437,22 +4456,24 @@ def _run_grid_model(
 
 
 # The following parameters from various chemical models, cannot be used as grid parameters.
-NoGridParameters = [
-    "starting_chemistry",
-    "time_array",
-    "density_array",
-    "gas_temperature_array",
-    "dust_temperature_array",
-    "zeta_array",
-    "radfield_arrayvisual_extinction_array",
-    "coldens_H_array",
-    "coldens_H2_array",
-    "coldens_CO_array",
-    "coldens_C_array",
-    "debug",
-    "read_file",
-    "run_type",
-]
+NoGridParameters = frozenset(
+    [
+        "starting_chemistry",
+        "time_array",
+        "density_array",
+        "gas_temperature_array",
+        "dust_temperature_array",
+        "zeta_array",
+        "radfield_arrayvisual_extinction_array",
+        "coldens_H_array",
+        "coldens_H2_array",
+        "coldens_CO_array",
+        "coldens_C_array",
+        "debug",
+        "read_file",
+        "run_type",
+    ]
+)
 
 
 class _NoDaemonProcess(mp.Process):
@@ -4553,36 +4574,38 @@ class GridRunner:
         model_type: str,
         full_parameters: dict | list,
         max_workers: int | None = None,
-        grid_file: str = "./default_grid_out.h5",
+        grid_file: str | Path = "./default_grid_out.h5",
         model_name_prefix: str = "",
         overwrite_models: bool = False,
         delay_run: bool = False,
-        log_dir: str | None = None,
+        log_dir: str | Path | None = None,
         model_ids: list | None = None,
         create_grid: bool = True,
     ):
-        if model_type not in REGISTRY:
-            raise AssertionError
-        self.model_type = model_type
+        self.model_type = verify_model_type(model_type)
         self.full_parameters = full_parameters
         self.max_workers = get_number_of_grid_workers(max_workers)
         _logger.debug(f"Number of workers set to {self.max_workers}")
 
-        self.grid_file = grid_file if ".h5" in grid_file else grid_file + ".h5"
+        grid_file = Path(grid_file)
+        self.grid_file = (
+            grid_file if grid_file.suffix == ".h5" else grid_file.with_suffix(".h5")
+        )
 
         # TODO: Implement model appending to grid file
         # TODO: Implement option to append or overwrite grid file.
         # Initial placeholder statement to remove pre-existing grid files
-        if Path(self.grid_file).is_file():
-            Path(self.grid_file).unlink()
+        if self.grid_file.is_file():
+            self.grid_file.unlink()
         self.model_name_prefix = model_name_prefix
         self.overwrite_models = overwrite_models
-        self.log_dir = log_dir
-        self._main_log: str | None
-        if self.log_dir is not None:
-            Path(self.log_dir).mkdir(exist_ok=True, parents=True)
-            self._main_log = str(Path(self.log_dir) / "grid.log")
+
+        if log_dir is not None:
+            self.log_dir: Path | None = Path(log_dir)
+            self.log_dir.mkdir(exist_ok=True, parents=True)
+            self._main_log: Path | None = self.log_dir / "grid.log"
         else:
+            self.log_dir = log_dir
             self._main_log = None
         self._orig_sigint = signal.getsignal(signal.SIGINT)
         self.parameters_to_grid: dict = {}
@@ -4598,9 +4621,9 @@ class GridRunner:
                     for k, v in model_full_params.items():
                         if k == "param_dict":
                             for k_p, v_p in v.items():
-                                self._grid_def(k_p, v_p, model_count)
+                                self._define_grid(k_p, v_p, model_count)
                         else:
-                            self._grid_def(k, v, model_count)
+                            self._define_grid(k, v, model_count)
 
         else:
             if not isinstance(self.full_parameters, dict):
@@ -4609,9 +4632,9 @@ class GridRunner:
             for k, v in self.full_parameters.items():
                 if k == "param_dict":
                     for k_p, v_p in v.items():
-                        self._grid_def(k_p, v_p)
+                        self._define_grid(k_p, v_p)
                 else:
-                    self._grid_def(k, v)
+                    self._define_grid(k, v)
         if create_grid:
             grids = np.meshgrid(*self.parameters_to_grid.values(), indexing="xy")
             self.flat_grids = np.reshape(
@@ -4636,16 +4659,14 @@ class GridRunner:
         self.model_ids = frozenset(model_ids) if model_ids is not None else None
 
         self.model_id_dict: dict = {}
-        self.models: list = []
-        self.physics_values = None
-        self.chemical_abun_values = None
+        self.models: list[dict[str, Any]] = []
+
         if not delay_run:
             self.run()
 
-    def _grid_def(self, key: str, value: Any, model_count: int | None = None) -> None:
+    def _define_grid(self, key: str, value: Any, model_count: int | None = None) -> None:
         prefix: str = "" if model_count is None else f"{model_count}_"
         if isinstance(value, list) and key not in NoGridParameters:
-            self.parameters_to_grid[prefix + key] = value
             self.parameters_to_grid[prefix + key] = np.array(value, dtype=object)
         elif isinstance(value, (np.ndarray, np.generic)) and key not in NoGridParameters:
             self.parameters_to_grid[prefix + key] = value.astype(dtype=object)
@@ -4662,7 +4683,7 @@ class GridRunner:
         if self._main_log is None:
             return
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        with Path(self._main_log).open("a") as f:
+        with self._main_log.open("a") as f:
             f.write(f"{ts} {msg}\n")
 
     def run(self) -> None:
@@ -4759,58 +4780,19 @@ class GridRunner:
         ]
         self._load_params()
 
-    def load_phys(self) -> None:
-        """Load the physics.
+    def get_models(self) -> Iterator[AbstractModel]:
+        """Get an iterator that will yield over all the models in the grid.
 
-        Raises
+        Yields
         ------
-        NotImplementedError
-            If the model type is `SequentialRunner`.
+        AbstractModel
+            Each model in the grid.
 
         """
-        if self.model_type == "SequentialRunner":
-            msg = "Sequential Runner physics loading not implemented"
-            raise NotImplementedError(msg)
-        for model in range(len(self.models)):
-            loaded_data = self._load_model_data(model=self.models[model]["Model"])
-            if self.physics_values is None:
-                self.physics_values = json.loads(loaded_data["attributes_dict"].item())[
-                    "physics_values"
-                ]
-            loaded_data = loaded_data.assign_coords(
-                {"physics_values": self.physics_values}
-            )
-            self.models[model]["physics_array"] = loaded_data["physics_array"]
-
-    def load_chem(self, species: list[str]) -> None:
-        """Load the chemistry.
-
-        Parameters
-        ----------
-        species : list[str]
-            list of species to load abundances for.
-
-        Raises
-        ------
-        NotImplementedError
-            If the model type is `SequentialRunner`.
-
-        """
-        if self.model_type == "SequentialRunner":
-            msg = "Sequential Runner chemistry loading not implemented"
-            raise NotImplementedError(msg)
-        for model in range(len(self.models)):
-            loaded_data = self._load_model_data(model=self.models[model]["Model"])
-            if self.chemical_abun_values is None:
-                self.chemical_abun_values = json.loads(
-                    loaded_data["attributes_dict"].item()
-                )["chemical_abun_values"]
-            loaded_data = loaded_data.assign_coords(
-                {"chemical_abun_values": self.chemical_abun_values}
-            )
-            self.models[model]["species_abundances_array"] = loaded_data[
-                "chemical_abun_array"
-            ].sel(chemical_abun_values=species)
+        yield from (
+            self._load_model_data(model=self.models[model]["Model"])
+            for model in range(len(self.models))
+        )
 
     def _load_params(self) -> None:
         """Loop through the models present in the grid models self.models.
@@ -4858,7 +4840,7 @@ class GridRunner:
                         }
                         self.models[model][f"{model_count}_{mt_k}"]["Successful"] = (
                             True
-                            if tmp_model.success_flag == 0
+                            if tmp_model.success_flag == SuccessFlag.SUCCESS
                             else tmp_model.success_flag
                         )
         else:
@@ -4873,10 +4855,12 @@ class GridRunner:
                     },
                 }
                 self.models[model]["Successful"] = (
-                    True if loaded_data.success_flag == 0 else loaded_data.success_flag
+                    True
+                    if loaded_data.success_flag == SuccessFlag.SUCCESS
+                    else loaded_data.success_flag
                 )
 
-    def _load_model_data(self, model: str):
+    def _load_model_data(self, model: str) -> AbstractModel:
         tmp_model = load_model(file=self.grid_file, name=model)
         return tmp_model
 
@@ -4895,28 +4879,29 @@ class GridRunner:
             Defaults to True.
 
         """
-        if element_list is None:
-            element_list = default_elements_to_check
-        for model in range(len(self.models)):
-            tmp_model = load_model(file=self.grid_file, name=self.models[model]["Model"])
+        for model_idx, model in enumerate(self.get_models()):
             conserve_dicts: list[dict[str, str]] = []
-            if tmp_model._param_dict["points"] > 1:
-                for pt in range(tmp_model._param_dict["points"]):
-                    df = tmp_model.get_dataframes(pt)
+            if model._param_dict["points"] > 1:
+                for pt in range(model._param_dict["points"]):
+                    df = model.get_dataframes(pt)
                     if isinstance(df, pd.DataFrame):
                         conserve_dicts += [
-                            check_element_conservation(df, element_list, percent)
+                            check_element_conservation(
+                                df, element_list=element_list, percent=percent
+                            )
                         ]
             else:
-                df = tmp_model.get_dataframes(0)
+                df = model.get_dataframes(0)
                 if isinstance(df, pd.DataFrame):
                     conserve_dicts += [
-                        check_element_conservation(df, element_list, percent)
+                        check_element_conservation(
+                            df, element_list=element_list, percent=percent
+                        )
                     ]
             conserved = True
             for conserve_dict in conserve_dicts:
                 conserved = all(float(x[:1]) < 1 for x in conserve_dict.values())
-            self.models[model]["elements_conserved"] = conserved
+            self.models[model_idx]["elements_conserved"] = conserved
 
     def _handler(self, signum: Any, frame: Any) -> None:  # noqa: ARG002
         try:
