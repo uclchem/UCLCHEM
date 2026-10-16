@@ -83,4 +83,5 @@ def test_invalid_model_name_raises():
         _ = uclchem.model.GridRunner(
             "UNKNOWN_MODEL",
             dictionaries,
+            delay_run=True,
         )
