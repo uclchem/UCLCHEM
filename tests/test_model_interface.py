@@ -26,3 +26,11 @@ def test_get_final_abundances_for_species():
 def test_unknown_parameter_raises():
     with pytest.raises(UnknownParameterError):
         Cloud({"unknown_parameter": 0})
+
+
+def test_unknown_parameter_raises_temp():
+    with pytest.raises(
+        UnknownParameterError,
+        match="Unknown parameter 'initialtemperature', did you mean 'initialtemp'?",
+    ):
+        Cloud({"initialTemperature": 10})
