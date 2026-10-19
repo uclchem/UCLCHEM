@@ -34,7 +34,7 @@ jobs:
         run: uv pip install .
 
       - name: "[test:install] Run installation tests"
-        run: pytest tests/test_install.py -v
+        run: pytest tests/install/test_install.py -v
 
       - name: "[report:success] Installation successful - tests can proceed"
         run: echo "✓ Package installed and ready for testing"
@@ -53,7 +53,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-uclchem
       - name: "[test:functional] Run core test suite (parallel)"
-        run: pytest -n auto tests/ --ignore=tests/test_install_custom_networks.py -k "not install and not heating_cooling"
+        run: pytest -n auto tests/ --ignore=tests/install/test_install_custom_networks.py -k "not install and not heating_cooling"
 
   test-doctests:
     name: Test (Doctests)
@@ -97,7 +97,7 @@ jobs:
       - uses: ./.github/actions/setup-uclchem
 
       - name: "[test:feature] Run heating/cooling feature tests"
-        run: pytest tests/test_heating_cooling_install.py -v
+        run: pytest tests/install/test_heating_cooling_install.py -v
 
   test-notebooks:
     name: Test (Notebooks)
@@ -139,4 +139,4 @@ jobs:
 
       - name: "[test:networks] Test custom network installation and simulation"
         run: |
-          pytest -v tests/test_install_custom_networks.py -k "installable or minimum_content or cloud_model"
+          pytest -v tests/install/test_install_custom_networks.py -k "installable or minimum_content or cloud_model"
