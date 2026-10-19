@@ -137,7 +137,7 @@ from uclchem.utils import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterator, Mapping
 
     import matplotlib.pyplot as plt
 
@@ -514,7 +514,7 @@ class AbstractModel(ABC):
 
     Parameters
     ----------
-    param_dict : dict | None
+    param_dict : Mapping[str, Any] | None
         Dictionary containing the parameters to use for the UCLCHEM model.
         Uses UCLCHEM default values if not provided.
     starting_chemistry : np.ndarray | None
@@ -541,7 +541,7 @@ class AbstractModel(ABC):
 
     def __init__(
         self,
-        param_dict: dict | None = None,
+        param_dict: Mapping[str, Any] | None = None,
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
         timepoints: int = TIMEPOINTS,
@@ -2347,12 +2347,12 @@ class AbstractModel(ABC):
                     {"chemical_abun_values": np.arange(chem_len)}
                 )
 
-    def _reform_inputs(self, param_dict: dict) -> None:
+    def _reform_inputs(self, param_dict: Mapping[str, Any]) -> None:
         """Reform input parameters, copying ``param_dict`` to avoid mutating the user dict.
 
         Parameters
         ----------
-        param_dict : dict
+        param_dict : Mapping[str, Any]
             Parameter dictionary passed by the user to the model.
 
         Raises
@@ -2377,7 +2377,7 @@ class AbstractModel(ABC):
                 new_param_dict[k.lower()] = v
 
             # Handle deprecated endAtFinalDensity parameter (after lowercasing)
-            new_param_dict = _convert_legacy_stopping_param(new_param_dict)
+            new_param_dict = _convert_legacy_stopping_param(dict(new_param_dict))
 
             self._param_dict = {**default_param_dictionary, **new_param_dict.copy()}
             del new_param_dict
@@ -2695,7 +2695,7 @@ class Cloud(AbstractModel):
 
     Parameters
     ----------
-    param_dict : dict
+    param_dict : Mapping[str, Any]
         Dictionary containing the parameters to use for the UCLCHEM model.
         Uses UCLCHEM default values found in `defaultparameters.f90`.
     starting_chemistry : np.ndarray | None
@@ -2719,7 +2719,7 @@ class Cloud(AbstractModel):
 
     def __init__(
         self,
-        param_dict: dict | None = None,
+        param_dict: Mapping[str, Any] | None = None,
         out_species: list[str] | None = None,
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
@@ -2736,7 +2736,7 @@ class Cloud(AbstractModel):
 
         Parameters
         ----------
-        param_dict : dict | None
+        param_dict : Mapping[str, Any] | None
             Dictionary of UCLCHEM parameters. Uses defaults from ``defaultparameters.f90`` for
             any key not provided. Defaults to None.
         out_species : list[str] | None
@@ -2849,7 +2849,7 @@ class Collapse(AbstractModel):
     collapse : str | int | CollapseMode
         Collapse type.
         Options are 'BE1.1', 'BE4', 'filament', or 'ambipolar'. Defaults to 'BE1.1'.
-    param_dict : dict
+    param_dict : Mapping[str, Any]
         Dictionary containing the parameters to use for the UCLCHEM model.
         Uses UCLCHEM default values found in `defaultparameters.f90`.
     starting_chemistry : np.ndarray | None
@@ -2883,7 +2883,7 @@ class Collapse(AbstractModel):
     def __init__(
         self,
         collapse: str | int | CollapseMode = CollapseMode.BE1_1,
-        param_dict: dict | None = None,
+        param_dict: Mapping[str, Any] | None = None,
         out_species: list[str] | None = None,
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
@@ -2902,7 +2902,7 @@ class Collapse(AbstractModel):
         ----------
         collapse : str | int | CollapseMode
             Collapse mode to use (e.g. ``CollapseMode.BE1_1``). Defaults to CollapseMode.BE1_1.
-        param_dict : dict | None
+        param_dict : Mapping[str, Any] | None
             Dictionary of UCLCHEM parameters. Uses defaults from ``defaultparameters.f90`` for
             any key not provided. Defaults to None.
         out_species : list[str] | None
@@ -3105,7 +3105,7 @@ class PrestellarCore(AbstractModel):
         [1=1Msun, 2=5, 3=10, 4=15, 5=25,6=60]. Defaults to 1, which is 1 Msun
     max_temperature : float
         Value at which gas temperature will stop increasing. Defaults to 300.0.
-    param_dict : dict
+    param_dict : Mapping[str, Any]
         Dictionary containing the parameters to use for the UCLCHEM model.
         Uses UCLCHEM default values found in `defaultparameters.f90`.
     starting_chemistry : np.ndarray | None
@@ -3131,7 +3131,7 @@ class PrestellarCore(AbstractModel):
         self,
         temp_indx: int = 1,
         max_temperature: float = 300.0,
-        param_dict: dict | None = None,
+        param_dict: Mapping[str, Any] | None = None,
         out_species: list[str] | None = None,
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
@@ -3153,7 +3153,7 @@ class PrestellarCore(AbstractModel):
             Defaults to 1.
         max_temperature : float
             Maximum temperature (K) the hot core reaches. Defaults to 300.0.
-        param_dict : dict | None
+        param_dict : Mapping[str, Any] | None
             Dictionary of UCLCHEM parameters. Uses defaults from ``defaultparameters.f90`` for
             any key not provided. Defaults to None.
         out_species : list[str] | None
@@ -3282,7 +3282,7 @@ class CShock(AbstractModel):
     minimum_temperature : float
         Minimum post-shock temperature. Defaults to 0.0 (no minimum). The
         shocked gas typically cools to `initialTemp` if this is not set.
-    param_dict : dict
+    param_dict : Mapping[str, Any]
         Dictionary containing the parameters to use for the UCLCHEM model.
         Uses UCLCHEM default values found in `defaultparameters.f90`.
     starting_chemistry : np.ndarray | None
@@ -3309,7 +3309,7 @@ class CShock(AbstractModel):
         shock_vel: float = 10.0,
         timestep_factor: float = 0.01,
         minimum_temperature: float = 0.0,
-        param_dict: dict | None = None,
+        param_dict: Mapping[str, Any] | None = None,
         out_species: list[str] | None = None,
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
@@ -3333,7 +3333,7 @@ class CShock(AbstractModel):
             dissipation time. Defaults to 0.01.
         minimum_temperature : float
             Minimum post-shock temperature (K) allowed during cooling. Defaults to 0.0.
-        param_dict : dict | None
+        param_dict : Mapping[str, Any] | None
             Dictionary of UCLCHEM parameters. Uses defaults from ``defaultparameters.f90`` for
             any key not provided. Defaults to None.
         out_species : list[str] | None
@@ -3462,7 +3462,7 @@ class JShock(AbstractModel):
     ----------
     shock_vel : float
         Velocity of the shock. Defaults to 10.0.
-    param_dict : dict | None
+    param_dict : Mapping[str, Any] | None
         Dictionary containing the parameters to use for the UCLCHEM model.
         Uses UCLCHEM default values found in `defaultparameters.f90`.
     starting_chemistry : np.ndarray | None
@@ -3487,7 +3487,7 @@ class JShock(AbstractModel):
     def __init__(
         self,
         shock_vel: float = 10.0,
-        param_dict: dict | None = None,
+        param_dict: Mapping[str, Any] | None = None,
         out_species: list[str] | None = None,
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
@@ -3506,7 +3506,7 @@ class JShock(AbstractModel):
         ----------
         shock_vel : float
             Shock velocity in km/s. Defaults to 10.0.
-        param_dict : dict | None
+        param_dict : Mapping[str, Any] | None
             Dictionary of UCLCHEM parameters. Uses defaults from ``defaultparameters.f90`` for
             any key not provided. Defaults to None.
         out_species : list[str] | None
@@ -3627,7 +3627,7 @@ class Postprocess(AbstractModel):
 
     Parameters
     ----------
-    param_dict : dict | None
+    param_dict : Mapping[str, Any] | None
         Dictionary containing the parameters to use for the UCLCHEM model.
         Uses UCLCHEM default values found in `defaultparameters.f90`.
     starting_chemistry : np.ndarray | None
@@ -3678,7 +3678,7 @@ class Postprocess(AbstractModel):
 
     def __init__(
         self,
-        param_dict: dict | None = None,
+        param_dict: Mapping[str, Any] | None = None,
         out_species: list[str] | None = None,
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
@@ -3705,7 +3705,7 @@ class Postprocess(AbstractModel):
 
         Parameters
         ----------
-        param_dict : dict | None
+        param_dict : Mapping[str, Any] | None
             Dictionary of UCLCHEM parameters. Uses defaults from ``defaultparameters.f90`` for
             any key not provided. Defaults to None.
         out_species : list[str] | None
@@ -3916,7 +3916,7 @@ class Model(AbstractModel):
 
     Parameters
     ----------
-    param_dict : dict
+    param_dict : Mapping[str, Any]
         Dictionary containing the parameters to use for the UCLCHEM model.
         Uses UCLCHEM default values found in `defaultparameters.f90`.
     starting_chemistry : np.ndarray | None
@@ -3955,7 +3955,7 @@ class Model(AbstractModel):
 
     def __init__(
         self,
-        param_dict: dict | None = None,
+        param_dict: Mapping[str, Any] | None = None,
         out_species: list[str] | None = None,
         starting_chemistry: np.ndarray | None = None,
         previous_model: AbstractModel | None = None,
@@ -3977,7 +3977,7 @@ class Model(AbstractModel):
 
         Parameters
         ----------
-        param_dict : dict | None
+        param_dict : Mapping[str, Any] | None
             Dictionary of UCLCHEM parameters. Uses defaults from ``defaultparameters.f90`` for
             any key not provided. Defaults to None.
         out_species : list[str] | None
