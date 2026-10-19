@@ -139,6 +139,7 @@ DEFAULT_PARAMETER_DICTIONARY = MappingProxyType(
         "rateConstantFile": None,
         "ratesFile": None,
         "heatingFile": None,
+        "heatingFlag": False,
         "writestep": 1,
         "abundsavefile": None,
         "abundloadfile": None,
