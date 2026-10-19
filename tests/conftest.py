@@ -1,7 +1,7 @@
 from copy import deepcopy
 from functools import cache
-from types import MappingProxyType
 from pathlib import Path
+from types import MappingProxyType
 
 import pytest
 
