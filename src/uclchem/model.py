@@ -227,35 +227,35 @@ def reaction_line_formatter(line: list[str] | pd.Series) -> str:
 
 
 @cache
-def get_reaction_names() -> list[str]:
-    """Get a list of formatted reactions.
+def get_reaction_names() -> tuple[str, ...]:
+    """Get a tuple of formatted reactions in the current network.
 
     Only load the reactions once, after that use the cached version
 
     Returns
     -------
-    list[str]
-        List of formatted reactions.
+    tuple[str, ...]
+        Tuple of formatted reactions.
 
     """
     reactions = get_reaction_table()
-    return [reaction_line_formatter(line) for _, line in reactions.iterrows()]
+    return tuple(reaction_line_formatter(line) for _, line in reactions.iterrows())
 
 
 @cache
-def get_species_names() -> list[str]:
-    """Get the species names.
+def get_species_names() -> tuple[str, ...]:
+    """Get the species names in the current network.
 
     Only loads the species once, after that use the cached version
 
     Returns
     -------
-    list[str]
-        List of species names
+    tuple[str, ...]
+        Tuple of species names in the current network.
 
     """
     species_names = get_species()
-    return species_names
+    return tuple(species_names)
 
 
 # Universal model loader
