@@ -1180,8 +1180,8 @@ def rate_constants_to_dy_and_rates(
                 bswap_rates[str(r_bswap).replace("SWAP", "SWAP_GEOMETRIC")] = bswap
                 sswap_rates[str(r_sswap).replace("SWAP", "SWAP_GEOMETRIC")] = 0.0
                 # Immedidiately correct dy:
-                bswap_r_col = int(dy.columns.get_loc(r_bswap.get_reactants()[0]))
-                bswap_p_col = int(dy.columns.get_loc(r_bswap.get_products()[0]))
+                bswap_r_col = int(dy.columns.get_loc(r_bswap.get_reactants()[0]))  # type: ignore[arg-type]
+                bswap_p_col = int(dy.columns.get_loc(r_bswap.get_products()[0]))  # type: ignore[arg-type]
                 dy.iloc[row_pos, bswap_r_col] -= bswap  # type: ignore[index]
                 dy.iloc[row_pos, bswap_p_col] += bswap  # type: ignore[index]
             else:
@@ -1194,8 +1194,8 @@ def rate_constants_to_dy_and_rates(
                 bswap_rates[str(r_bswap).replace("SWAP", "SWAP_GEOMETRIC")] = 0.0
                 sswap_rates[str(r_sswap).replace("SWAP", "SWAP_GEOMETRIC")] = sswap
                 # Immediately correct dy (surface grows → #X buried into @X):
-                sswap_r_col = int(dy.columns.get_loc(r_sswap.get_reactants()[0]))
-                sswap_p_col = int(dy.columns.get_loc(r_sswap.get_products()[0]))
+                sswap_r_col = int(dy.columns.get_loc(r_sswap.get_reactants()[0]))  # type: ignore[arg-type]
+                sswap_p_col = int(dy.columns.get_loc(r_sswap.get_products()[0]))  # type: ignore[arg-type]
                 dy.iloc[row_pos, sswap_r_col] -= sswap  # type: ignore[index]
                 dy.iloc[row_pos, sswap_p_col] += sswap  # type: ignore[index]
         swap_rate_correction = pd.concat(

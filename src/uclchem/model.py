@@ -84,6 +84,7 @@ import contextlib
 import json
 import logging
 import operator
+from functools import cache
 
 _logger = logging.getLogger(__name__)
 
@@ -225,55 +226,36 @@ def reaction_line_formatter(line: list[str] | pd.Series) -> str:
     return " + ".join(reactants) + " -> " + " + ".join(products)
 
 
-class ReactionNamesStore:  # ruff: ignore[undocumented-public-class]
-    def __init__(self):
-        self.reaction_names = None
+@cache
+def get_reaction_names() -> list[str]:
+    """Get a list of formatted reactions.
 
-    def __call__(self) -> list[str]:
-        """Get a list of formatted reactions.
+    Only load the reactions once, after that use the cached version
 
-        Only load the reactions once, after that use the cached version
+    Returns
+    -------
+    list[str]
+        List of formatted reactions.
 
-        Returns
-        -------
-        list[str]
-            List of formatted reactions.
-
-        """
-        if self.reaction_names is None:
-            reactions = get_reaction_table()
-            # format the reactions:
-            self.reaction_names = [
-                reaction_line_formatter(line) for _, line in reactions.iterrows()
-            ]
-        return self.reaction_names
+    """
+    reactions = get_reaction_table()
+    return [reaction_line_formatter(line) for _, line in reactions.iterrows()]
 
 
-get_reaction_names = ReactionNamesStore()
+@cache
+def get_species_names() -> list[str]:
+    """Get the species names.
 
+    Only loads the species once, after that use the cached version
 
-class SpeciesNameStore:  # ruff: ignore[undocumented-public-class]
-    def __init__(self):
-        self.species_names = None
+    Returns
+    -------
+    list[str]
+        List of species names
 
-    def __call__(self) -> list[str]:
-        """Get the species names.
-
-        Only loads the species once, after that use the cached version
-
-        Returns
-        -------
-        list[str]
-            List of species names
-
-        """
-        if self.species_names is None:
-            self.species_names = get_species()
-        return self.species_names
-
-
-get_species_names = SpeciesNameStore()
-# /Reaction and Species name retrieval classes to reduce file read repetition.
+    """
+    species_names = get_species()
+    return species_names
 
 
 # Universal model loader
