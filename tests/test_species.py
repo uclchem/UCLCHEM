@@ -7,6 +7,7 @@ import pytest
 from uclchem.makerates.species import (
     Species,
     calculate_element_counts_per_species,
+    determine_charge,
     determine_molecular_mass,
 )
 from uclchem.utils import get_species_table
@@ -116,3 +117,18 @@ mass_data = [(Counter("H"), 1), (Counter("HH"), 2), (Counter("HHO"), 18)]
 @pytest.mark.parametrize(("constituents", "expected_mass"), mass_data)
 def test_determine_molecular_mass(constituents, expected_mass):
     assert determine_molecular_mass(constituents) == expected_mass
+
+
+charge_data = [
+    ("H2", 0),
+    ("H2+", 1),
+    ("H2-", -1),
+    ("o-H2", 0),
+    ("o-H2+", 1),
+    ("o-H2-", -1),
+]
+
+
+@pytest.mark.parametrize(("formula", "expected_charge"), charge_data)
+def test_determine_charge(formula, expected_charge):
+    assert determine_charge(formula) == expected_charge

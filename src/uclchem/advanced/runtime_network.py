@@ -384,8 +384,7 @@ class RuntimeNetwork(BaseNetwork):
             partner_idx = self._fortran.partnerindices[idx]
             if partner_idx != MISSING_VALUE_INTEGER:
                 partner_idx -= 1  # Convert to python-like 0-indexed
-                coupled_reaction = CoupledReaction(reaction)
-                coupled_reaction.set_partner(reactions_dict[partner_idx])
+                coupled_reaction = CoupledReaction(reaction, reactions_dict[partner_idx])
                 reactions_dict[idx] = coupled_reaction
         return reactions_dict
 
