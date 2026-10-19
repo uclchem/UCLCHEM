@@ -257,7 +257,7 @@ def test_network_has_minimum_content(network_name, settings_file):
 
 @pytest.mark.timeout(600)
 @pytest.mark.parametrize("network_name,settings_file", get_all_networks())
-def test_network_cloud_model_runs(network_name, settings_file):
+def test_network_cloud_model_runs(uclchem_root, network_name, settings_file):
     """Full integration test: makerates → pip install → run Cloud model.
 
     Workflow:
@@ -268,8 +268,6 @@ def test_network_cloud_model_runs(network_name, settings_file):
 
     This validates that networks can be fully installed and used in simulation.
     """
-    uclchem_root = Path(__file__).resolve().parent.parent
-
     # Step 1: Run makerates and write Fortran source files
     run_makerates(str(settings_file), write_files=True)
 
