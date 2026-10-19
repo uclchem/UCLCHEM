@@ -350,3 +350,21 @@ file_path_parameters:
   - heatingfile
   - abundsavefile
   - abundloadfile
+fortran_modules:
+  - network
+  - io
+  - constants
+  - f2py_constants
+  - jshock_mod
+  - cshock_mod
+  - surfacereactions
+  - physicscore
+  - heating
+  - sputtering
+  - photoreactions
+  - rates
+  - heating
+  - hotcore
+  - chemistry
+  - postprocessing_mod
+  - defaultparameters
