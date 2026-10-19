@@ -2266,9 +2266,8 @@ class AbstractModel(ABC):
     def _array_clean(self):
         """Clean the arrays changed by UCLCHEM Fortran code."""
         # Find the first element with all the zeros
-        if self._debug:
-            print(f"in _array_clean: physics_array = {self.physics_array}")
-            print(f"in _array_clean: physics_array type = {type(self.physics_array)}")
+        _logger.debug(f"in _array_clean: physics_array = {self.physics_array}")
+        _logger.debug(f"in _array_clean: physics_array type = {type(self.physics_array)}")
 
         nonzero_indices = self.physics_array[:, 0, 0].nonzero()[0]
         if len(nonzero_indices) == 0:

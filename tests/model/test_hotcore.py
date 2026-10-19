@@ -36,7 +36,7 @@ BASE_PARAMS = {
 }
 
 
-def _read_coefficients(basic_cloud, extra_params: dict) -> tuple[np.ndarray, np.ndarray]:
+def _read_coefficients(extra_params: dict) -> tuple[np.ndarray, np.ndarray]:
     """Run a cloud + hotcore in-process and return (tempa, tempb).
 
     PrestellarCore is constructed with run_type="external" so it does not
@@ -50,11 +50,14 @@ def _read_coefficients(basic_cloud, extra_params: dict) -> tuple[np.ndarray, np.
 
     params = {**BASE_PARAMS, **extra_params}
 
+    cloud = uclchem.model.Cloud(param_dict={**params, "finalTime": 10.0})
+    cloud.check_error()
+
     core = uclchem.model.PrestellarCore(
         temp_indx=1,
         max_temperature=300.0,
         param_dict={**params, "finalTime": 1.0},
-        previous_model=basic_cloud,
+        previous_model=cloud,
         run_type="external",
     )
     core.run()

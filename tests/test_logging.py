@@ -76,6 +76,7 @@ def test_model_logging():
         model = uclchem.model.Cloud(param_dict={"finalTime": 1e3})
         model.check_error(only_error=True)
 
+        file.flush()
         lines = file.readlines()
     assert lines
 
@@ -84,5 +85,6 @@ def test_model_logging():
         model = uclchem.model.Cloud(param_dict={"finalTime": 1e3})
         model.check_error(only_error=True)
 
+        file.flush()
         lines = file.readlines()
     assert not lines
