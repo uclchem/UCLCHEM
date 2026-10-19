@@ -952,6 +952,7 @@ def get_fuzzy_unknown_keys(
             key,
             expected_keys,
             scorer=rapidfuzz.fuzz.ratio,
+            processor=rapidfuzz.utils.default_process,
         )
         if similarity != PERFECT_MATCH_SCORE:
             unknown_keys.add((key, choice))

@@ -534,8 +534,6 @@ def verify_no_unknown_parameters(keys: Iterable[str]) -> None:
     raise UnknownParameterError(msg)
 
 
-# TODO Add catch of ctrl+c or other aborts so that it saves model and a
-# full output to files of year, month, day, time type.
 class AbstractModel(ABC):
     """Base model class used for inheritance only.
 
@@ -633,8 +631,6 @@ class AbstractModel(ABC):
         self.was_read = read_file is not None
 
         self._reform_inputs(param_dict or {})
-        verify_no_unknown_parameters(self._param_dict.keys())
-
         if "columnfile" in self._param_dict:
             warnings.warn(
                 "Dropping columnfile key from parameter dictionary. Use 'AbstractModel.legacy_write_columnfile' instead.",
@@ -654,6 +650,8 @@ class AbstractModel(ABC):
                 )
                 raise ValueError(msg)
             self._param_dict.pop("_needs_freefall_validation", None)  # Clean up flag
+
+        verify_no_unknown_parameters(self._param_dict.keys())
 
         # If we were given a previously-written output file, populate the model
         # arrays and metadata from that file now so later initialization can rely on them.

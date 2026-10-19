@@ -20,7 +20,7 @@ def test_get_dtype(input, expected):
 test_get_fuzzy_unknown_keys_data = [
     (["abcd"], ["abce", "d"], {("abcd", "abce")}),
     (["abcd"], ["abcd", "d"], set()),
-    (["abcdE"], ["abcde", "d"], {("abcdE", "abcde")}),
+    (["abcdE"], ["abcde", "d"], set()),
 ]
 
 
