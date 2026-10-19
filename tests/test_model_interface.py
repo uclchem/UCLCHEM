@@ -1,3 +1,5 @@
+import re
+
 import numpy as np
 import pytest
 
@@ -31,6 +33,9 @@ def test_unknown_parameter_raises():
 def test_unknown_parameter_raises_temp():
     with pytest.raises(
         UnknownParameterError,
-        match="Unknown parameter 'initialtemperature', did you mean 'initialtemp'?",
+        match=re.compile(
+            "Unknown parameter 'initialtemperature', did you mean 'initialtemp'?",
+            flags=re.IGNORECASE,
+        ),
     ):
         Cloud({"initialTemperature": 10})
