@@ -53,7 +53,7 @@ Use :meth:`SuccessFlag.check_error` to get human-readable error messages.
 
 import enum
 import logging
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Self
 
@@ -957,3 +957,37 @@ def get_fuzzy_unknown_keys(
         if similarity != PERFECT_MATCH_SCORE:
             unknown_keys.add((key, choice))
     return unknown_keys
+
+
+def get_lowercase_copy(dct: Mapping[str, Any]) -> dict[str, Any]:
+    """Get a copy of a dictionary where the keys have been replaced by lowercase keys.
+
+    Parameters
+    ----------
+    dct : Mapping[str, Any]
+        Mapping to get lowercase copy of.
+
+    Returns
+    -------
+    lowercase_dct : dict[str, Any]
+        Dictionary with same values as `dct`, but lowercase keys.
+
+    Raises
+    ------
+    ValueError
+        If duplicate keys are found after lowercasing, e.g. the original dictionary
+        has key ``"a"`` and ``"A"``.
+
+    Examples
+    --------
+    >>> get_lowercase_copy({'KEY_A': 'A', 'kEy_B': 'b'})
+    {'key_a': 'A', 'key_b': 'b'}
+
+    """
+    new_dct = {}
+    for k, v in dct.items():
+        if k.lower() in new_dct:
+            msg = f"Duplicate lower case key {k} is already in the dict, stopping"
+            raise ValueError(msg)
+        new_dct[k.lower()] = v
+    return new_dct

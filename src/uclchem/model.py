@@ -133,6 +133,7 @@ from uclchem.utils import (
     SuccessFlag,
     get_collapse_mode,
     get_fuzzy_unknown_keys,
+    get_lowercase_copy,
     get_reaction_table,
     get_species,
 )
@@ -2385,32 +2386,25 @@ class AbstractModel(ABC):
         param_dict : dict
             Parameter dictionary passed by the user to the model.
 
-        Raises
-        ------
-        ValueError
-            If an duplicate key is encountered in `param_dict`.
-
         """
         if param_dict is None:
             # avoid mutating the shared default dictionary
             self._param_dict = DEFAULT_PARAMETER_DICTIONARY.copy()
         else:
-            # lower case (and conveniently copy so we don't edit) the user's dictionary
-            # this is key to UCLCHEM's "case insensitivity"
-            new_param_dict = {}
-            for k, v in param_dict.items():
-                if k.lower() in new_param_dict:
-                    msg = f"Duplicate lower case key {k} is already in the dict, stopping"
-                    raise ValueError(msg)
+            new_param_dict = get_lowercase_copy(param_dict)
+            for k, v in new_param_dict.items():
                 if isinstance(v, Path):
-                    v = str(v)
-                new_param_dict[k.lower()] = v
+                    new_param_dict[k] = str(v)
 
             # Handle deprecated endAtFinalDensity parameter (after lowercasing)
             new_param_dict = _convert_legacy_stopping_param(new_param_dict)
 
-            self._param_dict = {**DEFAULT_PARAMETER_DICTIONARY, **new_param_dict.copy()}
+            self._param_dict = {
+                **get_lowercase_copy(DEFAULT_PARAMETER_DICTIONARY),
+                **new_param_dict.copy(),
+            }
             del new_param_dict
+
         # Remove keys with None values from the merged _param_dict
         # Check the merged dict, not the defaults, to preserve user-provided values
         keys_to_delete = [k for k, v in self._param_dict.items() if v is None]
