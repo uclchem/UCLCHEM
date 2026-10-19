@@ -1,10 +1,6 @@
 import logging
-import shutil
 import sys
 import tempfile
-from pathlib import Path
-
-import pytest
 
 import uclchem
 
