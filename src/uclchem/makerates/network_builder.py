@@ -512,8 +512,7 @@ class NetworkBuilder:
             if new_reac.has_unknown_species(species_names):
                 msg = f"New bulk reaction '{new_reac}' has unknown species. Add to bulk, or call 'self._add_bulk_species' first."
                 raise RuntimeError(msg)
-            new_reac = CoupledReaction(new_reac)
-            new_reac.set_partner(reaction)
+            new_reac = CoupledReaction(new_reac, reaction)
             new_reactions.append(new_reac)
 
         current_reactions = self.network.reactions.values()
@@ -815,9 +814,7 @@ class NetworkBuilder:
                         f"Adding chemical desorption reaction for {reaction}, new reaction {new_reaction}"
                     )
 
-                    new_reaction = CoupledReaction(new_reaction)
-                    new_reaction.set_partner(reaction_partner)
-
+                    new_reaction = CoupledReaction(new_reaction, reaction_partner)
                     new_reactions.append(new_reaction)
         self.network.add_reactions(new_reactions)
 
@@ -1000,8 +997,7 @@ class NetworkBuilder:
                 )
                 continue
 
-            new_reaction = CoupledReaction(new_reaction)
-            new_reaction.set_partner(reaction)
+            new_reaction = CoupledReaction(new_reaction, reaction)
             new_reactions.append(new_reaction)
         logger.debug("Adding new reactions to grain")
         self.network.add_reactions(new_reactions)

@@ -541,12 +541,6 @@ class BaseNetwork(NetworkABC):
         reactions_coupled_to_reaction : list[Reaction]
             List of reactions that have `reaction` as their partner.
 
-        Raises
-        ------
-        RuntimeError
-            If the partner of a :class:`CoupledReaction` instance
-            in the network is None.
-
         """
         reactions_coupled_to_reaction: list[Reaction] = []
         for possible_partner_reaction in self.get_reaction_list():
@@ -554,11 +548,7 @@ class BaseNetwork(NetworkABC):
                 continue
             if not isinstance(possible_partner_reaction, CoupledReaction):
                 continue
-            partner = possible_partner_reaction.get_partner()
-            if partner is None:
-                msg = f"The partner of {possible_partner_reaction} was None"
-                raise RuntimeError(msg)
-            if partner == reaction:
+            if possible_partner_reaction.partner == reaction:
                 reactions_coupled_to_reaction.append(possible_partner_reaction)
         return reactions_coupled_to_reaction
 

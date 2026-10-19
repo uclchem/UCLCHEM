@@ -1580,8 +1580,6 @@ def write_network_file(
     ------
     AssertionError
         If exothermicity is non-zero but ``enable_rates_storage`` is ``False``.
-    RuntimeError
-        If a :class:`~uclchem.makerates.reaction.CoupledReaction` with partner None is found.
 
     """
     species_list = network.get_species_list()
@@ -1705,10 +1703,7 @@ def write_network_file(
             exothermicity[idx] = reaction.get_exothermicity()
 
             if isinstance(reaction, CoupledReaction):
-                partner = reaction.get_partner()
-                if partner is None:
-                    msg = f"Found CoupledReaction '{reaction}' with partner None."
-                    raise RuntimeError(msg)
+                partner = reaction.partner
                 partner_indices[idx] = reaction_list.index(partner) + 1
             else:
                 partner_indices[idx] = MISSING_VALUE_INTEGER
@@ -1914,9 +1909,7 @@ def write_network_file(
         for reaction in reaction_list:
             if reaction.get_reaction_type() == "LHDES":
                 if isinstance(reaction, CoupledReaction):
-                    partner = reaction.get_partner()
-                    if partner is None:
-                        raise RuntimeError
+                    partner = reaction.partner
                     reacIndex = reaction_list.index(partner) + 1
                     LHDEScorrespondingLHreacs.append(reacIndex)
                 else:
@@ -1946,9 +1939,7 @@ def write_network_file(
         for reaction in reaction_list:
             if reaction.get_reaction_type() == "ERDES":
                 if isinstance(reaction, CoupledReaction):
-                    partner = reaction.get_partner()
-                    if partner is None:
-                        raise RuntimeError
+                    partner = reaction.partner
                     reacIndex = reaction_list.index(partner) + 1
                     ERDEScorrespondingERreacs.append(reacIndex)
                 else:

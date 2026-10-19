@@ -335,6 +335,27 @@ def determine_constituents(normalized_species_name: str) -> Counter[str]:
     return counter
 
 
+def determine_charge(species: str) -> int:
+    """Determine the charge based on a molecular formula.
+
+    Parameters
+    ----------
+    species : str
+        Name of the species
+
+    Returns
+    -------
+    int
+        Charge of the species.
+
+    """
+    if "+" in species:
+        return 1
+    if species.endswith("-"):
+        return -1
+    return 0
+
+
 class Species:
     """Species is a class that holds all the information about an individual species in the.
 
@@ -461,14 +482,7 @@ class Species:
             The charge of the species
 
         """
-        if not self.is_ion():
-            return 0
-
-        if "+" in self.get_name():
-            return 1
-        if self.get_name().endswith("-"):
-            return -1
-        return 0
+        return determine_charge(self.name)
 
     def get_solid_fraction(self) -> float:
         """Get the solid fraction of the species.
@@ -767,7 +781,7 @@ class Species:
             True if it is ionized
 
         """
-        return self.get_name().endswith("+") or self.get_name().endswith("-")
+        return self.get_charge() == 0
 
     def add_default_freeze(self) -> None:
         """Add a default freezeout, which is freezing out to the species itself,.

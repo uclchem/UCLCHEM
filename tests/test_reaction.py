@@ -152,14 +152,15 @@ def test_all_on_grain(reaction: Reaction, expected):
 
 def test_get_original_partner() -> None:
     original_reaction = Reaction(["#H", "#H", "LH", "#H2", *dummy_data])
-    coupled_reaction_bulk = CoupledReaction(["@H", "@H", "LH", "@H2", *dummy_data])
-    coupled_reaction_bulk.set_partner(original_reaction)
-    coupled_reaction_lhdes = CoupledReaction(["#H", "#H", "LHDES", "H2", *dummy_data])
-    coupled_reaction_lhdes.set_partner(original_reaction)
-    coupled_reaction_bulk_lhdes = CoupledReaction(
-        ["@H", "@H", "LHDES", "H2", *dummy_data]
+    coupled_reaction_bulk = CoupledReaction(
+        ["@H", "@H", "LH", "@H2", *dummy_data], original_reaction
     )
-    coupled_reaction_bulk_lhdes.set_partner(coupled_reaction_lhdes)
+    coupled_reaction_lhdes = CoupledReaction(
+        ["#H", "#H", "LHDES", "H2", *dummy_data], original_reaction
+    )
+    coupled_reaction_bulk_lhdes = CoupledReaction(
+        ["@H", "@H", "LHDES", "H2", *dummy_data], coupled_reaction_lhdes
+    )
 
     coupled_reactions: list[CoupledReaction] = [
         coupled_reaction_bulk,
@@ -168,5 +169,5 @@ def test_get_original_partner() -> None:
     ]
 
     for reaction in coupled_reactions:
-        assert not isinstance(reaction.get_partner(), CoupledReaction)
-        assert reaction.get_partner() == original_reaction
+        assert not isinstance(reaction.partner, CoupledReaction)
+        assert reaction.partner == original_reaction

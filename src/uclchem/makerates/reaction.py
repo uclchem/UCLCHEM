@@ -9,8 +9,7 @@ from copy import deepcopy
 from typing import TYPE_CHECKING
 
 from uclchem.makerates.species import (
-    SPECIES_HEADER,
-    Species,
+    determine_charge,
     determine_constituents,
     determine_molecular_mass,
     elementList,
@@ -21,7 +20,7 @@ from uclchem.makerates.utils import normalize_species_name
 from uclchem.utils import MISSING_VALUE_FLOAT
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Iterable, Sequence
+    from collections.abc import Container, Generator, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -349,9 +348,7 @@ class Reaction:
         return [r for r in self._reactants[:] if r not in {*REACTION_TYPES, "NAN"}]
 
     def get_sorted_reactants(self) -> list[str]:
-        """Get the four reactants present in the reaction,.
-
-        sorted for fast comparisons.
+        """Get the four reactants present in the reaction, sorted for fast comparisons.
 
         Returns
         -------
@@ -362,9 +359,7 @@ class Reaction:
         return self._sorted_reactants
 
     def set_reactants(self, reactants: list[str]) -> None:
-        """Set the four reactants present in the reaction,.
-
-        padded with NAN for nonexistent entries.
+        """Set the four reactants present in the reaction, padded with NAN for nonexistent entries.
 
         Parameters
         ----------
@@ -409,9 +404,7 @@ class Reaction:
         return [r for r in self._products[:] if r not in {*REACTION_TYPES, "NAN"}]
 
     def get_sorted_products(self) -> list[str]:
-        """Get the four products present in the reaction,.
-
-        sorted for fast comparisons.
+        """Get the four products present in the reaction, sorted for fast comparisons.
 
         Returns
         -------
@@ -825,30 +818,23 @@ class Reaction:
             If charge is not conserved by the reaction.
 
         """
-        # Grain reactions don't need to conserve charge (grains can absorb/release electrons)
         if self.is_ice_reaction(
             include_reactants=True, include_products=True, strict=False
         ):
+            # Grain reactions don't need to conserve charge (grains can absorb/release electrons)
             return
-        charge_reactants = 0
-        for reac in self._reactants:
-            if reac == "NAN":
-                continue
-            specie = Species([reac] + [0] * len(SPECIES_HEADER))
-            charge_reactants += specie.get_charge()
-        charge_products = 0
-        for prod in self._products:
-            if prod == "NAN":
-                continue
-            specie = Species([prod] + [0] * len(SPECIES_HEADER))
-            charge_products += specie.get_charge()
-
-        if charge_products != charge_reactants:
+        if self.get_reaction_type() in {"GAR", "FREEZE"}:
             # GAR and FREEZE reactions do not conserve charge
-            if self.get_reaction_type() in {"GAR", "FREEZE"}:
-                # GAR reactions rely on grain electrons
-                # FREEZE reactions can have electron freeze-out (E- -> nothing with alpha=0)
-                return
+            # FREEZE reactions can have electron freeze-out (E- -> nothing with alpha=0)
+            return
+
+        charge_reactants = sum(
+            determine_charge(reactant) for reactant in self.get_pure_reactants()
+        )
+        charge_products = sum(
+            determine_charge(product) for product in self.get_pure_products()
+        )
+        if charge_products != charge_reactants:
             msg = "Charges not conserved in a reaction.\n"
             msg += f"The following reaction caused this error: {self}.\n"
             msg += f"Reactants: {charge_reactants}. Products: {charge_products}"
@@ -1205,11 +1191,12 @@ class Reaction:
         include_products: bool = True,
         strict: bool = False,
     ) -> bool:
-        """Check whether it is a surface reaction. Defaults to non-strict since many.
+        """Check whether it is a surface reaction.
 
-        important surface reactions can lead to desorption in some way.
+        Defaults to non-strict since many important surface reactions
+        can lead to desorption in some way.
 
-        By default it is NOT strict (strict=False); any species on the surface returns true
+        By default it is NOT strict (strict=False); any species on the surface returns true.
         If strict=True; all species must be on the ice phase
 
         Parameters
@@ -1274,13 +1261,13 @@ class Reaction:
         ]
         return all(checklist) if strict else any(checklist)
 
-    def has_unknown_species(self, species: Iterable[str]) -> bool:
+    def has_unknown_species(self, species: Container[str]) -> bool:
         """Determine whether this reaction involves any species not in `species`.
 
         Parameters
         ----------
-        species : Iterable[str]
-            Iterable of available species
+        species : Container[str]
+            Collection of available species in the network.
 
         Returns
         -------
@@ -1304,9 +1291,9 @@ class Reaction:
 
         """
         return (
-            " + ".join(filter(lambda r: r != "NAN", self.get_reactants()))
+            " + ".join(filter(lambda r: r != "NAN", self.get_pure_reactants()))
             + " -> "
-            + " + ".join(filter(lambda p: p != "NAN", self.get_products()))
+            + " + ".join(self.get_pure_products())
         )
 
     def __repr__(self) -> str:
@@ -1321,14 +1308,9 @@ class Reaction:
         return (
             self.get_reaction_type()
             + " reaction: "
-            + " + ".join(
-                filter(
-                    lambda r: (r != "NAN") and (r not in REACTION_TYPES),
-                    self.get_reactants(),
-                )
-            )
+            + " + ".join(self.get_pure_reactants())
             + " -> "
-            + " + ".join(filter(lambda p: p != "NAN", self.get_products()))
+            + " + ".join(self.get_pure_products())
         )
 
     def __hash__(self) -> int:
@@ -1348,10 +1330,7 @@ class Reaction:
 def _get_original_partner(reaction: Reaction | CoupledReaction) -> Reaction:
     while isinstance(reaction, CoupledReaction):
         # If the current loop reaction is also coupled, get its partner.
-        partner = reaction.get_partner()
-        if partner is None:
-            msg = f"CoupledReaction '{reaction}' has no partner"
-            raise RuntimeError(msg)
+        partner = reaction.partner
         reaction = partner
     return reaction
 
@@ -1365,48 +1344,23 @@ class CoupledReaction(Reaction):
 
     """
 
-    def __init__(self, input_row: list[str | float] | Reaction):
+    def __init__(
+        self, input_row: list[str | float] | Reaction, partner: Reaction | CoupledReaction
+    ):
         """Initialize the CoupledReaction.
 
         Parameters
         ----------
         input_row : list[str | float] | Reaction
             Either a Reaction object to copy, or a list with reaction data.
+        partner : Reaction | CoupledReaction
+            Reaction that this instance should be coupled to.
+            If `partner` is also a CoupledReaction, get the partner of `partner`
+            and set the "root" as partner to this instance.
 
         """
         super().__init__(input_row)
-        self.partner: Reaction | None = None
-
-    def set_partner(self, partner: Reaction | CoupledReaction) -> None:
-        """Set the partner.
-
-        Parameters
-        ----------
-        partner : Reaction | CoupledReaction
-            partner of this reaction. If a CoupledReaction, will walk down the tree of partners
-            until it finds an uncoupled reaction (i.e. just a :class:`Reaction`).
-
-        Raises
-        ------
-        TypeError
-            If `partner` is not an instance of :class:`Reaction`.
-
-        """
-        if not isinstance(partner, Reaction):
-            msg = f"partner should be of type Reaction, but got type {type(partner)}"
-            raise TypeError(msg)
         self.partner = _get_original_partner(partner)
-
-    def get_partner(self) -> Reaction | None:
-        """Get the partner.
-
-        Returns
-        -------
-        Reaction | None
-            partner of this reaction.
-
-        """
-        return self.partner
 
 
 def _generate_reaction_ode_bit(
@@ -1416,9 +1370,10 @@ def _generate_reaction_ode_bit(
     reactants: list[str],
     reaction_type: str | None = None,
 ) -> str:
-    """Every reaction contributes a fixed rate of change to whatever species it.
+    """Generate a string that calculates the the rate of change of a reaction in Fortran.
 
-    affects. We create the string of fortran code describing that change here.
+    Every reaction contributes a fixed rate of change to whatever species it affects.
+    We create the string of fortran code describing that change here.
 
     Parameters
     ----------
@@ -1438,7 +1393,7 @@ def _generate_reaction_ode_bit(
 
     Returns
     -------
-    str
+    ode_bit : str
         String fragment of the ODE term for this reaction.
 
     Notes
