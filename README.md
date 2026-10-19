@@ -29,7 +29,7 @@ You can then `import uclchem` in any python script. You need to `pip install .` 
 To see the contents of this python module, check our [Python API docs](https://uclchem.github.io/develop/api/index.html). To see some example notebooks, check the tutorial section of the docs or the notebooks in `Tutorials/`.
 
 ### Prerequisites
-To build UCLCHEM, you'll need gfortran, make and python 3.12+. On MacOS, make sure to have xcode installed. See more detailed installation instructions [here](https://uclchem.github.io/develop/getting-started/installation.html).
+To build UCLCHEM, you'll need gfortran, make and python 3.11+. On MacOS, make sure to have xcode installed. See more detailed installation instructions [here](https://uclchem.github.io/develop/getting-started/installation.html).
 
 
 
