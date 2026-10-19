@@ -2115,7 +2115,7 @@ class AbstractModel(ABC):
 
         """
         opened_file = False
-        if file_obj is None and file is None:
+        if (file_obj is None) == (file is None):
             msg = "file_obj or file must be passed."
             raise ValueError(msg)
         if file_obj is None:
@@ -3034,7 +3034,9 @@ class AbstractModel(ABC):
 
     # Shared memory handlers
     @staticmethod
-    def _create_shared_memory_allocation(shape: tuple):
+    def _create_shared_memory_allocation(
+        shape: tuple,
+    ) -> tuple[shared_memory.SharedMemory, dict[str, Any], np.ndarray]:
         nbytes = int(np.prod(shape) * np.dtype(np.float64).itemsize)
         shm = shared_memory.SharedMemory(create=True, size=nbytes)
         array = np.ndarray(shape, dtype=np.float64, buffer=shm.buf, order="F")
@@ -3528,11 +3530,11 @@ class PrestellarCore(AbstractModel):
 
         Parameters
         ----------
-        temp_indx : int | PrestellarCoreMass
+        temp_indx : int | PrestellarCoreMass | None
             Index of the temperature column in the physics array to use for hot-core heating,
             which corresponds to different masses of the hot core.
             Defaults to :data:`PrestellarCoreMass.M_SUN_1`.
-        max_temperature : float
+        max_temperature : float | None
             Maximum temperature (K) the hot core reaches. Defaults to 300.0.
         param_dict : Mapping[str, Any] | None
             Dictionary of UCLCHEM parameters. Uses defaults from ``defaultparameters.f90`` for
@@ -3873,7 +3875,7 @@ class JShock(AbstractModel):
 
         Parameters
         ----------
-        shock_vel : float
+        shock_vel : float | None
             Shock velocity in km/s. Defaults to 10.0.
         param_dict : Mapping[str, Any] | None
             Dictionary of UCLCHEM parameters. Uses defaults from ``defaultparameters.f90`` for
