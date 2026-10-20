@@ -53,7 +53,7 @@ grid = uclchem.model.GridRunner(
     model_name_prefix="",
     delay_run=True,
 )
-print(f"Total models to run: {len(grid.flat_grids)}")
+print(f"Total models to run: {grid.num_models}")
 
 # # Run Grid
 #
