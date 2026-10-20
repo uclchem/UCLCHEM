@@ -1,4 +1,5 @@
 from collections import defaultdict
+from itertools import product
 from pathlib import Path
 
 import numpy as np
@@ -8,14 +9,11 @@ import pytest
 import uclchem
 from uclchem.constants import SECONDS_PER_YEAR
 
-prefixes = [
-    "",
-    "prefix",
-]
+grid_runner_test_data = list(product(("", "prefix"), (False, True)))
 
 
-@pytest.mark.parametrize("prefix", prefixes)
-def test_grid_matches_individual(prefix, tmp_path):
+@pytest.mark.parametrize(("prefix", "in_memory"), grid_runner_test_data)
+def test_grid_matches_individual(prefix, in_memory, tmp_path):
     dictionaries = {
         "param_dict": {
             "initialTemp": [10, 20, 30],
@@ -28,7 +26,7 @@ def test_grid_matches_individual(prefix, tmp_path):
         dictionaries,
         create_grid=False,
         max_workers=3,
-        grid_file=tmp_path,
+        grid_file=None if in_memory else tmp_path,
         model_name_prefix=prefix,
     )
 
@@ -48,7 +46,7 @@ def test_grid_matches_individual(prefix, tmp_path):
         assert np.allclose(model.chemical_abun_array, grid_model.chemical_abun_array)
 
 
-grid_data = [
+create_grid_data = [
     ([10], [1e3]),
     ([10, 20], [1e3, 1e4]),
     ([10, 20, 30, 40], [1e3, 1e4]),
@@ -56,7 +54,7 @@ grid_data = [
 ]
 
 
-@pytest.mark.parametrize(("temperatures", "densities"), grid_data)
+@pytest.mark.parametrize(("temperatures", "densities"), create_grid_data)
 def test_grid_runner_create_grid(temperatures, densities):
     grid = uclchem.model.GridRunner(
         "Cloud",

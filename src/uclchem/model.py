@@ -4509,14 +4509,14 @@ class NoDaemonPool(pool.Pool):  # noqa
         return _NoDaemonProcess(*args, **kwargs)
 
 
-def get_number_of_grid_workers(max_workers: int | None) -> int:
+def get_number_of_grid_workers(max_workers: int = -1) -> int:
     """Determine the number of grid workers.
 
     Parameters
     ----------
-    max_workers : int | None
+    max_workers : int
         Maximum number of workers to use in parallel for
-        the grid run. If None, use ``os.cpu_count()-1`` workers. Default = None.
+        the grid run. If -1, use ``os.cpu_count()-1`` workers. Default = -1.
 
     Returns
     -------
@@ -4526,13 +4526,13 @@ def get_number_of_grid_workers(max_workers: int | None) -> int:
     Raises
     ------
     RuntimeError
-        If ``max_workers`` is None, but func:`os.cpu_count()` also returns None.
+        If ``max_workers`` is -1, but func:`os.cpu_count()` returns None.
 
     """
     cpu_count = os.cpu_count()
     if cpu_count is None:
-        if max_workers is None:
-            msg = "Could not determine number of CPU cores, but max_workers was None. Provide max_workers instead."
+        if max_workers == -1:
+            msg = "Could not determine number of CPU cores, but max_workers was -1. Provide max_workers instead."
             raise RuntimeError(msg)
         warnings.warn(
             f"Could not determine number of CPU cores. Using {max_workers} workers.",
@@ -4565,11 +4565,12 @@ class GridRunner:
         the param_dict argument that would be passed to any other model, with the addition
         of extra keys for the none param_dict variables of a model. Any variables that are
         turned into lists or arrays, will automatically be assumed to be used for the gridding.
-    max_workers : int | None
+    max_workers : int
         Maximum number of workers to use in parallel for the grid run.
-        If None, use ``os.cpu_count()-1``. Default = None.
-    grid_file : str
+        If -1, use ``os.cpu_count()-1``. Default = -1.
+    grid_file : str | Path | None
         Name and path of the output file to which the models should be saved.
+        If None, only keep the models in memory (may get large if many models are run).
         Defaults to "./default_grid_out.h5".
     model_name_prefix : str
         Name prefix convention to use. The fifth model in the grid
@@ -4595,8 +4596,8 @@ class GridRunner:
         self,
         model_type: str,
         full_parameters: dict | list,
-        max_workers: int | None = None,
-        grid_file: str | Path = "./default_grid_out.h5",
+        max_workers: int = -1,
+        grid_file: str | Path | None = "./default_grid_out.h5",
         model_name_prefix: str = "",
         overwrite_models: bool = False,
         delay_run: bool = False,
@@ -4609,18 +4610,24 @@ class GridRunner:
         self.max_workers = get_number_of_grid_workers(max_workers)
         _logger.debug(f"Number of workers set to {self.max_workers}")
 
-        grid_file = Path(grid_file)
-        self.grid_file = (
-            grid_file if grid_file.suffix == ".h5" else grid_file.with_suffix(".h5")
-        )
+        self.grid_file: Path | None
+        if grid_file is not None:
+            self._in_memory = False
+            grid_file = Path(grid_file)
+            self.grid_file = (
+                grid_file if grid_file.suffix == ".h5" else grid_file.with_suffix(".h5")
+            )
 
-        # TODO: Implement model appending to grid file
-        # TODO: Implement option to append or overwrite grid file.
-        # Initial placeholder statement to remove pre-existing grid files
-        if self.grid_file.is_file():
-            self.grid_file.unlink()
+            # TODO: Implement model appending to grid file
+            # TODO: Implement option to append or overwrite grid file.
+            # Initial placeholder statement to remove pre-existing grid files
+            if self.grid_file.is_file():
+                self.grid_file.unlink()
+            self.overwrite_models = overwrite_models
+        else:
+            self._in_memory = True
+            self.grid_file = None
         self.model_name_prefix = model_name_prefix
-        self.overwrite_models = overwrite_models
 
         if log_dir is not None:
             self.log_dir: Path | None = Path(log_dir)
@@ -4650,7 +4657,6 @@ class GridRunner:
                                 self._define_grid(k_p, v_p, model_count)
                         else:
                             self._define_grid(k, v, model_count)
-
         else:
             if not isinstance(self.full_parameters, dict):
                 msg = f"For none SequentialRunner types, full_parameters must be a dictionary. {type(self.full_parameters)} was passed."
@@ -4661,6 +4667,7 @@ class GridRunner:
                         self._define_grid(k_p, v_p)
                 else:
                     self._define_grid(k, v)
+
         if create_grid:
             grids = np.meshgrid(*self.parameters_to_grid.values(), indexing="xy")
             self.flat_grids = np.reshape(
@@ -4688,7 +4695,7 @@ class GridRunner:
         # None means run all. Accepts any iterable; stored as a frozenset for O(1) lookup.
         self.model_ids = frozenset(model_ids) if model_ids is not None else None
 
-        self.model_id_dict: dict = {}
+        self.model_id_dict: dict[int, str] = {}
         self.models: list[dict[str, Any]] = []
 
         if not delay_run:
@@ -4719,7 +4726,7 @@ class GridRunner:
     def run(self) -> None:
         """Run the grid."""
         signal.signal(signal.SIGINT, self._handler)
-        n_total = np.shape(self.flat_grids)[1]
+        n_total = self.num_models
         self._log_main(f"Grid started: {n_total} models, {self.max_workers} workers")
 
         # Capture advanced settings so spawned workers start with the same
@@ -4737,9 +4744,10 @@ class GridRunner:
             self.flat_grids,
             self.model_type,
         )
-        file_obj = h5py.File(self.grid_file, "a")
-
         PoolClass = NoDaemonPool if self.model_type == "SequentialRunner" else mp.Pool
+
+        if not self._in_memory:
+            file_obj = h5py.File(self.grid_file, "a")
 
         with PoolClass(
             self.max_workers,
@@ -4749,19 +4757,20 @@ class GridRunner:
         ) as pool:
             completed = 0
 
-            def on_result(result: tuple[int, Any]) -> None:
+            def on_result(result: tuple[int, AbstractModel]) -> AbstractModel | None:
                 nonlocal completed
                 completed += 1
                 model_id, model_object = result
                 try:
-                    save_name = f"{self.model_name_prefix}{model_id}"
                     model_object.un_pickle()
-                    failed = (
-                        model_object.success_flag is not None
-                        and model_object.success_flag < 0
-                    )
+                    failed = model_object.success_flag != SuccessFlag.SUCCESS
                     if failed:
-                        msg = model_object.success_flag.check_error(raise_on_error=False)
+                        if model_object.success_flag is None:
+                            msg = "SuccessFlag is None"
+                        else:
+                            msg = model_object.success_flag.check_error(  # type: ignore[assignment]
+                                raise_on_error=False
+                            )
                         self._log_main(
                             f"model_{model_id} failed ({completed}/{n_total}): {msg}"
                         )
@@ -4769,16 +4778,23 @@ class GridRunner:
                         self._log_main(
                             f"model_{model_id} completed ({completed}/{n_total})"
                         )
-                    model_object.save_model(
-                        file_obj=file_obj,
-                        name=save_name,
-                        overwrite=self.overwrite_models,
-                    )
+
+                    save_name = f"{self.model_name_prefix}{model_id}"
                     self.model_id_dict[model_id] = save_name
-                    file_obj.flush()
+                    if self._in_memory:
+                        return_value = model_object
+                    else:
+                        model_object.save_model(
+                            file_obj=file_obj,
+                            name=save_name,
+                            overwrite=self.overwrite_models,
+                        )
+                        file_obj.flush()
+                        return_value = None
                 except Exception as e:
                     print(f"Error saving model {model_id}: {e}")
                     traceback.print_exc()
+                return return_value
 
             def on_error(_exc: Any, _model_id: int) -> None:
                 self._log_main(f"model_{_model_id} error: {_exc}")
@@ -4787,12 +4803,13 @@ class GridRunner:
             # Submit all tasks upfront; the pool limits actual concurrency to
             # max_workers. pool.close()/join() are called only after all tasks
             # have been submitted, so apply_async never races with a closed pool.
+            results: dict[int, mp.pool.AsyncResult] = {}
             for pending_model in pending:
                 model_id = pending_model.pop("id")
                 if self.model_ids is not None and model_id not in self.model_ids:
                     continue
                 self._log_main(f"model_{model_id} started")
-                pool.apply_async(
+                results[model_id] = pool.apply_async(
                     _run_grid_model,
                     args=(model_id, self.model_type, pending_model, self.log_dir),
                     callback=on_result,
@@ -4800,13 +4817,16 @@ class GridRunner:
                 )
             pool.close()
             pool.join()
-            file_obj.close()
+            if not self._in_memory:
+                file_obj.close()
 
         signal.signal(signal.SIGINT, self._orig_sigint)
         self._log_main(f"Grid finished: {len(self.model_id_dict)} models completed")
         self.models = [
-            {"Model": v}
-            for _, v in sorted(self.model_id_dict.items(), key=lambda item: item[1])
+            {"Model": save_name, "object": results[model_id].get()[1]}
+            for model_id, save_name in sorted(
+                self.model_id_dict.items(), key=lambda item: item[1]
+            )
         ]
         self._load_params()
 
@@ -4838,7 +4858,7 @@ class GridRunner:
 
         """
         yield from (
-            self._load_model_data(model=self.models[model]["Model"])
+            self._get_model(model=self.models[model]["Model"])
             for model in range(len(self.models))
         )
 
@@ -4847,7 +4867,7 @@ class GridRunner:
 
         attribute in order to load the changing physical parameters of the models.
         The method splits the loops into two cases. SequentialRunner, and other model cases.
-        In both instances, the for loop loads the model data using the _load_model_data()
+        In both instances, the for loop loads the model data using the _get_model()
         method. Then, it matches the given parameters, with the changing parameters in
         order to populate the dictionary attribute self.models for users to view the
         models run for the given GridRunner object. The Differentiation of
@@ -4858,16 +4878,16 @@ class GridRunner:
         """
         # The following loops perform the same actions, but for the different model types
         if self.model_type == "SequentialRunner":
-            for model in range(len(self.models)):
+            for model_id in range(len(self.models)):
                 for model_count in range(len(self.full_parameters)):
                     for mt_k, mt_v in self.full_parameters[model_count].items():
                         if not isinstance(mt_v, dict):
                             continue
-                        tmp_model = self._load_model_data(
-                            model=f"{self.models[model]['Model']}_{model_count}_{mt_k}"
+                        tmp_model = self._get_model(
+                            model=f"{self.models[model_id]['Model']}_{model_count}_{mt_k}"
                         )
 
-                        self.models[model][f"{model_count}_{mt_k}"] = {
+                        self.models[model_id][f"{model_count}_{mt_k}"] = {
                             **{
                                 k.replace(f"{model_count}_", ""): tmp_model._param_dict[
                                     k.replace(f"{model_count}_", "").lower()
@@ -4886,42 +4906,46 @@ class GridRunner:
                                 and k.replace(mt_k, "").lower() in tmp_model._data
                             },
                         }
-                        self.models[model][f"{model_count}_{mt_k}"]["Successful"] = (
+                        self.models[model_id][f"{model_count}_{mt_k}"]["Successful"] = (
                             True
                             if tmp_model.success_flag == SuccessFlag.SUCCESS
                             else tmp_model.success_flag
                         )
         else:
-            for model in range(len(self.models)):
-                loaded_data = self._load_model_data(model=self.models[model]["Model"])
-                loaded_dict = loaded_data._param_dict
-                if not isinstance(loaded_data, Postprocess):
-                    self.models[model] = {
-                        **self.models[model],
+            for model_id, model in enumerate(self.get_models()):
+                loaded_dict = model._param_dict
+                if not isinstance(model, Postprocess):
+                    self.models[model_id] = {
+                        **self.models[model_id],
                         **{
                             k: loaded_dict[k.lower()]
                             for k in list(self.parameters_to_grid.keys())
                         },
                     }
                 else:
-                    self.models[model] = {
-                        **self.models[model],
+                    self.models[model_id] = {
+                        **self.models[model_id],
                         **{
-                            k: getattr(loaded_data, _postprocess_kwarg_by_init_kwarg[k])
+                            k: getattr(model, _postprocess_kwarg_by_init_kwarg[k])
                             if k in _postprocess_kwarg_by_init_kwarg
                             else loaded_dict[k.lower()]
                             for k in list(self.parameters_to_grid.keys())
                         },
                     }
-                self.models[model]["Successful"] = (
+                self.models[model_id]["Successful"] = (
                     True
-                    if loaded_data.success_flag == SuccessFlag.SUCCESS
-                    else loaded_data.success_flag
+                    if model.success_flag == SuccessFlag.SUCCESS
+                    else model.success_flag
                 )
 
-    def _load_model_data(self, model: str) -> AbstractModel:
-        tmp_model = load_model(file=self.grid_file, name=model)
-        return tmp_model
+    def _get_model(self, model: str) -> AbstractModel:
+        if self._in_memory:
+            for model_dict in self.models:
+                if model_dict["Model"] == model:
+                    return model_dict["object"]
+            raise ValueError
+        else:
+            return load_model(file=self.grid_file, name=model)
 
     def check_conservation(
         self, element_list: list[str] | None = None, percent: bool = True
