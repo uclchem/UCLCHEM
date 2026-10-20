@@ -207,7 +207,7 @@ ignore_missing_imports = true
 
 [tool.pymend]
 output-style = "numpydoc"
-exclude = "tests/"
+extend-exclude = "tests/"
 force-multiline-docs-end-with-blank = true
 force-docstrings = false
 force-raises = 'per-type'
