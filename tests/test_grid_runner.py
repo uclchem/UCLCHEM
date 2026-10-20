@@ -112,7 +112,7 @@ NEATH_COLUMNS = [
 ]
 
 
-def test_grid_runner_postprocessing():
+def test_grid_runner_postprocessing(tmp_path):
     uclchem_root = Path(__file__).parent.parent
     df = pd.read_csv(
         uclchem_root / "examples/fortran_cli/neath_small_data.out",
@@ -176,6 +176,7 @@ def test_grid_runner_postprocessing():
         create_grid=False,
         max_workers=5,
         delay_run=True,
+        grid_file=tmp_path / "grid.h5",
     )
     assert grid.num_models == len(particle_ids)
 
