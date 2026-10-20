@@ -83,6 +83,7 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
+from types import MappingProxyType
 
 _logger = logging.getLogger(__name__)
 
@@ -3642,6 +3643,23 @@ class JShock(AbstractModel):
         }
 
 
+_postprocess_kwarg_by_init_kwarg = MappingProxyType(
+    {
+        "time_array": "timegrid",
+        "density_array": "densgrid",
+        "gas_temperature_array": "gastempgrid",
+        "dust_temperature_array": "dusttempgrid",
+        "radfield_array": "radfieldgrid",
+        "zeta_array": "zetagrid",
+        "visual_extinction_array": "avgrid",
+        "coldens_H_array": "nhgrid",
+        "coldens_H2_array": "nh2grid",
+        "coldens_CO_array": "ncogrid",
+        "coldens_C_array": "ncgrid",
+    }
+)
+
+
 @register_model
 class Postprocess(AbstractModel):
     """Model class with additional controls, inheriting from :class:`AbstractModel`.
@@ -3813,6 +3831,14 @@ class Postprocess(AbstractModel):
             on_negative_abundances=on_negative_abundances,
             on_error=on_error,
         )
+
+        def make_json_serializable(
+            value: None | float | list[float] | np.ndarray,
+        ) -> None | float | list[float]:
+            if isinstance(value, np.ndarray):
+                return value.tolist()
+            return value
+
         if read_file is None and time_array is not None:
             n_input = len(time_array)
             object.__setattr__(
@@ -3847,6 +3873,7 @@ class Postprocess(AbstractModel):
                         dtype=np.float64,
                     )
                     padded[:n_input] = array
+                    setattr(self, key, make_json_serializable(array))
                     self.postprocess_arrays[key] = np.asfortranarray(padded)
             self.time_array = time_array
             # Column-density (coldens) and visual extinction (Av) arrays
@@ -4459,16 +4486,6 @@ def _run_grid_model(
 NoGridParameters = frozenset(
     [
         "starting_chemistry",
-        "time_array",
-        "density_array",
-        "gas_temperature_array",
-        "dust_temperature_array",
-        "zeta_array",
-        "radfield_arrayvisual_extinction_array",
-        "coldens_H_array",
-        "coldens_H2_array",
-        "coldens_CO_array",
-        "coldens_C_array",
         "debug",
         "read_file",
         "run_type",
@@ -4567,6 +4584,11 @@ class GridRunner:
         Optional subset of model indices (0-based column in flat_grids)
         to run. None means run all models in the grid. Default = None.
 
+    Raises
+    ------
+    ValueError
+        If `create_grid` is True, and the `model_type` is "Postprocess".
+
     """
 
     def __init__(
@@ -4610,6 +4632,10 @@ class GridRunner:
         self._orig_sigint = signal.getsignal(signal.SIGINT)
         self.parameters_to_grid: dict = {}
 
+        if self.model_type == "Postprocess" and create_grid:
+            msg = "Cannot use 'create_grid' with 'Postprocess' model in GridRunner."
+            raise ValueError(msg)
+
         if self.model_type == "SequentialRunner":
             if not isinstance(self.full_parameters, list):
                 msg = f"For SequentialRunner types, full_parameters must be a list. {type(self.full_parameters)} was passed."
@@ -4645,14 +4671,18 @@ class GridRunner:
                 ),
             )
         else:
-            if len({len(v) for v in self.parameters_to_grid.values()}) != 1:
-                raise AssertionError
+            array_lengths = [len(v) for v in self.parameters_to_grid.values()]
+            if len(set(array_lengths)) != 1:
+                msg = "Not all arrays for the grid of the GridRunner are the same length."
+                raise ValueError(msg)
             self.flat_grids = np.array(
                 [
                     [p[i] for p in self.parameters_to_grid.values()]
-                    for i in range(len(next(iter(self.parameters_to_grid.values()))))
+                    for i in range(array_lengths[0])
                 ]
             ).T
+        if self.model_type == "Postprocess" and len(self.flat_grids.shape) == 3:  # noqa: PLR2004
+            self.flat_grids = np.moveaxis(self.flat_grids, [0, 1, 2], [2, 0, 1])
 
         # Optional subset of model indices (0-based column in flat_grids) to run.
         # None means run all. Accepts any iterable; stored as a frozenset for O(1) lookup.
@@ -4780,6 +4810,24 @@ class GridRunner:
         ]
         self._load_params()
 
+    @property
+    def num_models(self) -> int:
+        """The number of models in the grid.
+
+        Returns
+        -------
+        int
+            The number of models
+
+        """
+        param_dicts = self.grid_iter(
+            self.full_parameters,
+            list(self.parameters_to_grid.keys()),
+            self.flat_grids,
+            self.model_type,
+        )
+        return len(list(param_dicts))
+
     def get_models(self) -> Iterator[AbstractModel]:
         """Get an iterator that will yield over all the models in the grid.
 
@@ -4847,13 +4895,24 @@ class GridRunner:
             for model in range(len(self.models)):
                 loaded_data = self._load_model_data(model=self.models[model]["Model"])
                 loaded_dict = loaded_data._param_dict
-                self.models[model] = {
-                    **self.models[model],
-                    **{
-                        k: loaded_dict[k.lower()]
-                        for k in list(self.parameters_to_grid.keys())
-                    },
-                }
+                if not isinstance(loaded_data, Postprocess):
+                    self.models[model] = {
+                        **self.models[model],
+                        **{
+                            k: loaded_dict[k.lower()]
+                            for k in list(self.parameters_to_grid.keys())
+                        },
+                    }
+                else:
+                    self.models[model] = {
+                        **self.models[model],
+                        **{
+                            k: getattr(loaded_data, _postprocess_kwarg_by_init_kwarg[k])
+                            if k in _postprocess_kwarg_by_init_kwarg
+                            else loaded_dict[k.lower()]
+                            for k in list(self.parameters_to_grid.keys())
+                        },
+                    }
                 self.models[model]["Successful"] = (
                     True
                     if loaded_data.success_flag == SuccessFlag.SUCCESS
