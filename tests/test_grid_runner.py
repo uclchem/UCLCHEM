@@ -1,4 +1,5 @@
 from collections import defaultdict
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -112,8 +113,9 @@ NEATH_COLUMNS = [
 
 
 def test_grid_runner_postprocessing():
+    uclchem_root = Path(__file__).parent.parent
     df = pd.read_csv(
-        "../examples/fortran_cli/neath_small_data.out",
+        uclchem_root / "examples/fortran_cli/neath_small_data.out",
         sep=r"\s+",
         header=None,
         dtype=np.float64,
