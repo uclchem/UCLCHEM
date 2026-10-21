@@ -4889,33 +4889,33 @@ class GridRunner:
                     for mt_k, mt_v in self.full_parameters[model_count].items():
                         if not isinstance(mt_v, dict):
                             continue
-                        tmp_model = self._get_model(
+                        model = self._get_model(
                             model=f"{self.models[model_id]['Model']}_{model_count}_{mt_k}"
                         )
 
                         self.models[model_id][f"{model_count}_{mt_k}"] = {
                             **{
-                                k.replace(f"{model_count}_", ""): tmp_model._param_dict[
+                                k.replace(f"{model_count}_", ""): model._param_dict[
                                     k.replace(f"{model_count}_", "").lower()
                                 ]
                                 for k in list(self.parameters_to_grid.keys())
                                 if k[: len(str(model_count))] == str(model_count)
                                 and k.replace(f"{model_count}_", "").lower()
-                                in tmp_model._param_dict
+                                in model._param_dict
                             },
                             **{
-                                k.replace(f"{model_count}_", ""): tmp_model.__getattr__(  # noqa: PLC2801 bypass
+                                k.replace(f"{model_count}_", ""): model.__getattr__(  # noqa: PLC2801 bypass
                                     k.replace(f"{model_count}_", "")
                                 )
                                 for k in list(self.parameters_to_grid.keys())
                                 if mt_k in k
-                                and k.replace(mt_k, "").lower() in tmp_model._data
+                                and k.replace(mt_k, "").lower() in model._data
                             },
                         }
                         self.models[model_id][f"{model_count}_{mt_k}"]["Successful"] = (
                             True
-                            if tmp_model.success_flag == SuccessFlag.SUCCESS
-                            else tmp_model.success_flag
+                            if model.success_flag == SuccessFlag.SUCCESS
+                            else model.success_flag
                         )
         else:
             for model_id, model in enumerate(self.get_models()):
