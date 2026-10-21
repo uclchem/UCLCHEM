@@ -114,6 +114,8 @@ from uclchem._coolant_utils import load_coolant_level_names
 from uclchem._fortran_capture import capture_fortran_output
 from uclchem.analysis import check_element_conservation
 from uclchem.constants import (
+    DEFAULT_ELEMENTS_TO_CHECK,
+    DEFAULT_PARAMETER_DICTIONARY,
     DVODE_STAT_NAMES,
     N_DVODE_STATS,
     N_PHYSICAL_PARAMETERS,
@@ -123,8 +125,6 @@ from uclchem.constants import (
     PHYSICAL_PARAMETERS,
     SE_STAT_NAMES,
     TIMEPOINTS,
-    default_elements_to_check,
-    default_param_dictionary,
     n_reactions,
     n_species,
 )
@@ -133,12 +133,14 @@ from uclchem.utils import (
     CollapseMode,
     SuccessFlag,
     get_collapse_mode,
+    get_fuzzy_unknown_keys,
+    get_lowercase_copy,
     get_reaction_table,
     get_species,
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterable, Iterator
 
     import matplotlib.pyplot as plt
 
@@ -531,8 +533,35 @@ def _build_physics_df(
     return raw_df.reindex(columns=PHYSICAL_PARAMETERS, fill_value=0.0)
 
 
-# TODO Add catch of ctrl+c or other aborts so that it saves model and a
-# full output to files of year, month, day, time type.
+class UnknownParameterError(Exception):
+    """Exception to indicate unknown parameters were passed."""
+
+
+def verify_no_unknown_parameters(keys: Iterable[str]) -> None:
+    """Raise an error if there are any invalid keys.
+
+    Parameters
+    ----------
+    keys : Iterable[str]
+        Keys in the given parameter dictionary.
+
+    Raises
+    ------
+    UnknownParameterError
+        If any unknown (i.e. not in :data:`uclchem.constants.DEFAULT_PARAMETER_DICTIONARY`)
+        parameters are given.
+
+    """
+    unknown_keys = get_fuzzy_unknown_keys(keys, DEFAULT_PARAMETER_DICTIONARY.keys())
+    if not unknown_keys:
+        return
+    msg = "\n".join(
+        f"Unknown parameter '{key}', did you mean '{choice}'?"
+        for key, choice in sorted(unknown_keys)
+    )
+    raise UnknownParameterError(msg)
+
+
 class AbstractModel(ABC):
     """Base model class used for inheritance only.
 
@@ -649,6 +678,8 @@ class AbstractModel(ABC):
                 )
                 raise ValueError(msg)
             self._param_dict.pop("_needs_freefall_validation", None)  # Clean up flag
+
+        verify_no_unknown_parameters(self._param_dict.keys())
 
         # If we were given a previously-written output file, populate the model
         # arrays and metadata from that file now so later initialization can rely on them.
@@ -987,20 +1018,20 @@ class AbstractModel(ABC):
 
     # UCLCHEM utility and analysis wrappers
     def check_conservation(
-        self, element_list: list[str] | None = None, percent: bool = True
+        self, element_list: Iterable[str] | None = None, percent: bool = True
     ) -> None:
         """Check conservation of the chemical abundances.
 
         Parameters
         ----------
-        element_list : list[str] | None
+        element_list : Iterable[str] | None
             List of elements to check conservation for. (Default value = None)
         percent : bool
             Flag on if percentage values should be used. Defaults to True.
 
         """
         if element_list is None:
-            element_list = default_elements_to_check
+            element_list = DEFAULT_ELEMENTS_TO_CHECK
 
         if self._param_dict["points"] > 1:
             for i in range(self._param_dict["points"]):
@@ -1376,12 +1407,12 @@ class AbstractModel(ABC):
             result.append(se_stats_df)
         return tuple(df for df in result if df is not None)
 
-    def get_final_abundances_of_species(self, species: list[str]) -> np.ndarray:
+    def get_final_abundances_of_species(self, species: Iterable[str]) -> np.ndarray:
         """Get the final abundances of a list of species.
 
         Parameters
         ----------
-        species : list[str]
+        species : Iterable[str]
             list of species names.
 
         Returns
@@ -1391,7 +1422,7 @@ class AbstractModel(ABC):
 
         """
         species_names = get_species_names()
-        abundances = np.empty(len(species))
+        abundances = np.empty(len(list(species)))
         for spec_index, spec in enumerate(species):
             index = species_names.index(spec)
             abundances[spec_index] = self.next_starting_chemistry_array[-1, index]
@@ -2205,7 +2236,7 @@ class AbstractModel(ABC):
             )
 
     def legacy_write_columnfile(
-        self, column_file: str | Path, species: list[str]
+        self, column_file: str | Path, species: Iterable[str]
     ) -> None:
         """Write a classic ``columnFile`` file, similar to full output but with a subset of species.
 
@@ -2215,7 +2246,7 @@ class AbstractModel(ABC):
         ----------
         column_file : str | Path
             path to write to
-        species : list[str]
+        species : Iterable[str]
             List of species names to write
 
         """
@@ -2228,11 +2259,11 @@ class AbstractModel(ABC):
         chem_species = chem[:, species_indices]
         full_array = np.append(phys, chem_species, axis=1)
 
-        string_fmt_string = f"{', '.join([PHYSICAL_PARAMETERS_HEADER_FORMAT] * (len(PHYSICAL_PARAMETERS)))}, {', '.join([SPECNAME_HEADER_FORMAT] * len(species))}"
+        string_fmt_string = f"{', '.join([PHYSICAL_PARAMETERS_HEADER_FORMAT] * (len(PHYSICAL_PARAMETERS)))}, {', '.join([SPECNAME_HEADER_FORMAT] * len(list(species)))}"
         # Magic numbers here to match/improve the formatting of the classic version
         # TODO Move away from the magic numbers seen here.
-        number_fmt_string = f"{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {', '.join([SPECNAME_VALUE_FORMAT] * len(species))}"
-        columns = np.array([PHYSICAL_PARAMETERS[:-1] + ["point"] + species])
+        number_fmt_string = f"{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {', '.join([SPECNAME_VALUE_FORMAT] * len(list(species)))}"
+        columns = np.array([PHYSICAL_PARAMETERS[:-1] + ["point"] + list(species)])
         np.savetxt(column_file, columns, fmt=string_fmt_string)
         with Path(column_file).open("ab") as f:
             np.savetxt(f, full_array, fmt=number_fmt_string)
@@ -2382,32 +2413,25 @@ class AbstractModel(ABC):
         param_dict : dict
             Parameter dictionary passed by the user to the model.
 
-        Raises
-        ------
-        ValueError
-            If an duplicate key is encountered in `param_dict`.
-
         """
         if param_dict is None:
             # avoid mutating the shared default dictionary
-            self._param_dict = default_param_dictionary.copy()
+            self._param_dict = DEFAULT_PARAMETER_DICTIONARY.copy()
         else:
-            # lower case (and conveniently copy so we don't edit) the user's dictionary
-            # this is key to UCLCHEM's "case insensitivity"
-            new_param_dict = {}
-            for k, v in param_dict.items():
-                if k.lower() in new_param_dict:
-                    msg = f"Duplicate lower case key {k} is already in the dict, stopping"
-                    raise ValueError(msg)
+            new_param_dict = get_lowercase_copy(param_dict)
+            for k, v in new_param_dict.items():
                 if isinstance(v, Path):
-                    v = str(v)
-                new_param_dict[k.lower()] = v
+                    new_param_dict[k] = str(v)
 
             # Handle deprecated endAtFinalDensity parameter (after lowercasing)
             new_param_dict = _convert_legacy_stopping_param(new_param_dict)
 
-            self._param_dict = {**default_param_dictionary, **new_param_dict.copy()}
+            self._param_dict = {
+                **get_lowercase_copy(DEFAULT_PARAMETER_DICTIONARY),
+                **new_param_dict.copy(),
+            }
             del new_param_dict
+
         # Remove keys with None values from the merged _param_dict
         # Check the merged dict, not the defaults, to preserve user-provided values
         keys_to_delete = [k for k, v in self._param_dict.items() if v is None]
@@ -4377,21 +4401,21 @@ class SequentialRunner:
             file_obj.close()
 
     def check_conservation(
-        self, element_list: list[str] | None = None, percent: bool = True
+        self, element_list: Iterable[str] | None = None, percent: bool = True
     ) -> None:
         """Check conservation of the chemical abundances.
 
         Parameters
         ----------
-        element_list : list[str] | None
+        element_list : Iterable[str] | None
             List of elements to check conservation for.
-            If None, use `uclchem.constants.default_elements_to_check`. Default = None.
+            If None, use `uclchem.constants.DEFAULT_ELEMENTS_TO_CHECK`. Default = None.
         percent : bool
             Flag on if percentage values should be used. Defaults to True.
 
         """
         if element_list is None:
-            element_list = default_elements_to_check
+            element_list = DEFAULT_ELEMENTS_TO_CHECK
 
         for model in self.models:
             conserve_dicts: list[dict[str, str]] = []
@@ -4924,20 +4948,22 @@ class GridRunner:
         return tmp_model
 
     def check_conservation(
-        self, element_list: list[str] | None = None, percent: bool = True
+        self, element_list: Iterable[str] | None = None, percent: bool = True
     ) -> None:
         """Check conservation of the chemical abundances.
 
         Parameters
         ----------
-        element_list : list[str] | None
+        element_list : Iterable[str] | None
             List of elements to check conservation for.
-            If None, use `uclchem.constants.default_elements_to_check`. Default = None.
+            If None, use `uclchem.constants.DEFAULT_ELEMENTS_TO_CHECK`. Default = None.
         percent : bool
             Flag on if percentage values should be used.
             Defaults to True.
 
         """
+        if element_list is None:
+            element_list = DEFAULT_ELEMENTS_TO_CHECK
         for model_idx, model in enumerate(self.get_models()):
             conserve_dicts: list[dict[str, str]] = []
             if model._param_dict["points"] > 1:

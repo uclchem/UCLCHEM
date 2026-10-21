@@ -1,7 +1,14 @@
+import re
+
 import numpy as np
 import pytest
 
-from uclchem.model import Cloud, UnknownModelError, verify_model_type
+from uclchem.model import (
+    Cloud,
+    UnknownModelError,
+    UnknownParameterError,
+    verify_model_type,
+)
 
 valid_model_types = [
     ("Cloud"),
@@ -43,3 +50,19 @@ def test_get_final_abundances_for_species():
     for _index, spec in enumerate(species):
         final_abundances_from_df.append(chem_df[spec].iloc[-1])
     assert np.all(final_abundances_from_df == final_abundances)
+
+
+def test_unknown_parameter_raises():
+    with pytest.raises(UnknownParameterError):
+        Cloud({"unknown_parameter": 0})
+
+
+def test_unknown_parameter_raises_temp():
+    with pytest.raises(
+        UnknownParameterError,
+        match=re.compile(
+            "Unknown parameter 'initialtemperature', did you mean 'initialtemp'?",
+            flags=re.IGNORECASE,
+        ),
+    ):
+        Cloud({"initialTemperature": 10})
