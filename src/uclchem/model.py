@@ -100,7 +100,7 @@ from datetime import datetime
 from multiprocessing import pool as mp_pool
 from multiprocessing import shared_memory
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple
 
 import h5py
 import numpy as np
@@ -530,6 +530,66 @@ def _build_physics_df(
         )
     raw_df = pd.DataFrame(raw_array, columns=stored_cols)
     return raw_df.reindex(columns=PHYSICAL_PARAMETERS, fill_value=0.0)
+
+
+class SolverEfficiencySummary(NamedTuple):
+    """Container for information on solver efficiency.
+
+    Parameters
+    ----------
+    total_attempts : int
+        Total number of attempts of the solver
+    successful_attempts : int
+        Number of successful attempts of the solver
+    total_cpu_time : float
+        Total cpu time for the model run in seconds
+    wasted_cpu_time : float
+        Wasted cpu time (ISTATE < 0) in seconds
+
+    """
+
+    total_attempts: int
+    successful_attempts: int
+    total_cpu_time: float
+    wasted_cpu_time: float
+
+    @property
+    def efficiency_ratio(self) -> float:
+        """Ratio of successful to total number of attempts.
+
+        Returns
+        -------
+        float
+            Efficiency ratio
+
+        """
+        return self.successful_attempts / self.total_attempts
+
+    @property
+    def failed_attempts(self) -> int:
+        """Number of failed (ISTATE < 0) attempts of solver.
+
+        Returns
+        -------
+        int
+            Number of failed attempts
+
+        """
+        return self.total_attempts - self.successful_attempts
+
+    @property
+    def wasted_fraction(self) -> float:
+        """Fraction of CPU time spent in failed solver attempts.
+
+        Returns
+        -------
+        float
+            Fraction of CPU time spent in failed solver attempts.
+
+        """
+        return (
+            self.wasted_cpu_time / self.total_cpu_time if self.total_cpu_time > 0 else 0.0
+        )
 
 
 # TODO Add catch of ctrl+c or other aborts so that it saves model and a
@@ -1493,7 +1553,7 @@ class AbstractModel(ABC):
 
     def get_solver_efficiency_summary(
         self, point: int | None = None
-    ) -> dict[str, int | float] | None:
+    ) -> SolverEfficiencySummary | None:
         """Calculate solver efficiency metrics.
 
         Parameters
@@ -1504,14 +1564,9 @@ class AbstractModel(ABC):
 
         Returns
         -------
-        dict[str, int | float] | None
-            dict with keys:
-            - total_attempts: Total DVODE calls
-            - successful_attempts: Calls that advanced the trajectory
-            - failed_attempts: Calls that were retried
-            - efficiency_ratio: successful / total (1.0 = no retries)
-            - total_cpu_time: Sum of all CPU time
-            - wasted_cpu_time: CPU time spent on failed attempts
+        SolverEfficiencySummary | None
+            NamedTuple with some fields that give information on the efficiency
+            of the solver during the model run.
 
         """
         df = self.get_solver_stats_dataframe(point)
@@ -1525,17 +1580,12 @@ class AbstractModel(ABC):
         total_cpu = df["CPU_TIME"].sum()
         wasted_cpu = df[df["ISTATE"] < 0]["CPU_TIME"].sum()
 
-        return {
-            "total_attempts": total_attempts,
-            "successful_attempts": successful_attempts,
-            "failed_attempts": failed_attempts,
-            "efficiency_ratio": successful_attempts / total_attempts
-            if total_attempts > 0
-            else 0.0,
-            "total_cpu_time": total_cpu,
-            "wasted_cpu_time": wasted_cpu,
-            "wasted_fraction": wasted_cpu / total_cpu if total_cpu > 0 else 0.0,
-        }
+        return SolverEfficiencySummary(
+            total_attempts=total_attempts,
+            successful_attempts=successful_attempts,
+            total_cpu_time=total_cpu,
+            wasted_cpu_time=wasted_cpu,
+        )
 
     def plot_species(
         self,
