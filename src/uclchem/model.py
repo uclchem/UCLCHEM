@@ -97,7 +97,8 @@ import traceback
 import warnings
 from abc import ABC, abstractmethod
 from datetime import datetime
-from multiprocessing import pool, shared_memory
+from multiprocessing import pool as mp_pool
+from multiprocessing import shared_memory
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -4441,7 +4442,7 @@ def _run_grid_model(
     model_type: str,
     pending_model: dict[str, Any],
     log_dir: str | Path | None = None,
-) -> tuple[int, object]:
+) -> tuple[int, AbstractModel]:
     """Run a single model. This is used by the GridRunner class.
 
     Parameters
@@ -4503,7 +4504,7 @@ class _NoDaemonProcess(mp.Process):
         pass
 
 
-class NoDaemonPool(pool.Pool):  # noqa
+class NoDaemonPool(mp_pool.Pool):  # noqa
     @staticmethod
     def Process(ctx, *args, **kwargs):  # noqa
         return _NoDaemonProcess(*args, **kwargs)
@@ -4757,7 +4758,7 @@ class GridRunner:
         ) as pool:
             completed = 0
 
-            def on_result(result: tuple[int, AbstractModel]) -> AbstractModel | None:
+            def on_result(result: tuple[int, AbstractModel]) -> None:
                 nonlocal completed
                 completed += 1
                 model_id, model_object = result
@@ -4781,20 +4782,16 @@ class GridRunner:
 
                     save_name = f"{self.model_name_prefix}{model_id}"
                     self.model_id_dict[model_id] = save_name
-                    if self._in_memory:
-                        return_value = model_object
-                    else:
+                    if not self._in_memory:
                         model_object.save_model(
                             file_obj=file_obj,
                             name=save_name,
                             overwrite=self.overwrite_models,
                         )
                         file_obj.flush()
-                        return_value = None
                 except Exception as e:
                     print(f"Error saving model {model_id}: {e}")
                     traceback.print_exc()
-                return return_value
 
             def on_error(_exc: Any, _model_id: int) -> None:
                 self._log_main(f"model_{_model_id} error: {_exc}")
@@ -4803,27 +4800,36 @@ class GridRunner:
             # Submit all tasks upfront; the pool limits actual concurrency to
             # max_workers. pool.close()/join() are called only after all tasks
             # have been submitted, so apply_async never races with a closed pool.
-            results: dict[int, mp.pool.AsyncResult] = {}
+            results: dict[int, mp_pool.ApplyResult[tuple[int, AbstractModel]] | None] = {}
             for pending_model in pending:
-                model_id = pending_model.pop("id")
+                model_id: int = pending_model.pop("id")
                 if self.model_ids is not None and model_id not in self.model_ids:
                     continue
                 self._log_main(f"model_{model_id} started")
-                results[model_id] = pool.apply_async(
+                res: mp_pool.ApplyResult[tuple[int, AbstractModel]] = pool.apply_async(
                     _run_grid_model,
                     args=(model_id, self.model_type, pending_model, self.log_dir),
                     callback=on_result,
                     error_callback=(lambda exc, _mid=model_id: on_error(exc, _mid)),  # type: ignore[misc]  # mypy cannot infer lambda with default arg capture
                 )
+                results[model_id] = res if self._in_memory else None
             pool.close()
             pool.join()
             if not self._in_memory:
                 file_obj.close()
 
         signal.signal(signal.SIGINT, self._orig_sigint)
+
+        def _maybe_get(
+            maybe_result: mp_pool.ApplyResult[tuple[int, AbstractModel]] | None,
+        ) -> AbstractModel | None:
+            if maybe_result is None:
+                return None
+            return maybe_result.get()[1]
+
         self._log_main(f"Grid finished: {len(self.model_id_dict)} models completed")
         self.models = [
-            {"Model": save_name, "object": results[model_id].get()[1]}
+            {"Model": save_name, "object": _maybe_get(results[model_id])}
             for model_id, save_name in sorted(
                 self.model_id_dict.items(), key=lambda item: item[1]
             )

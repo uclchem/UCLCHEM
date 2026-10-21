@@ -28,9 +28,21 @@ def test_grid_matches_individual(prefix, in_memory, tmp_path):
         max_workers=3,
         grid_file=None if in_memory else tmp_path,
         model_name_prefix=prefix,
+        delay_run=True,
     )
 
+    assert grid._in_memory == in_memory
+
     assert grid.num_models == 3
+
+    grid.run()
+    if in_memory:
+        for model_idx in range(grid.num_models):
+            assert isinstance(grid.models[model_idx]["object"], uclchem.model.Cloud)
+    else:
+        print(grid.models)
+        for model_idx in range(grid.num_models):
+            assert grid.models[model_idx]["object"] is None
 
     for idx, grid_model in zip(
         range(len(dictionaries["param_dict"]["initialTemp"])),
