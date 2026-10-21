@@ -3,7 +3,34 @@ import re
 import numpy as np
 import pytest
 
-from uclchem.model import Cloud, UnknownParameterError
+from uclchem.model import (
+    Cloud,
+    UnknownModelError,
+    UnknownParameterError,
+    verify_model_type,
+)
+
+valid_model_types = [
+    ("Cloud"),
+    ("JShock"),
+]
+invalid_model_types = [
+    ("cloud"),
+    ("NON_cloud"),
+    ("cluod"),
+    (""),
+]
+
+
+@pytest.mark.parametrize("model_type", valid_model_types)
+def test_verify_model_type(model_type):
+    verify_model_type(model_type)
+
+
+@pytest.mark.parametrize("model_type", invalid_model_types)
+def test_verify_model_type_raises(model_type):
+    with pytest.raises(UnknownModelError):
+        verify_model_type(model_type)
 
 
 def test_out_species_on_oo_model_raises():

@@ -38,6 +38,31 @@ You can check a broad description of changes in each of the [releases](https://g
 
 
 ## Contributing
+**Imposter syndrome disclaimer**: We want your help. No really, we do.
+
+There might be a little voice inside that tells you you're not ready;
+that you need to do one more tutorial, or learn another framework,
+or write a few more blog posts before you can help with this project.
+
+We assure you - the little voice in your head is wrong. If you can write code at
+all, you can contribute code to open source. Contributing to open source
+projects is a fantastic way to advance one's coding skills. Writing perfect code
+isn't the measure of a good developer (that would disqualify all of us!); it's
+trying to create something, making mistakes, and learning from those
+mistakes. That's how we all improve, and we are happy to help others learn.
+
+Being an open source contributor doesn't just mean writing code, either. You can
+help out by writing documentation, tests, or even giving feedback about the
+project (and yes - that includes giving feedback about the contribution
+process). Some of these contributions may be the most valuable to the project as
+a whole, because you're coming to the project with fresh eyes, so you can see
+the errors and assumptions that seasoned contributors have glossed over.
+
+(This disclaimer was originally written by
+[Adrienne Lowe](https://github.com/adriennefriend) for a
+[PyCon talk](https://www.youtube.com/watch?v=6Uj746j9Heo),
+and was adapted from the README in the [yt project](https://github.com/yt-project/yt))
+
 This is an open source science code for the community and are open to pull requests. We are also happy to work with you to produce a physics module if none of the models available in the python module `uclchem.model` suit the modeling work you wish to do. If you are contributing, please try to work with our current code style. Feel free to checkout the latest developments with `git fetch; git checkout develop` We have the following general guidelines:
 
 ### Editable development Setup
@@ -62,7 +87,6 @@ pre-commit install # linting, type checking and formatting
 Either way, the pre-commit install step will automatically run linting and formatting checks before each commit and save you time with failed CI/CD.
 This might introduce some weird behavior with fortran .mod files lingering if you quit compilation at any point, so beware!
 
-
 ### Github
 - Work in a personal branch or fork to your own Github to develop features.
 - Make sure you base your new work on the develop branch.
@@ -83,7 +107,7 @@ This might introduce some weird behavior with fortran .mod files lingering if yo
 ## Citing UCLCHEM
 
 If you use UCLCHEM for your research, please cite the following [paper](https://ui.adsabs.harvard.edu/abs/2026arXiv260620265V/abstract) for the framework
-and any important papers mentioned therin that contributed to specific modules you used. 
+and any important papers mentioned therein that contributed to specific modules you used. 
 
 # Developers
 ## Developer tools
