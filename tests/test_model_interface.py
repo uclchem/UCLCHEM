@@ -1,7 +1,29 @@
 import numpy as np
 import pytest
 
-from uclchem.model import Cloud
+from uclchem.model import Cloud, UnknownModelError, verify_model_type
+
+valid_model_types = [
+    ("Cloud"),
+    ("JShock"),
+]
+invalid_model_types = [
+    ("cloud"),
+    ("NON_cloud"),
+    ("cluod"),
+    (""),
+]
+
+
+@pytest.mark.parametrize("model_type", valid_model_types)
+def test_verify_model_type(model_type):
+    verify_model_type(model_type)
+
+
+@pytest.mark.parametrize("model_type", invalid_model_types)
+def test_verify_model_type_raises(model_type):
+    with pytest.raises(UnknownModelError):
+        verify_model_type(model_type)
 
 
 def test_out_species_on_oo_model_raises():
@@ -16,7 +38,7 @@ def test_get_final_abundances_for_species():
 
     assert len(final_abundances) == len(species)
 
-    phys_df, chem_df = model.get_dataframes(joined=False)
+    _phys_df, chem_df = model.get_dataframes(joined=False)
     final_abundances_from_df = []
     for _index, spec in enumerate(species):
         final_abundances_from_df.append(chem_df[spec].iloc[-1])
