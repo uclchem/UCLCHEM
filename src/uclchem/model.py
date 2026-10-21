@@ -4864,7 +4864,7 @@ class GridRunner:
 
         """
         yield from (
-            self._get_model(model=self.models[model]["Model"])
+            self._get_model(name=self.models[model]["Model"])
             for model in range(len(self.models))
         )
 
@@ -4890,7 +4890,7 @@ class GridRunner:
                         if not isinstance(mt_v, dict):
                             continue
                         model = self._get_model(
-                            model=f"{self.models[model_id]['Model']}_{model_count}_{mt_k}"
+                            name=f"{self.models[model_id]['Model']}_{model_count}_{mt_k}"
                         )
 
                         self.models[model_id][f"{model_count}_{mt_k}"] = {
@@ -4944,14 +4944,14 @@ class GridRunner:
                     else model.success_flag
                 )
 
-    def _get_model(self, model: str) -> AbstractModel:
+    def _get_model(self, name: str) -> AbstractModel:
         if self._in_memory:
             for model_dict in self.models:
-                if model_dict["Model"] == model:
+                if model_dict["Model"] == name:
                     return model_dict["object"]
             raise ValueError
         else:
-            return load_model(file=self.grid_file, name=model)
+            return load_model(file=self.grid_file, name=name)
 
     def check_conservation(
         self, element_list: list[str] | None = None, percent: bool = True
