@@ -53,6 +53,7 @@ repos:
         args: [--install-types, --non-interactive]
         # Notebooks and example scripts are not library code; exclude them.
         exclude: ^(notebooks|scripts)/
+        additional_dependencies: [rapidfuzz]
 
 
   # ============================================================================
