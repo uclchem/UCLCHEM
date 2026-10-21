@@ -24,31 +24,14 @@ from uclchemwrap import network as network_module
 
 from uclchem.advanced.runtime_network import RuntimeNetwork
 
-from .constants import FILE_PATH_PARAMETERS, FORTRAN_PARAMETERS, INTERNAL_PARAMETERS
+from .constants import (
+    FILE_PATH_PARAMETERS,
+    FORTRAN_MODULES,
+    FORTRAN_PARAMETERS,
+    INTERNAL_PARAMETERS,
+)
 
 logger = logging.getLogger(__name__)
-
-# Module names mirroring GeneralSettings._discover_modules()
-_MODULE_NAMES = [
-    "defaultparameters",
-    "network",
-    "heating",
-    "physicscore",
-    "constants",
-    "cloud_mod",
-    "collapse_mod",
-    "cshock_mod",
-    "jshock_mod",
-    "hotcore",
-    "chemistry",
-    "rates",
-    "photoreactions",
-    "surfacereactions",
-    "io",
-    "f2py_constants",
-    "postprocess_mod",
-    "sputtering",
-]
 
 # Modules where *all* 0-d array attributes are Fortran PARAMETERs (compile-time
 # constants compiled into read-only pages).  Their runtime state is either
@@ -90,7 +73,7 @@ def create_snapshot() -> dict[str, Any]:
 
     # --- General settings (scalars only) ---
     general: dict[str, dict[str, Any]] = {}
-    for mod_name in _MODULE_NAMES:
+    for mod_name in FORTRAN_MODULES:
         if not hasattr(uclchemwrap, mod_name):
             continue
         mod = getattr(uclchemwrap, mod_name)
