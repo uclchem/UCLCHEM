@@ -4205,14 +4205,15 @@ class SequentialRunner:
         should be matched from a previous model to the next model in the sequence.
         Currently, supports one or more of `["finalDens", "finalTemp"]`.
     run_type : Literal['managed', 'external']
-        Run type.
-        Must be either "managed", or "external".
+        Run type. Must be either "managed", or "external".
 
     Raises
     ------
     NotImplementedError
         If a parameter in `parameters_to_match` is not one of
         `["finalDens", "finalTemp"]`.
+    ValueError
+        If a model class in one of the stages is a ``SequentialRunner``.
 
     """  # noqa: W505
 
@@ -4225,7 +4226,9 @@ class SequentialRunner:
     ):
         for model in sequenced_model_parameters:
             if model[next(iter(model.keys()))] == SequentialRunner:
-                raise AssertionError
+                msg = "Cannot run SequentialRunner as a stage within a SequentialRunner. Add more stages instead."
+                raise ValueError(msg)
+
         self.models: list = []
         self.sequenced_model_parameters = sequenced_model_parameters
         self.parameters_to_match = parameters_to_match
@@ -4292,14 +4295,14 @@ class SequentialRunner:
                             else:
                                 msg = f"Parameter '{parameter}' has not been implemented for parameter matching"
                                 raise NotImplementedError(msg)
-                    tmp_model = REGISTRY[model_type](
+                    model = REGISTRY[model_type](
                         **model_dict,
                         run_type=self.run_type,
                         previous_model=previous_model,
                         on_error=self._on_error,
                     )
                 else:
-                    tmp_model = REGISTRY[model_type](
+                    model = REGISTRY[model_type](
                         **model_dict,
                         run_type=self.run_type,
                         previous_model=previous_model,
@@ -4307,15 +4310,15 @@ class SequentialRunner:
                     )
 
                 if self.run_type == "external":
-                    tmp_model.run()
+                    model.run()
 
-                successful = tmp_model.success_flag == SuccessFlag.SUCCESS
+                successful = model.success_flag == SuccessFlag.SUCCESS
                 self.models += [
                     {
                         "Model_Type": model_type,
                         "Model_Order": self.model_count,
-                        "Model": tmp_model,
-                        "Success": tmp_model.success_flag,
+                        "Model": model,
+                        "Success": model.success_flag,
                         "Successful": successful,
                     }
                 ]
@@ -4328,7 +4331,7 @@ class SequentialRunner:
                     stage_failed = True
                     break
 
-                previous_model = tmp_model
+                previous_model = model
         self.success_flag = all(d["Successful"] for d in self.models)
 
     def save_model(
@@ -4540,8 +4543,6 @@ def get_number_of_grid_workers(max_workers: int = -1) -> int:
             stacklevel=2,
         )
         return max_workers
-    if max_workers is None:
-        return cpu_count - 1
     if max_workers >= cpu_count:
         warnings.warn(
             f"max_workers was given as {max_workers}, which is higher than the number of physical CPU cores on the system ({cpu_count}). Using {cpu_count - 1} instead.",
