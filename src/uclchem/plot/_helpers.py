@@ -9,7 +9,7 @@ import matplotlib as mpl
 if TYPE_CHECKING:
     import pandas as pd
 
-_TAB20_COLORS: list[str] = [mpl.colors.to_hex(c) for c in mpl.colormaps["tab20"].colors]  # type: ignore[attr-defined]
+_TAB20_COLORS: list[str] = [mpl.colors.to_hex(c) for c in mpl.colormaps["tab20"].colors]  # type: ignore[attr-defined, ty:unresolved-attribute]
 
 
 def _color_for(name: str, registry: dict[str, str]) -> str:

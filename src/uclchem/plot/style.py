@@ -29,7 +29,7 @@ from __future__ import annotations
 import os
 import re
 from contextlib import contextmanager
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -37,7 +37,7 @@ import matplotlib.pyplot as plt
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-UCLCHEM_STYLE: dict[str, object] = {
+UCLCHEM_STYLE: dict[str, Any] = {
     # fonts
     "font.family": "serif",
     "mathtext.fontset": "stix",
@@ -79,12 +79,12 @@ _SPECIAL_TOKENS: dict[str, str] = {
 }
 
 
-def apply(style: dict[str, object] = UCLCHEM_STYLE) -> None:
+def apply(style: dict = UCLCHEM_STYLE) -> None:
     """Apply *style* to the global matplotlib rcParams.
 
     Parameters
     ----------
-    style : dict[str, object]
+    style : dict
         Mapping of rcParam keys to values.  Defaults to
         :data:`UCLCHEM_STYLE`.
 
