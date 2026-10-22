@@ -13,6 +13,8 @@ reinstall UCLCHEM for these constants to update:
 
 """
 
+from types import MappingProxyType
+
 # Import canonical values from compiled Fortran module
 from uclchemwrap import f2py_constants
 
@@ -105,118 +107,121 @@ TIMEPOINTS = 2000  # Number of timepoints for Fortran interface
 
 # Default parameter dictionary
 # These are default values for model parameters, not network structure constants
-default_param_dictionary = {
-    "initialtemp": 10.0,
-    "initialdens": 100.0,
-    "finaldens": 100000.0,
-    "currenttime": 0.0,
-    "finaltime": 5000000.0,
-    "radfield": 1.0,
-    "zeta": 1.0,
-    "rout": 0.05,
-    "rin": 0.0,
-    "baseav": 2.0,
-    "points": 1,
-    "bm0": 1.0,
-    "freezefactor": 1.0,
-    "parcelstoppingmode": 0,  # Default: never stop (0=never, 1=stop all when outermost reaches max, 2=stop each individually)
-    "freefall": False,
-    "freefallfactor": 1.0,
-    "desorb": True,
-    "h2desorb": False,
-    "crdesorb": True,
-    "uvdesorb": True,
-    "thermdesorb": True,
-    "instantsublimation": False,
-    "cosmicrayattenuation": False,
-    "ionmodel": "L",
-    "improvedh2crpdissociation": False,
-    "outputfile": None,
-    "columnfile": None,
-    "rateConstantFile": None,
-    "ratesFile": None,
-    "heatingFile": None,
-    "writestep": 1,
-    "abundsavefile": None,
-    "abundloadfile": None,
-    "metallicity": 1.0,
-    "ion": 2,
-    "fh": 0.5,
-    "fhe": 0.1,
-    "fc": 0.000177,
-    "fo": 0.000334,
-    "fn": 6.18e-05,
-    "fs": 3.51e-06,
-    "fmg": 2.256e-06,
-    "fsi": 1.78e-06,
-    "fcl": 3.39e-08,
-    "fp": 7.78e-08,
-    "ffe": 2.01e-07,
-    "ff": 3.6e-08,
-    "fd": 0.0,
-    "fli": 0.0,
-    "fna": 0.0,
-    "fpah": 0.0,
-    "f15n": 0.0,
-    "f13c": 0.0,
-    "f18o": 0.0,
-    "reltol": 1e-08,
-    "abstol_factor": 1e-14,
-    "abstol_min": 1e-25,
-    "abstol_ice_factor": 1e-10,
-    "abstol_ice_min": 1e-20,
-    "reltol_phys": 1e-4,
-    "abstol_phys_factor": 1e-4,
-    "abstol_t_min": 0.01,
-    "abstol_nh_min": 1.0,
-    "mxstep": 10000,
-    "ebmaxh2": 1210.0,
-    "ebmaxcr": 1210.0,
-    "ebmaxuvcr": 10000.0,
-    "epsilon": 0.01,
-    "uv_yield": 0.03,
-    "phi": 100000.0,
-    "uvcreff": 0.001,
-    "omega": 0.5,
-    # 1D radiative transfer defaults
-    "enable_radiative_transfer": False,
-    "density_scale_radius": 0.05,
-    "density_power_index": 2.4,
-    "lum_star": 1_000_000.0,
-    "temp_star": 45000.0,
-    # Advanced surface chemistry parameters
-    "difftobindratio": 0.75,
-    "h2encounterdesorption": True,
-    "hencounterdesorption": True,
-    "edendothermicityfactor": 0.0,
-    "h2stickingcoeffbyh2coverage": False,
-    "hstickingcoeffbyh2coverage": False,
-    "hdiffusionbarrier": -1.0,
-    "usecustomdiffusionbarriers": False,
-    "separatediffanddesorbprefactor": True,
-    "usetstprefactors": False,  # Set this one to True and add the intertias from dijkhuis25.
-    "usecustomprefactors": False,
-    "useminissaleicechemdesefficiency": False,
-    "maxgraintemp": 150.0,
-    "parameterizeh2form": 2,
-    # Heating/cooling ODE cache tolerances
-    # tempDot is recomputed only when |ΔT| > min(abstol, reltol * T)
-    "heating_temp_abstol": 1.0,
-    "heating_temp_reltol": 1.0e-2,
-    # Coolant/validation tolerances
-    # freq_rel_tol default is auto-computed at makerates time from LAMDA file deviations
-    "freq_rel_tol": float(getattr(f2py_constants, "suggested_freq_rel_tol", 0.1)),
-    "pop_rel_tol": 0.1,
-    # DVODE solver mode:
-    #   0 = ISTATE=1 always (original behavior, fresh restart every output step)
-    #   1 = ISTATE=2 always (BDF history always continued, no guard)
-    #   2 = Hybrid/adaptive (default): ISTATE=2 unless abundance or temperature
-    #       changed significantly
-    "solver_mode": 2,
-    # log₁₀ of per-step abundance change that triggers a forced ISTATE=1 restart in hybrid mode.
-    # Smaller = more frequent restarts (safer but less smooth); larger = fewer restarts
-    # (smoother but riskier).
-    "log_change_threshold": 1.0,
-}
+DEFAULT_PARAMETER_DICTIONARY = MappingProxyType(
+    {
+        "initialTemp": 10.0,
+        "initialDens": 100.0,
+        "finalDens": 100000.0,
+        "currentTime": 0.0,
+        "finalTime": 5000000.0,
+        "radfield": 1.0,
+        "zeta": 1.0,
+        "rout": 0.05,
+        "rin": 0.0,
+        "baseav": 2.0,
+        "points": 1,
+        "bm0": 1.0,
+        "freezeFactor": 1.0,
+        "parcelStoppingMode": 0,  # Default: never stop (0=never, 1=stop all when outermost reaches max, 2=stop each individually)
+        "freefall": False,
+        "freefallFactor": 1.0,
+        "desorb": True,
+        "H2Desorb": False,
+        "CRDesorb": True,
+        "UVDesorb": True,
+        "thermDesorb": True,
+        "instantSublimation": False,
+        "cosmicRayAttenuation": False,
+        "ionModel": "L",
+        "improvedH2CRPDissociation": False,
+        "outputFile": None,
+        "columnFile": None,
+        "rateConstantFile": None,
+        "ratesFile": None,
+        "heatingFile": None,
+        "heatingFlag": False,
+        "writeStep": 1,
+        "abundSaveFile": None,
+        "abundLoadFile": None,
+        "metallicity": 1.0,
+        "ion": 2,
+        "fH": 0.5,
+        "fHe": 0.1,
+        "fC": 0.000177,
+        "fO": 0.000334,
+        "fN": 6.18e-05,
+        "fS": 3.51e-06,
+        "fMg": 2.256e-06,
+        "fSi": 1.78e-06,
+        "fCl": 3.39e-08,
+        "fP": 7.78e-08,
+        "fFe": 2.01e-07,
+        "fF": 3.6e-08,
+        "fD": 0.0,
+        "fLi": 0.0,
+        "fNa": 0.0,
+        "fPAH": 0.0,
+        "f15N": 0.0,
+        "f13C": 0.0,
+        "f18O": 0.0,
+        "reltol": 1e-08,
+        "abstol_factor": 1e-14,
+        "abstol_min": 1e-25,
+        "abstol_ice_factor": 1e-10,
+        "abstol_ice_min": 1e-20,
+        "reltol_phys": 1e-4,
+        "abstol_phys_factor": 1e-4,
+        "abstol_t_min": 0.01,
+        "abstol_nh_min": 1.0,
+        "mxstep": 10000,
+        "ebmaxh2": 1210.0,
+        "ebmaxcr": 1210.0,
+        "ebmaxuvcr": 10000.0,
+        "epsilon": 0.01,
+        "uv_yield": 0.03,
+        "phi": 100000.0,
+        "uvcreff": 0.001,
+        "omega": 0.5,
+        # 1D radiative transfer defaults
+        "enable_radiative_transfer": False,
+        "density_scale_radius": 0.05,
+        "density_power_index": 2.4,
+        "lum_star": 1_000_000.0,
+        "temp_star": 45000.0,
+        # Advanced surface chemistry parameters
+        "diffToBindRatio": 0.75,
+        "h2encounterdesorption": True,
+        "hencounterdesorption": True,
+        "edendothermicityfactor": 0.0,
+        "h2stickingcoeffbyh2coverage": False,
+        "hstickingcoeffbyh2coverage": False,
+        "hdiffusionbarrier": -1.0,
+        "usecustomdiffusionbarriers": False,
+        "separatediffanddesorbprefactor": True,
+        "usetstprefactors": False,  # Set this one to True and add the intertias from dijkhuis25.
+        "usecustomprefactors": False,
+        "useminissaleicechemdesefficiency": False,
+        "maxgraintemp": 150.0,
+        "parameterizeh2form": 2,
+        # Heating/cooling ODE cache tolerances
+        # tempDot is recomputed only when |ΔT| > min(abstol, reltol * T)
+        "heating_temp_abstol": 1.0,
+        "heating_temp_reltol": 1.0e-2,
+        # Coolant/validation tolerances
+        # freq_rel_tol default is auto-computed at makerates time from LAMDA file deviations
+        "freq_rel_tol": float(getattr(f2py_constants, "suggested_freq_rel_tol", 0.1)),
+        "pop_rel_tol": 0.1,
+        # DVODE solver mode:
+        #   0 = ISTATE=1 always (original behavior, fresh restart every output step)
+        #   1 = ISTATE=2 always (BDF history always continued, no guard)
+        #   2 = Hybrid/adaptive (default): ISTATE=2 unless abundance or temperature
+        #       changed significantly
+        "solver_mode": 2,
+        # log₁₀ of per-step abundance change that triggers a forced ISTATE=1 restart in hybrid mode.
+        # Smaller = more frequent restarts (safer but less smooth); larger = fewer restarts
+        # (smoother but riskier).
+        "log_change_threshold": 1.0,
+    }
+)
 
-default_elements_to_check: list[str] = ["H", "N", "C", "O"]
+DEFAULT_ELEMENTS_TO_CHECK = ("H", "N", "C", "O")
