@@ -152,15 +152,15 @@ if TYPE_CHECKING:
 # /Multiprocessing imports
 
 # Global variables determining formats of write files
-PHYSICAL_PARAMETERS_HEADER_FORMAT = "%10s"
+_PHYSICAL_PARAMETERS_HEADER_FORMAT = "%10s"
 # in the below variable, the outputs were chosen according to the spacing needed for
 # "      Time,    Density,    gasTemp,   dustTemp,         Av,   radfield,       zeta,
 #       point,    parcel_radius, radfield_internal, av_internal"
-PHYSICAL_PARAMETERS_VALUE_FORMAT = (
+_PHYSICAL_PARAMETERS_VALUE_FORMAT = (
     "%10.3E, %10.4E, %10.2f, %10.2f, %10.4E, %10.4E, %10.4E, %10i, %10.4E, %10.4E, %10.4E"
 )
-SPECNAME_HEADER_FORMAT = "%11s"
-ABUNDANCE_VALUE_FORMAT = "%9.5E"
+_SPECNAME_HEADER_FORMAT = "%11s"
+_ABUNDANCE_VALUE_FORMAT = "%9.5E"
 
 
 # Model registration is intended to prevent code injection during loading time.
@@ -2422,8 +2422,8 @@ class AbstractModel(ABC):
         chem = self.chemical_abun_array.reshape(-1, self.chemical_abun_array.shape[-1])
         full_array = np.append(phys, chem, axis=1)
         species_names = get_species_names()
-        string_fmt_string = f"{', '.join([PHYSICAL_PARAMETERS_HEADER_FORMAT] * (len(PHYSICAL_PARAMETERS)))}, {', '.join([SPECNAME_HEADER_FORMAT] * len(species_names))}"
-        number_fmt_string = f"{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {', '.join([ABUNDANCE_VALUE_FORMAT] * len(species_names))}"
+        string_fmt_string = f"{', '.join([_PHYSICAL_PARAMETERS_HEADER_FORMAT] * (len(PHYSICAL_PARAMETERS)))}, {', '.join([_SPECNAME_HEADER_FORMAT] * len(species_names))}"
+        number_fmt_string = f"{_PHYSICAL_PARAMETERS_VALUE_FORMAT}, {', '.join([_ABUNDANCE_VALUE_FORMAT] * len(species_names))}"
         columns = np.array([[*PHYSICAL_PARAMETERS[:-1], "point", *species_names]])
         np.savetxt(str(output_file), columns, fmt=string_fmt_string)
         with Path(str(output_file)).open("ab") as f:
@@ -2445,7 +2445,9 @@ class AbstractModel(ABC):
             msg = "abundSaveFile is not set"
             raise ValueError(msg)
         species_names = get_species_names()
-        number_fmt_string = f" {', '.join([ABUNDANCE_VALUE_FORMAT] * len(species_names))}"
+        number_fmt_string = (
+            f" {', '.join([_ABUNDANCE_VALUE_FORMAT] * len(species_names))}"
+        )
         with Path(str(abund_save_file)).open("wb") as f:
             np.savetxt(
                 f,
@@ -2477,8 +2479,8 @@ class AbstractModel(ABC):
         chem_species = chem[:, species_indices]
         full_array = np.append(phys, chem_species, axis=1)
 
-        string_fmt_string = f"{', '.join([PHYSICAL_PARAMETERS_HEADER_FORMAT] * (len(PHYSICAL_PARAMETERS)))}, {', '.join([SPECNAME_HEADER_FORMAT] * len(species))}"
-        number_fmt_string = f"{PHYSICAL_PARAMETERS_VALUE_FORMAT}, {', '.join([ABUNDANCE_VALUE_FORMAT] * len(species))}"
+        string_fmt_string = f"{', '.join([_PHYSICAL_PARAMETERS_HEADER_FORMAT] * (len(PHYSICAL_PARAMETERS)))}, {', '.join([_SPECNAME_HEADER_FORMAT] * len(species))}"
+        number_fmt_string = f"{_PHYSICAL_PARAMETERS_VALUE_FORMAT}, {', '.join([_ABUNDANCE_VALUE_FORMAT] * len(species))}"
         columns = np.array([[*PHYSICAL_PARAMETERS[:-1], "point", *species]])
         np.savetxt(column_file, columns, fmt=string_fmt_string)
         with Path(column_file).open("ab") as f:
@@ -4502,9 +4504,9 @@ class _NoDaemonProcess(mp.Process):
         pass
 
 
-class NoDaemonPool(pool.Pool):  # ruff: ignore[undocumented-public-class]
+class _NoDaemonPool(pool.Pool):
     @staticmethod
-    def Process(ctx, *args, **kwargs):  # ruff: ignore[missing-type-function-argument, unused-static-method-argument, undocumented-public-method, invalid-function-name]
+    def Process(ctx, *args, **kwargs):  # ruff: ignore[missing-type-function-argument, unused-static-method-argument, invalid-function-name]
         return _NoDaemonProcess(*args, **kwargs)
 
 
@@ -4744,7 +4746,7 @@ class GridRunner:
         )
         file_obj = h5py.File(self.grid_file, "a")
 
-        PoolClass = NoDaemonPool if self.model_type == "SequentialRunner" else mp.Pool
+        PoolClass = _NoDaemonPool if self.model_type == "SequentialRunner" else mp.Pool
 
         with PoolClass(
             self.max_workers,
