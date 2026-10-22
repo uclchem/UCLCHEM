@@ -57,28 +57,30 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Self
 
+from uclchem.constants import SOLAR_LUMINOSITY
+
 if TYPE_CHECKING:
     from uclchem.model import Collapse
 
 import numpy as np
 import pandas as pd
 
-UCLCHEM_ROOT_DIR: Path = Path(__file__).parent.resolve().absolute()
+UCLCHEM_ROOT_DIR = Path(__file__).parent.resolve().absolute()
 """UCLCHEM root directory"""
 
-MISSING_VALUE_INTEGER: int = -1
+MISSING_VALUE_INTEGER = -1
 """Integer to indicate a missing value"""
 
-MISSING_VALUE_FLOAT: float = -1.0
+MISSING_VALUE_FLOAT = -1.0
 """Float to indicate a missing value"""
 
-NO_REACTANT_OR_PRODUCT: int = 9999
+NO_REACTANT_OR_PRODUCT = 9999
 """Integer to indicate that this reaction does not have a reactant or product at this index."""
 
-REAC_NOT_PRESENT: int = 9998
+REAC_NOT_PRESENT = 9998
 """Integer to indicate that the reaction is not present in the network."""
 
-SPECIES_NOT_PRESENT: int = 9997
+SPECIES_NOT_PRESENT = 9997
 """Integer to indicate that this species is not present in the network."""
 
 DTYPE_MAPPING = MappingProxyType(
@@ -187,7 +189,7 @@ def configure_logging(
 
 
 # Pandas default NA strings minus element symbols that collide ("NA" = sodium, "#NA")
-_NAN_STRINGS: list[str] = [
+_NAN_STRINGS = (
     "",
     "#N/A",
     "#N/A N/A",
@@ -205,7 +207,7 @@ _NAN_STRINGS: list[str] = [
     "n/a",
     "nan",
     "null",
-]
+)
 
 
 def get_species_table(file: str | Path | None = None) -> pd.DataFrame:
@@ -435,7 +437,7 @@ def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
     return pd.Series(vr, index=t_yr, name="radial_velocity_cm_s")
 
 
-@enum.verify(enum.UNIQUE)
+@enum.unique
 class SuccessFlag(enum.IntEnum):
     """SuccessFlag indicates whether the model failed or ran successfully,.
 
@@ -532,8 +534,6 @@ class SuccessFlag(enum.IntEnum):
 # -------------------------------------------------------------------------------
 # 1D hot core helper routines:
 # -------------------------------------------------------------------------------
-
-L_SUN: float = 3.828e26  # W — IAU 2015 nominal solar luminosity
 
 
 class TempMode(enum.Enum):
@@ -649,7 +649,7 @@ def get_protostellar_Teff(
         raise ValueError(msg)
 
     # Work in L_sun units throughout
-    l_star_lsun: float = L_star / L_SUN if L_star_unit == "W" else L_star
+    l_star_lsun: float = L_star / SOLAR_LUMINOSITY if L_star_unit == "W" else L_star
     L_min, L_max = _RANGES[mode]
 
     if not (L_min <= l_star_lsun <= L_max):
@@ -717,7 +717,7 @@ def get_protostellar_model_index(L_star: float) -> int:
         return 1
     if L_star >= 1.0e0:
         return 0
-    msg = f"L_star = {L_star:.3e} W is below the minimum of 1 L_sun = {L_SUN:.3e} W."
+    msg = f"L_star = {L_star:.3e} W is below the minimum of 1 L_sun = {SOLAR_LUMINOSITY:.3e} W."
     raise ValueError(msg)
 
 
