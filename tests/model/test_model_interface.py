@@ -38,14 +38,13 @@ def test_out_species_on_oo_model_raises():
         Cloud(out_species=["CO"], run_type="external")
 
 
-def test_get_final_abundances_for_species():
-    model = Cloud()
+def test_get_final_abundances_for_species(basic_cloud):
     species = ["CO", "H2O", "#CH3"]
-    final_abundances = model.get_final_abundances_of_species(species)
+    final_abundances = basic_cloud.get_final_abundances_of_species(species)
 
     assert len(final_abundances) == len(species)
 
-    _phys_df, chem_df = model.get_dataframes(joined=False)
+    phys_df, chem_df = basic_cloud.get_dataframes(joined=False)
     final_abundances_from_df = []
     for _index, spec in enumerate(species):
         final_abundances_from_df.append(chem_df[spec].iloc[-1])

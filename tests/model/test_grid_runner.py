@@ -1,6 +1,5 @@
 from collections import defaultdict
 from itertools import product
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -40,7 +39,6 @@ def test_grid_matches_individual(prefix, in_memory, tmp_path):
         for model_idx in range(grid.num_models):
             assert isinstance(grid.models[model_idx]["object"], uclchem.model.Cloud)
     else:
-        print(grid.models)
         for model_idx in range(grid.num_models):
             assert grid.models[model_idx]["object"] is None
 
@@ -122,8 +120,7 @@ NEATH_COLUMNS = [
 ]
 
 
-def test_grid_runner_postprocessing(tmp_path):
-    uclchem_root = Path(__file__).parent.parent
+def test_grid_runner_postprocessing(uclchem_root, tmp_path):
     df = pd.read_csv(
         uclchem_root / "examples/fortran_cli/neath_small_data.out",
         sep=r"\s+",
