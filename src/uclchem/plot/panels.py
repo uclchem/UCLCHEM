@@ -302,7 +302,7 @@ def _draw_reaction_time_series(
         handlelength=3.5,
     )
     for handle in leg.legend_handles:
-        handle.set_linewidth(1.75)  # type: ignore[union-attr]
+        handle.set_linewidth(1.75)  # type: ignore[union-attr, ty:unresolved-attribute]
     ax.set_xlabel("Time / years")
     ax.set_ylabel(ylabel)
     ax.text(
