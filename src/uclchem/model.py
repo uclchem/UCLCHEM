@@ -484,28 +484,6 @@ class AbstractModel(ABC):
     The AbstractModel class serves as an abstract class from which other model classes can be built.
     It is not intended to be used as a standalone class for running UCLCHEM.
 
-    Parameters
-    ----------
-    param_dict : dict | None
-        Dictionary containing the parameters to use for the UCLCHEM model.
-        Uses UCLCHEM default values if not provided.
-    starting_chemistry : np.ndarray | None
-        Array containing the starting abundances to use for
-        the UCLCHEM model. Defaults to None.
-    previous_model : AbstractModel | None
-        Model object, a class that inherited from AbstractModel,
-        to use for the starting abundances of the new UCLCHEM model that will be run.
-        Defaults to None.
-    timepoints : int
-        Integer value of how many timesteps should be calculated before
-        aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
-    read_file : str | None
-        Path to the file to be read. Reading a file to a model object, prevents it from
-        being run. Defaults to None.
-    run_type : Literal["managed", "external"]
-        Run type. "external" means that the model is not
-        run directly after instantiation, but can instead be run as `model.run()`.
-
     """
 
     def __init__(
@@ -519,6 +497,48 @@ class AbstractModel(ABC):
         on_negative_abundances: Literal["warning", "error", "raise"] | None = "warning",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
+        """Initialize the AbstractModel.
+
+        Parameters
+        ----------
+        param_dict : dict | None
+            Dictionary containing the parameters to use for the UCLCHEM model.
+            Uses UCLCHEM default values if not provided.
+        starting_chemistry : np.ndarray | None
+            Array containing the starting abundances to use for
+            the UCLCHEM model. Defaults to None.
+        previous_model : AbstractModel | None
+            Model object, a class that inherited from AbstractModel,
+            to use for the starting abundances of the new UCLCHEM model that will be run.
+            Defaults to None.
+        timepoints : int
+            Integer value of how many timesteps should be calculated before
+            aborting the UCLCHEM model. Defaults to :data:`uclchem.constants.TIMEPOINTS`.
+        read_file : str | None
+            Path to the file to be read. Reading a file to a model object, prevents it from
+            being run. Defaults to None.
+        run_type : Literal['managed', 'external']
+            Run type. "external" means that the model is not
+            run directly after instantiation, but can instead be run as `model.run()`.
+            Default = 'managed'.
+        on_negative_abundances : Literal['warning', 'error', 'raise'] | None
+            What to do after running the model upon negative abundances during the model
+            run. If None, do nothing. Default = 'warning'.
+        on_error : Literal['raise', 'warn', 'ignore']
+            What to do when a model error occurs. Default = 'raise'.
+
+        Raises
+        ------
+        RuntimeError
+            If `run_type` is ``"managed"``, but this instance was not instantiated in
+            the main process.
+        ValueError
+            If ``param_dict["parcelStoppingMode"] != 0``, but freefall is not turned on
+        AssertionError
+            If the starting abundances in `starting_chemistry` or `previous_model`
+            are all 0 or negative.
+
+        """
         if mp.current_process().name != "MainProcess" and run_type != "external":
             msg = (
                 "A uclchem model was instantiated inside a multiprocessing worker. "
@@ -2951,28 +2971,7 @@ class AbstractModel(ABC):
 
 @register_model
 class Cloud(AbstractModel):
-    """Cloud model class inheriting from AbstractModel.
-
-    Parameters
-    ----------
-    param_dict : dict
-        Dictionary containing the parameters to use for the UCLCHEM model.
-        Uses UCLCHEM default values found in `defaultparameters.f90`.
-    starting_chemistry : np.ndarray | None
-        Array containing the starting abundances to use for
-        the UCLCHEM model. Defaults to None.
-    previous_model : AbstractModel | None
-        Model object, a class that inherited from AbstractModel,
-        to use for the starting abundances of the new UCLCHEM model that will be run.
-        Defaults to None.
-    timepoints : int
-        Integer value of how many timesteps should be calculated before
-        aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
-    read_file : str | None
-        Path to the file to be read. Reading a file to a model object, prevents it from
-        being run. Defaults to None.
-
-    """
+    """Cloud model class inheriting from AbstractModel."""
 
     def __init__(
         self,
@@ -3094,31 +3093,7 @@ class Cloud(AbstractModel):
 
 @register_model
 class Collapse(AbstractModel):
-    """Collapse model class inheriting from AbstractModel.
-
-    Parameters
-    ----------
-    collapse : str | int | CollapseMode
-        Collapse type.
-        Options are 'BE1.1', 'BE4', 'filament', or 'ambipolar'. Defaults to 'BE1.1'.
-    param_dict : dict
-        Dictionary containing the parameters to use for the UCLCHEM model.
-        Uses UCLCHEM default values found in `defaultparameters.f90`.
-    starting_chemistry : np.ndarray | None
-        Array containing the starting abundances to use for
-        the UCLCHEM model. Defaults to None.
-    previous_model : AbstractModel | None
-        Model object, a class that inherited from AbstractModel,
-        to use for the starting abundances of the new UCLCHEM model that will be run.
-        Defaults to None.
-    timepoints : int
-        Integer value of how many timesteps should be calculated before
-        aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
-    read_file : str | None
-        Path to the file to be read. Reading a file to a model object, prevents it from
-        being run. Defaults to None.
-
-    """
+    """Collapse model class inheriting from AbstractModel."""
 
     # Time (years) at which each collapse mode's density evolution ends and the fitting
     # functions become singular.
@@ -3344,31 +3319,6 @@ class PrestellarCore(AbstractModel):
 
     This model type was previously known as hot core.
 
-    Parameters
-    ----------
-    temp_indx : int | PrestellarCoreMass
-        Used to select the mass of the prestellar core from the following selection
-        [1=1Msun, 2=5, 3=10, 4=15, 5=25,6=60]. Defaults to :data:`PrestellarCoreMass.M_SUN_1`,
-        which is 1 Msun.
-    max_temperature : float
-        Value at which gas temperature will stop increasing. Defaults to 300.0.
-    param_dict : dict
-        Dictionary containing the parameters to use for the UCLCHEM model.
-        Uses UCLCHEM default values found in `defaultparameters.f90`.
-    starting_chemistry : np.ndarray | None
-        Array containing the starting abundances to use for
-        the UCLCHEM model. Defaults to None.
-    previous_model : AbstractModel | None
-        Model object, a class that inherited from AbstractModel,
-        to use for the starting abundances of the new UCLCHEM model that will be run.
-        Defaults to None.
-    timepoints : int
-        Integer value of how many timesteps should be calculated before
-        aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
-    read_file : str | None
-        Path to the file to be read. Reading a file to a model object, prevents it from
-        being run. Defaults to None.
-
     """
 
     def __init__(
@@ -3511,37 +3461,7 @@ class PrestellarCore(AbstractModel):
 
 @register_model
 class CShock(AbstractModel):
-    """C-Shock model class inheriting from AbstractModel.
-
-    Parameters
-    ----------
-    shock_vel : float
-        Velocity of the shock in km/s. Defaults to 10.0.
-    timestep_factor : float
-        Whilst the time is less than 2 times the dissipation time of shock,
-        timestep is timestep_factor*dissipation time. Essentially controls how well resolved the
-        shock is in your model. Defaults to 0.01.
-    minimum_temperature : float
-        Minimum post-shock temperature. Defaults to 0.0 (no minimum). The
-        shocked gas typically cools to `initialTemp` if this is not set.
-    param_dict : dict
-        Dictionary containing the parameters to use for the UCLCHEM model.
-        Uses UCLCHEM default values found in `defaultparameters.f90`.
-    starting_chemistry : np.ndarray | None
-        Array containing the starting abundances to use for
-        the UCLCHEM model. Defaults to None.
-    previous_model : AbstractModel | None
-        Model object, a class that inherited from AbstractModel,
-        to use for the starting abundances of the new UCLCHEM model that will be run.
-        Defaults to None.
-    timepoints : int
-        Integer value of how many timesteps should be calculated before
-        aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
-    read_file : str | None
-        Path to the file to be read. Reading a file to a model object, prevents it from
-        being run. Defaults to None.
-
-    """
+    """C-Shock model class inheriting from AbstractModel."""
 
     def __init__(
         self,
@@ -3692,30 +3612,7 @@ class CShock(AbstractModel):
 
 @register_model
 class JShock(AbstractModel):
-    """J-Shock model class inheriting from AbstractModel.
-
-    Parameters
-    ----------
-    shock_vel : float
-        Velocity of the shock. Defaults to 10.0.
-    param_dict : dict | None
-        Dictionary containing the parameters to use for the UCLCHEM model.
-        Uses UCLCHEM default values found in `defaultparameters.f90`.
-    starting_chemistry : np.ndarray | None
-        Array containing the starting abundances to use for
-        the UCLCHEM model. Defaults to None.
-    previous_model : AbstractModel | None
-        Model object, a class that inherited from AbstractModel,
-        to use for the starting abundances of the new UCLCHEM model that will be run.
-        Defaults to None.
-    timepoints : int
-        Integer value of how many timesteps should be calculated before
-        aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
-    read_file : str | None
-        Path to the file to be read. Reading a file to a model object, prevents it from
-        being run. Defaults to None.
-
-    """
+    """J-Shock model class inheriting from AbstractModel."""
 
     def __init__(
         self,
@@ -3852,52 +3749,6 @@ class Postprocess(AbstractModel):
     radiation field, cosmic ray ionization rate, atomic and molecular Hydrogen, CO and C
     column densities through the use of arrays. Using these arrays allows for experimental
     model crafting beyond the standard models in other model classes.
-
-    Parameters
-    ----------
-    param_dict : dict | None
-        Dictionary containing the parameters to use for the UCLCHEM model.
-        Uses UCLCHEM default values found in `defaultparameters.f90`.
-    starting_chemistry : np.ndarray | None
-        Array containing the starting abundances
-        to use for the UCLCHEM model. Defaults to None.
-    previous_model : AbstractModel | None
-        Model object, a class that inherited from AbstractModel,
-        to use for the starting abundances of the new UCLCHEM model that will be run.
-        Defaults to None.
-    time_array : np.ndarray | None
-        Represents the time grid to be used for the model.
-        This sets the target timesteps for which outputs will be stored.
-    density_array : np.ndarray | float | None
-        Represents the value of the density at different
-        timepoints found in time_array.
-    gas_temperature_array : np.ndarray | float | None
-        Represents the value of the gas temperature
-        at different timepoints found in time_array.
-    dust_temperature_array : np.ndarray | float | None
-        Represents the value of the dust temperature
-        at different timepoints found in time_array.
-    zeta_array : np.ndarray | float | None
-        Represents the value of the cosmic ray ionization rate
-        at different timepoints found in time_array.
-    radfield_array : np.ndarray | float | None
-        Represents the value of the UV radiation field
-        at different timepoints found in time_array.
-    coldens_H_array : np.ndarray | float | None
-        Represents the value of the column density of H
-        at different timepoints found in time_array.
-    coldens_H2_array : np.ndarray | float | None
-        Represents the value of the column density of H2
-        at different timepoints found in time_array.
-    coldens_CO_array : np.ndarray | float | None
-        Represents the value of the column density of CO
-        at different timepoints found in time_array.
-    coldens_C_array : np.ndarray | float | None
-        Represents the value of the column density of C
-        at different timepoints found in time_array.
-    read_file : str | None
-        Path to the file to be read. Reading a file to a model object, prevents it from
-        being run. Defaults to None.
 
     """
 
@@ -4129,40 +3980,6 @@ class Model(AbstractModel):
     and cosmic ray ionization rate through the use of arrays. Using these arrays allows for
     experimental model crafting beyond the standard models in other model classes.
 
-    Parameters
-    ----------
-    param_dict : dict
-        Dictionary containing the parameters to use for the UCLCHEM model.
-        Uses UCLCHEM default values found in `defaultparameters.f90`.
-    starting_chemistry : np.ndarray | None
-        Array containing the starting abundances to use for
-        the UCLCHEM model. Defaults to None.
-    previous_model : AbstractModel | None
-        Model object, a class that inherited from
-        AbstractModel, to use for the starting abundances of the new UCLCHEM model
-        that will be run. Defaults to None.
-    time_array : np.ndarray | None
-        Represents the time grid to be used for the model.
-        This sets the target timesteps for which outputs will be stored.
-    density_array : np.ndarray | None
-        Represents the value of the density at different
-        timepoints found in time_array.
-    gas_temperature_array : np.ndarray | None
-        Represents the value of the gas temperature
-        at different timepoints found in time_array.
-    dust_temperature_array : np.ndarray | None
-        Represents the value of the dust temperature
-        at different timepoints found in time_array.
-    zeta_array : np.ndarray | None
-        Represents the value of the cosmic ray ionization rate
-        at different timepoints found in time_array.
-    radfield_array : np.ndarray | None
-        Represents the value of the UV radiation field at
-        different timepoints found in time_array.
-    read_file : str | None
-        Path to the file to be read. Reading a file to a model object,
-        prevents it from being run. Defaults to None.
-
     """
 
     def __init__(
@@ -4345,37 +4162,47 @@ class Model(AbstractModel):
 class SequentialRunner:  # type: ignore[type-var] # SequentialRunner is a composite wrapper, not a direct AbstractModel subclass
     """The SequentialRunner class allows for multiple models to be run back to back.
 
-    By defining a specific dictionary to hold the information of each model class to run in sequence, SewuentialModel allows
-    for the automatic running of multiple models as well as matching some physical parameters from one model to the next.
+    By defining a specific dictionary to hold the information of each model class
+    to run in sequence, SequentialModel allows for the automatic running of multiple models
+    as well as matching some physical parameters from one model to the next.
 
-    Parameters
-    ----------
-    sequenced_model_parameters : list[dict[str, Any]]
-        The List of dictionaries to pass to SequentialRunner takes the format of
-        [{"<First Model Class>":{"param_dict":{<parameters>}, <other arguments>}}, {"<Second Model Class>:{"param_dict":{<parameters>}, <other arguments>}}, ...}]
-    parameters_to_match : list[str]
-        The list provided to this argument decides which parameters
-        should be matched from a previous model to the next model in the sequence.
-        Currently, supports one or more of `["finalDens", "finalTemp"]`.
-    run_type : Literal['managed', 'external']
-        Run type.
-        Must be either "managed", or "external".
-
-    Raises
-    ------
-    NotImplementedError
-        If a parameter in `parameters_to_match` is not one of
-        `["finalDens", "finalTemp"]`.
-
-    """  # ruff: ignore[doc-line-too-long]
+    """
 
     def __init__(
         self,
-        sequenced_model_parameters: list,
-        parameters_to_match: list | None = None,
+        sequenced_model_parameters: list[dict[str, Any]],
+        parameters_to_match: list[str] | None = None,
         run_type: Literal["managed", "external"] = "managed",
         on_error: Literal["raise", "warn", "ignore"] = "raise",
     ):
+        """Initialize the SequentialRunner.
+
+        Parameters
+        ----------
+        sequenced_model_parameters : list[dict[str, Any]]
+            The List of dictionaries to pass to SequentialRunner takes the format of
+            [{"<First Model Class>":{"param_dict":{<parameters>}, <other arguments>}}, {"<Second Model Class>:{"param_dict":{<parameters>}, <other arguments>}}, ...}]
+        parameters_to_match : list[str] | None
+            The list provided to this argument decides which parameters
+            should be matched from a previous model to the next model in the sequence.
+            Currently, supports one or more of `["finalDens", "finalTemp"]`.
+            Default = None.
+        run_type : Literal['managed', 'external']
+            Run type. Must be either "managed", or "external".
+            Default = 'managed'
+        on_error : Literal['raise', 'warn', 'ignore']
+            Action when the Fortran solver returns an error flag. Defaults to 'raise'.
+
+        Raises
+        ------
+        AssertionError
+            If one of the models in `sequenced_model_parameters` is a SequentialRunner
+            itself.
+        NotImplementedError
+            If a parameter in `parameters_to_match` is not one of
+            `["finalDens", "finalTemp"]`.
+
+        """  # ruff: ignore[doc-line-too-long]
         for model in sequenced_model_parameters:
             if model[next(iter(model.keys()))] == SequentialRunner:
                 raise AssertionError
@@ -4727,34 +4554,6 @@ class GridRunner:
 
     instead it allows running multiple models on a grid of parameter space.
 
-    Parameters
-    ----------
-    model_type : str
-        Name of the registered model class to run (e.g. ``"Cloud"``, ``"Collapse"``).
-    full_parameters : Dict
-        The dictionary passed to GridRunner should nest into it,
-        the param_dict argument that would be passed to any other model, with the addition
-        of extra keys for the none param_dict variables of a model. Any variables that are
-        turned into lists or arrays, will automatically be assumed to be used for the gridding.
-    max_workers : int | None
-        Maximum number of workers to use in parallel for the grid run.
-        If None, use ``os.cpu_count()-1``. Default = None.
-    grid_file : str
-        Name and path of the output file to which the models should be saved.
-        Defaults to "./default_grid_out.h5".
-    model_name_prefix : str
-        Name prefix convention to use. The fifth model in the grid
-        would have the name "<model_name_prefix>5>" assigned to it. Defaults to "",
-        which would make the fifth model have the name "5", for example.
-    log_dir : str | None
-        Where to write logs. If None, do not write logs. Default = None.
-    model_ids : list | None
-        Optional subset of model indices (0-based column in flat_grids)
-        to run. None means run all models in the grid. Default = None.
-    delay_run : bool
-        Whether to immediately start the models upon initialization,
-        or delay until the user calls `self.run()`. Defaults to False (start immediately).
-
     """
 
     def __init__(
@@ -4771,6 +4570,53 @@ class GridRunner:
         overwrite_models: bool = False,
         create_grid: bool = True,
     ):
+        """Initialize the GridRunner.
+
+        Parameters
+        ----------
+        model_type : str
+            Name of the registered model class to run (e.g. ``"Cloud"``, ``"Collapse"``).
+        full_parameters : dict | list
+            The dictionary passed to GridRunner should nest into it,
+            the param_dict argument that would be passed to any other model, with the addition
+            of extra keys for the none param_dict variables of a model. Any variables that are
+            turned into lists or arrays, will automatically be assumed to be used for the gridding.
+        max_workers : int | None
+            Maximum number of workers to use in parallel for the grid run.
+            If None, use ``os.cpu_count()-1``. Default = None.
+        grid_file : str
+            Name and path of the output file to which the models should be saved.
+            Defaults to "./default_grid_out.h5".
+        model_name_prefix : str
+            Name prefix convention to use. The fifth model in the grid
+            would have the name "<model_name_prefix>5>" assigned to it. Defaults to "",
+            which would make the fifth model have the name "5", for example.
+        log_dir : str | None
+            Where to write logs. If None, do not write logs. Default = None.
+        model_ids : list | None
+            Optional subset of model indices (0-based column in flat_grids)
+            to run. None means run all models in the grid. Default = None.
+        delay_run : bool
+            Whether to immediately start the models upon initialization,
+            or delay until the user calls `self.run()`. Defaults to False (start immediately).
+        overwrite_models : bool
+            Whether to overwrite the  models in `grid_file`. Default = True.
+        create_grid : bool
+            Whether to create a grid of models from the physical parameters using
+            :func:`numpy.meshgrid``. Default = True.
+
+        Raises
+        ------
+        TypeError
+            If `model_type` is ``"SequentialRunner"``, but `full_parameters`
+            is not a list of dictionaries.
+        TypeError
+            If `model_type` is not ``"SequentialRunner"``, but `full_parameters` is
+            not a dictionary.
+        AssertionError
+            If `create_grid` is False, but not all arrays have the same length.
+
+        """
         if model_type not in REGISTRY:
             raise AssertionError
         self.model_type = model_type
