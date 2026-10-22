@@ -48,19 +48,19 @@ class NetworkABC(ABC):
     @property
     @abstractmethod
     def species(self) -> dict[str, Species]:
-        """Get the species collection."""
+        """The species collection."""
         pass
 
     @property
     @abstractmethod
     def reactions(self) -> dict[int, Reaction]:
-        """Get the reactions collection."""
+        """The reactions collection."""
         pass
 
     # Species Read Interface
     @abstractmethod
     def get_species_list(self) -> list[Species]:
-        """Get all species in the network."""
+        """All species in the network."""
         pass
 
     @abstractmethod
@@ -352,26 +352,12 @@ class BaseNetwork(NetworkABC):
 
     @property
     def species(self) -> dict[str, Species]:
-        """Get species dictionary.
-
-        Returns
-        -------
-        dict[str, Species]
-            Ordered dict of species in the network, keyed by name.
-
-        """
+        """Get species dictionary."""
         return self._species_dict
 
     @property
     def reactions(self) -> dict[int, Reaction]:
-        """Get reactions dictionary.
-
-        Returns
-        -------
-        dict[int, Reaction]
-            Ordered dict of reactions in the network, keyed by index.
-
-        """
+        """Get reactions dictionary."""
         return self._reactions_dict
 
     # ========================================================================
@@ -811,14 +797,7 @@ class Network(BaseNetwork, MutableNetworkABC):
 
     @property
     def species(self) -> dict[str, Species]:
-        """Get species dictionary.
-
-        Returns
-        -------
-        dict[str, Species]
-            Ordered dict of species in the network, keyed by name.
-
-        """
+        """Get species dictionary."""
         return self._species_dict
 
     # Note: Read operations (get_species_list, get_reaction_list, etc.)
