@@ -11,8 +11,8 @@ import pandas as pd
 if TYPE_CHECKING:
     import matplotlib.pyplot as plt
 
-from ._helpers import _color_for
-from .style import format_chemical_formula, format_reaction_label
+from uclchem.plot._helpers import _color_for
+from uclchem.plot.style import format_chemical_formula, format_reaction_label
 
 #: CV threshold above which a rate constant is considered time-varying.
 _K_VARY_THRESHOLD = 0.01

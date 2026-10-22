@@ -26,6 +26,8 @@ N_TOTAL_LEVELS = int(f2py_constants.n_total_levels)
 N_SE_STATS_PER_COOLANT = int(f2py_constants.n_se_stats_per_coolant)
 ZETA_0 = float(constants.zeta_0)  # Standard cosmic ray ionization rate (1.3e-17 s-1)
 
+SOLAR_LUMINOSITY = 3.828e26  # W — IAU 2015 nominal solar luminosity
+
 
 # Canonical definition of physical parameters
 # This list defines the physical parameter array passed to Fortran

@@ -365,7 +365,7 @@ def __functional_return__(
     return (model_object.success_flag, *tuple(out_species_abundances_array))
 
 
-def __cloud__(
+def cloud(
     param_dict: dict | None = None,
     out_species: Sequence[str] | None = DEFAULT_ELEMENTS_TO_CHECK,
     starting_chemistry: np.ndarray | None = None,
@@ -477,7 +477,7 @@ def __cloud__(
     )
 
 
-def __collapse__(
+def collapse(
     collapse: str,
     param_dict: dict | None = None,
     out_species: Sequence[str] | None = ELEMENTS_TO_CHECK,
@@ -593,7 +593,7 @@ def __collapse__(
     )
 
 
-def __prestellar_core__(
+def prestellar_core(
     temp_index: int = 1,
     max_temperature: float = 300.0,
     param_dict: dict | None = None,
@@ -715,7 +715,7 @@ def __prestellar_core__(
     )
 
 
-def __cshock__(
+def cshock(
     shock_vel: float,
     timestep_factor: float = 0.01,
     minimum_temperature: float = 0.0,
@@ -841,7 +841,7 @@ def __cshock__(
     )
 
 
-def __jshock__(
+def jshock(
     shock_vel: float,
     param_dict: dict | None = None,
     out_species: Sequence[str] | None = ELEMENTS_TO_CHECK,
@@ -957,10 +957,4 @@ def __jshock__(
     )
 
 
-# Expose the functional API functions at module level
-cloud = __cloud__
-collapse = __collapse__
-prestellar_core = __prestellar_core__
-hot_core = __prestellar_core__  # Alias for backward compatibility
-cshock = __cshock__
-jshock = __jshock__
+hot_core = prestellar_core  # Alias for backward compatibility
