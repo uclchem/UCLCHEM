@@ -14,7 +14,8 @@ module chemistry
     use DVODE_F90_M, only: SET_OPTS, DVODE_F90, VODE_OPTS, GET_STATS  !dvode_f90_m
     !f2py INTEGER, parameter :: dp
     use physicscore, only: points, dstep, cloudsize, radfield, radfield_internal, h2crprateconstant, improvedH2CRPDissociation, &
-    & zeta, currentTime, targetTime, timeinyears, freefall, density, ion, get_densdot, gasTemp, dustTemp, av, av_internal, colDens
+    & zeta, currentTime, targetTime, timeinyears, freefall, density, ion, get_densdot, gasTemp, dustTemp, av, av_internal, &
+    & colDens, GRAIN_RADIUS, GAS_DUST_DENSITY_RATIO
     use f2py_constants, only: nSpec, nReac, REAC_NOT_PRESENT, SPECIES_NOT_PRESENT
     use heating, only: calculateDustTemp, getTempDot, initializeHeating
     ! allow(use-all)
@@ -25,9 +26,9 @@ module chemistry
     use postprocess_mod, only: lusecoldens,usepostprocess,tstep,lnh,lnh2,lnco,lnc
     use rates, only: calculateReactionRateConstants, turbVel, lastTemp, rate_constants_lh_unsplit, rate_constants_er_unsplit
     use surfacereactions, only: updateVdiffAndVdes, getNumberMonolayers, getDesorptionFractionBare, &
-        getDesorptionFractionFullCoverage, NUM_SITES_PER_GRAIN, GAS_DUST_DENSITY_RATIO, vdes, vdiff, &
+        getDesorptionFractionFullCoverage, NUM_SITES_PER_GRAIN, vdes, vdiff, &
         desorptionFractionsBare, getDesorptionFractionIncludingIce, desorptionFractionsFullCoverage, &
-        safeMantle, safeBulk, bulkLayersReciprocal, GRAIN_RADIUS, MIN_SURFACE_ABUND, &
+        safeMantle, safeBulk, bulkLayersReciprocal, MIN_SURFACE_ABUND, &
         bulkGainFromMantleBuildUp, surfaceToBulkSwappingRateConstants
 
     implicit none

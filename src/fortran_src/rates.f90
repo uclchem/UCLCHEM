@@ -11,7 +11,7 @@ module RATES
     use physicscore
     use surfacereactions, only: SURFACE_SITE_DENSITY, GRAIN_SURFACEAREA_PER_H, GRAIN_CROSSSECTION_PER_H, &
         getEncounterDesorptionRateConstant, bulkSurfaceExchangeReactions, h2FormEfficiency, getNumberMonolayers, &
-        getDiffusionReactionRateConstant, getDesorptionFractionIncludingIce, GRAIN_RADIUS, vdiff, vdes, THERMAL_VEL, &
+        getDiffusionReactionRateConstant, getDesorptionFractionIncludingIce, vdiff, vdes, THERMAL_VEL, &
         bulkLayersReciprocal, MIN_SURFACE_ABUND, safeBulk
 
     implicit none
