@@ -28,6 +28,18 @@ logger = logging.getLogger(__name__)
 _skip_reaction_validation = False
 
 
+class ElementalConservationError(Exception):
+    """Error to indicate that a reaction does not conserve elements."""
+
+
+class ChargeConservationError(Exception):
+    """Error to indicate that a reaction does not conserve charge."""
+
+
+class InvalidReactionTypeError(Exception):
+    """Error to indicate that a reaction type is not valid for a set of reactants and products."""
+
+
 @contextmanager
 def skip_reaction_validation() -> Generator[None]:
     """Context manager to temporarily disable reaction validation.
@@ -47,7 +59,7 @@ def skip_reaction_validation() -> Generator[None]:
     >>> reaction = Reaction(["#C2N", "#H", "LH", "#CH3CNH", "NAN", "NAN", "NAN"] + [0] * 10)
     Traceback (most recent call last):
     ...
-    ValueError: Elements not conserved in a reaction.
+    ElementalConservationError: Elements not conserved in a reaction.
     The following reaction caused this error: #C2N + #H + LH -> #CH3CNH.
     ...
 
@@ -775,7 +787,7 @@ class Reaction:
 
         Raises
         ------
-        ValueError
+        ElementalConservationError
             If the elements are not conserved by the reaction.
 
         """
@@ -804,7 +816,7 @@ class Reaction:
             msg = "Elements not conserved in a reaction.\n"
             msg += f"The following reaction caused this error: {self}.\n"
             msg += f"Reactants: {counter_reactants}. Products: {counter_products}"
-            raise ValueError(msg)
+            raise ElementalConservationError(msg)
 
     def check_charge_conservation(self) -> None:
         """Check that the charge is conserved by this reaction.
@@ -814,7 +826,7 @@ class Reaction:
 
         Raises
         ------
-        ValueError
+        ChargeConservationError
             If charge is not conserved by the reaction.
 
         """
@@ -838,7 +850,7 @@ class Reaction:
             msg = "Charges not conserved in a reaction.\n"
             msg += f"The following reaction caused this error: {self}.\n"
             msg += f"Reactants: {charge_reactants}. Products: {charge_products}"
-            raise ValueError(msg)
+            raise ChargeConservationError(msg)
 
     def check_reaction_type_is_possible(self) -> None:
         """Check that the reaction type is valid for the reactants and products.
@@ -848,7 +860,7 @@ class Reaction:
 
         Raises
         ------
-        ValueError
+        InvalidReactionTypeError
             - If a TWOBODY reaction has a species on the ice
             - If an LH reaction has a species in the gas-phase
             - If an ER reaction does not have one reactant on the ice and one in the gas-phase
@@ -867,13 +879,13 @@ class Reaction:
                 include_reactants=True, include_products=True, strict=False
             ):
                 msg = f"TWOBODY reactions must happen in the gas-phase, but reaction '{self}' has reactants or products on the ice."
-                raise ValueError(msg)
+                raise InvalidReactionTypeError(msg)
         elif reaction_type == "LH":
             if not self.is_ice_reaction(
                 include_reactants=True, include_products=True, strict=True
             ):
                 msg = f"LH reactions must happen fully on the ice, but '{self}' has reactants or products in the gas."
-                raise ValueError(msg)
+                raise InvalidReactionTypeError(msg)
         elif reaction_type == "ER":
             if not self.is_ice_reaction(
                 include_reactants=True, include_products=False, strict=False
@@ -881,12 +893,12 @@ class Reaction:
                 include_reactants=True, include_products=False, strict=False
             ):
                 msg = f"ER reactions must have one reactant on ice, and one in the gas, but '{self}' did not."
-                raise ValueError(msg)
+                raise InvalidReactionTypeError(msg)
             if not self.is_ice_reaction(
                 include_reactants=False, include_products=True, strict=True
             ):
                 msg = f"ER reactions must have all products on ice, but '{self}' did not."
-                raise ValueError(msg)
+                raise InvalidReactionTypeError(msg)
         elif reaction_type == "THERM":
             if not self.is_ice_reaction(
                 include_reactants=True, include_products=False, strict=True
@@ -894,7 +906,7 @@ class Reaction:
                 include_reactants=False, include_products=True, strict=True
             ):
                 msg = f"THERM reactions must have all reactants on ice and products in gas, but '{self}' did not."
-                raise ValueError(msg)
+                raise InvalidReactionTypeError(msg)
         elif reaction_type == "FREEZE" and self.get_pure_reactants() != [
             "E-"
         ]:  # Skip electron freeze-out because it is absorbed by grain
@@ -904,12 +916,12 @@ class Reaction:
                 include_reactants=False, include_products=True, strict=True
             ):
                 msg = f"FREEZE reactions must have all reactants in gas and products on ice, but '{self}' did not."
-                raise ValueError(msg)
+                raise InvalidReactionTypeError(msg)
 
         if reaction_type in {"LH", "LHDES", "ER", "ERDES", "TWOBODY"}:
             if len(self.get_pure_reactants()) != 2:  # ruff: ignore[magic-value-comparison]
                 msg = f"Reactions with type '{reaction_type}' should have two reactants, but reaction '{self}' had {len(self.get_pure_reactants())}"
-                raise ValueError(msg)
+                raise InvalidReactionTypeError(msg)
         elif reaction_type in {
             "THERM",
             "FREEZE",
@@ -921,7 +933,7 @@ class Reaction:
         }:
             if len(self.get_pure_reactants()) != 1:
                 msg = f"Reactions with type '{reaction_type}' should have only one reactant, but reaction '{self}' had {len(self.get_pure_reactants())}"
-                raise ValueError(msg)
+                raise InvalidReactionTypeError(msg)
 
     def convert_gas_to_surf(self) -> None:
         """Convert the gas-phase species to surface species in place for this reaction.

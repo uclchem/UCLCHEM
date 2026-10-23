@@ -194,7 +194,7 @@ def __functional_return__(
         from which the results should be returned.
     out_species : Sequence[str] | None
         List of species names to return abundances for.
-        Default = :data:`ELEMENTS_TO_CHECK`.
+        Default = :data:`uclchem.constants.ELEMENTS_TO_CHECK`.
     return_array : bool
         A boolean on whether a np.array should be returned to a user.
         If both return_array and return_dataframe are false, the function will return
@@ -375,7 +375,7 @@ def cloud(
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
-):
+) -> tuple:
     """Run cloud model from UCLCHEM.
 
     Parameters
@@ -412,9 +412,10 @@ def cloud(
 
     Returns
     -------
-    if return_array and return_dataframe are False
-        - A list where the first element is always an integer which is negative if the model failed
-                to run. Can be passed to `uclchem.utils.check_error()` to see more details.
+    tuple
+        if return_array and return_dataframe are False
+            - A list where the first element is always an integer which is negative if the model
+                failed to run. Can be passed to `uclchem.utils.check_error()` to see more details.
                 If the `out_species` parameter is provided, the remaining elements of this list
                 will be the final abundances of the species in out_species.
         if return_array is True:
@@ -488,7 +489,7 @@ def collapse(
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
-):
+) -> tuple:
     """Run collapse model from UCLCHEM based on Priestley et al 2018 AJ 156 51 (https://ui.adsabs.harvard.edu/abs/2018AJ....156...51P/abstract).
 
     Parameters
@@ -528,8 +529,9 @@ def collapse(
 
     Returns
     -------
-    if return_array and return_dataframe are False
-        - A list where the first element is always an integer which is negative if the model
+    tuple
+        if return_array and return_dataframe are False
+            - A list where the first element is always an integer which is negative if the model
                 failed to run. Can be passed to `uclchem.utils.check_error()` to see more details.
                 If the `out_species` parameter is provided, the remaining elements of this list
                 will be the final abundances of the species in out_species.
@@ -605,7 +607,7 @@ def prestellar_core(
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
-):
+) -> tuple:
     """Run prestellar core model from UCLCHEM, based on Viti et al. 2004 and Collings et al. 2004.
 
     This model type was previously known as hot core.
@@ -649,9 +651,10 @@ def prestellar_core(
 
     Returns
     -------
-    if return_array and return_dataframe are False
-        - A list where the first element is always an integer which is negative if the model failed
-                to run and can be sent to `uclchem.utils.check_error()` to see more details.
+    tuple
+        if return_array and return_dataframe are False
+            - A list where the first element is always an integer which is negative if the model
+                failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
                 If the `out_species` parameter is provided, the remaining elements of this list
                 will be the final abundances of the species in out_species.
         if return_array is True:
@@ -728,7 +731,7 @@ def cshock(
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
-):
+) -> tuple:
     """Run C-type shock model from UCLCHEM.
 
     Parameters
@@ -772,8 +775,9 @@ def cshock(
 
     Returns
     -------
-    if return_array and return_dataframe are False
-        - A list where the first element is always an integer which is negative if the model
+    tuple
+        if return_array and return_dataframe are False
+            - A list where the first element is always an integer which is negative if the model
                 failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
                 If the model succeeded, the second element is the dissipation time and further
                 elements are the abundances of all species in `out_species`.
@@ -852,7 +856,7 @@ def jshock(
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
-):
+) -> tuple:
     """Run J-type shock model from UCLCHEM.
 
     Parameters
@@ -891,8 +895,9 @@ def jshock(
 
     Returns
     -------
-    if return_array and return_dataframe are False
-        - A list where the first element is always an integer which is negative
+    tuple
+        if return_array and return_dataframe are False
+            - A list where the first element is always an integer which is negative
                 if the model failed to run. Can be passed to `uclchem.utils.check_error()`
                 to see more details. If the model succeeded, the second element
                 is the dissipation time and further elements are the abundances
