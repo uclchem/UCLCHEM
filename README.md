@@ -15,11 +15,18 @@ lists of reactions and species.
 > [!TIP]
 >  The UCLCHEM 4.0 preprint is available [online](https://doi.org/10.48550/arXiv.2606.20265)
 
-## Installation Instructions
+## Installation
 
-Full documentation is available from the website: [uclchem.github.io](https://uclchem.github.io)
+### Prerequisites
+To build UCLCHEM, you'll need gfortran, make and python 3.11+.
+On MacOS, make sure to have xcode installed.
+See more detailed installation instructions [here](https://uclchem.github.io/develop/getting-started/installation.html).
 
-UCLCHEM is intended to be used as a python module but must be installed from source rather than an online index such as Pypi. This is because users are expected to modify the source code, at least by creating their own networks. To obtain and install the code simply run:
+# Installation
+
+UCLCHEM is intended to be used as a python module but must be installed from source rather than an online index such as PyPI.
+This is because users are expected to modify the source code, at least by creating their own networks.
+To obtain and install the code simply run:
 
 ```bash
 git clone https://github.com/uclchem/UCLCHEM.git
@@ -31,15 +38,36 @@ If you have [uv](https://docs.astral.sh/uv/) installed, `uv pip install .` is a 
 
 You can then `import uclchem` in any python script. You need to `pip install .` (or `uv pip install .`) whenever you change your network with Makerates. 
 
-To see the contents of this python module, check our [Python API docs](https://uclchem.github.io/develop/api/index.html). To see some example notebooks, check the tutorial section of the docs or the notebooks in `Tutorials/`.
+## Usage
 
-### Prerequisites
-To build UCLCHEM, you'll need gfortran, make and python 3.11+. On MacOS, make sure to have xcode installed. See more detailed installation instructions [here](https://uclchem.github.io/develop/getting-started/installation.html).
+Running a basic dark molecular cloud model:
+```python
+import uclchem
+import matplotlib.pyplot as plt
+
+if __name__ == "__main__":
+    param_dict = {
+        "initialDens": 1e5,  # Initial density of the cloud
+        "initialTemp": 10,   # Temperature
+        "finalTime": 1e6,    # Duration of the model in years
+    }
+    model = uclchem.model.Cloud(param_dict)
+    model.check_error()
+
+    # Plot the abundances of gas-phase and icy H2O and CO over lifetime of the cloud
+    fig, axs = model.create_abundance_plot(species=["H2O", "CO", "$H2O", "$CO"])
+    plt.show()
+```
+
+Full documentation is available from the website: [uclchem.github.io](https://uclchem.github.io)
+
+To see the contents of this python module, check our [Python API docs](https://uclchem.github.io/develop/api/index.html).
+To see some example notebooks, check the tutorial section of the docs or the notebooks in `Tutorials/`.
 
 ## Citing UCLCHEM
 
-If you use UCLCHEM for your research, please cite the following [paper](https://ui.adsabs.harvard.edu/abs/2026arXiv260620265V/abstract) for the framework
-and any important papers mentioned therein that contributed to specific modules you used. 
+If you use UCLCHEM for your research, please cite the following [paper](https://ui.adsabs.harvard.edu/abs/2026arXiv260620265V/abstract)
+for the framework and any important papers mentioned therein that contributed to specific modules you used. 
 
 
 ## Changes and releases
@@ -72,7 +100,10 @@ the errors and assumptions that seasoned contributors have glossed over.
 [PyCon talk](https://www.youtube.com/watch?v=6Uj746j9Heo),
 and was adapted from the README in the [yt project](https://github.com/yt-project/yt))
 
-This is an open source science code for the community and are open to pull requests. We are also happy to work with you to produce a physics module if none of the models available in the python module `uclchem.model` suit the modeling work you wish to do. If you are contributing, please try to work with our current code style. Feel free to checkout the latest developments with `git fetch; git checkout develop` We have the following general guidelines:
+This is an open source science code for the community and are open to pull requests.
+We are also happy to work with you to produce a physics module if none of the models available in the python module `uclchem.model`
+suit the modeling work you wish to do. If you are contributing, please try to work with our current code style.
+Feel free to checkout the latest developments with `git fetch; git checkout develop` We have the following general guidelines:
 
 ### Editable development Setup
 After cloning the repository, install the development dependencies and set up pre-commit hooks.
@@ -112,9 +143,6 @@ This might introduce some weird behavior with fortran .mod files lingering if yo
 - camelCase variable and subroutines names that are self-explanatory where possible 
 - CAPITALIZED fortran built in functions to make code structure apparent.
 - Modularization, related subroutines should be added as modules. Small tweaks should be inserted into relevant module
-
-# Developers
-## Developer tools
 
 After adding or renaming Fortran `PARAMETER` declarations, regenerate `src/uclchem/advanced/fortran_metadata.yaml` by running `uclchem-generate-metadata` (or `--dry-run` to preview changes). The CI workflow `check-fortran-metadata.yml` will fail on pull requests if the file is out of date.
 
