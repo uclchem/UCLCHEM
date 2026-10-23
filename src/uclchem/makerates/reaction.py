@@ -59,7 +59,7 @@ def skip_reaction_validation() -> Generator[None]:
     >>> reaction = Reaction(["#C2N", "#H", "LH", "#CH3CNH", "NAN", "NAN", "NAN"] + [0] * 10)
     Traceback (most recent call last):
     ...
-    ElementalConservationError: Elements not conserved in a reaction.
+    uclchem.makerates.reaction.ElementalConservationError: Elements not conserved in a reaction.
     The following reaction caused this error: #C2N + #H + LH -> #CH3CNH.
     ...
 
@@ -1303,7 +1303,7 @@ class Reaction:
 
         """
         return (
-            " + ".join(filter(lambda r: r != "NAN", self.get_pure_reactants()))
+            " + ".join(filter(lambda r: r != "NAN", self.get_reactants()))
             + " -> "
             + " + ".join(self.get_pure_products())
         )

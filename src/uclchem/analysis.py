@@ -51,6 +51,13 @@ except ImportError as E:
     )
     raise
 try:
+    from uclchemwrap import physicscore
+except ImportError as E:
+    E.add_note(
+        "Failed to import physicscore.f90 from uclchemwrap, did the installation with f2py succeed?"
+    )
+    raise
+try:
     from uclchemwrap import surfacereactions
 except ImportError as E:
     E.add_note(
@@ -1047,7 +1054,7 @@ def rate_constants_to_dy_and_rates(
         rate_constants = rate_constants.drop(columns=["Point"])
 
     # Import all of the constants directly from UCLCHEMWRAP to avoid discrepancies
-    GAS_DUST_DENSITY_RATIO = surfacereactions.gas_dust_density_ratio
+    GAS_DUST_DENSITY_RATIO = physicscore.gas_dust_density_ratio
     NUM_SITES_PER_GRAIN = surfacereactions.num_sites_per_grain
 
     # Compute dynamic quantities that can be precomputed
