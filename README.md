@@ -1,16 +1,16 @@
 # UCLCHEM
 
-![GitHub Release](https://img.shields.io/github/v/release/uclchem/UCLCHEM?include_prereleases&style=for-the-badge)
+[![GitHub Release](https://img.shields.io/github/v/release/uclchem/UCLCHEM?include_prereleases&style=for-the-badge)](https://github.com/uclchem/UCLCHEM/releases)
 ![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fuclchem%2FUCLCHEM%2Fmain%2Fpyproject.toml&style=for-the-badge&logo=python&logoSize=auto)
-
-<img alt="Read the Docs" src="https://img.shields.io/readthedocs/uclchem?style=for-the-badge&link=!%5BRead%20the%20Docs%5D(https%3A%2F%2Fimg.shields.io%2Freadthedocs%2Fuclchem%3Fstyle%3Dfor-the-badge%26link%3Duclchem.github.io)">
-
-![Read the Docs](https://img.shields.io/readthedocs/uclchem?style=for-the-badge&logo=readthedocs&link=https%3A%2F%2Fuclchem.github.io)
+[![Read the Docs](https://img.shields.io/readthedocs/uclchem?style=for-the-badge&logo=readthedocs)](https://uclchem.github.io)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/uclchem/UCLCHEM/ci-lint.yml?style=for-the-badge&logo=precommit&label=pre-commit)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/uclchem/UCLCHEM/.github%2Fworkflows%2Fci-test-suite.yml?style=for-the-badge&logo=pytest&logoSize=auto)
-![GitHub License](https://img.shields.io/github/license/uclchem/UCLCHEM?style=for-the-badge&link=https%3A%2F%2Fgithub.com%2Fuclchem%2FUCLCHEM%2FLICENSE)
+[![GitHub License](https://img.shields.io/github/license/uclchem/UCLCHEM?style=for-the-badge)](https://github.com/uclchem/UCLCHEM/LICENSE.txt)
 
-A gas-grain chemical code that propagates the abundances of chemical species through a network of user-defined reactions according to the physical conditions of the gas. We provide several physical models to enable the modeling of different astrophysical environments and a utility script `MakeRates` to help the user produce a chemical network from simple lists of reactions and species.
+A gas-grain chemical code that propagates the abundances of chemical species through a network of user-defined reactions
+according to the physical conditions of the gas. We provide several physical models to enable the modeling of different
+astrophysical environments and a utility script `MakeRates` to help the user produce a chemical network from simple
+lists of reactions and species.
 
 > [!TIP]
 >  The UCLCHEM 4.0 preprint is available [online](https://doi.org/10.48550/arXiv.2606.20265)
