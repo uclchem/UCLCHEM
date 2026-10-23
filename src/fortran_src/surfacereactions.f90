@@ -15,6 +15,7 @@ module SurfaceReactions
       ngh2, nh2, ngn, ngo, ngoh, nh, ngh
   !f2py INTEGER, parameter :: dp
   use numerics, only: is_equal, linear_interp
+  use physicscore, only: GRAIN_RADIUS, GRAIN_DENSITY, GAS_DUST_DENSITY_RATIO
 
   implicit none
 
@@ -43,7 +44,7 @@ module SurfaceReactions
   real(dp), parameter :: GRAPHITE_NU_HC=1.3e13_dp  ! Vibrational frequency of H atoms in their surface sites (s^-1)
   real(dp), parameter :: GRAPHITE_CROSS_SECTION=7.908e-22_dp  !*CROSS_SECTION_SCALE ! Graphite grain cross section per H nucleus (cm^-2/nucleus)
 
-  real(dp), parameter :: THERMAL_VEL= SQRT(8.0d0*K_BOLTZ/(PI*AMU))  !Thermal velocity without the factor of SQRT(T/m) where m is molecular mass in amu
+  real(dp), parameter :: THERMAL_VEL = sqrt(8.0_dp*K_BOLTZ/(PI*AMU))  !Thermal velocity without the factor of SQRT(T/m) where m is moelcular mass in amu
 
   !Grain area per h nuclei, values taken from Cazaux & Tielens 2004 via UCL-PDR to match H2 formation rate
   real(dp), parameter :: GRAIN_CROSSSECTION_PER_H=0.5_dp*(7.908e-22_dp+8.473e-22_dp)

@@ -4,7 +4,7 @@
 
 module physicscore
     use constants, only: dp, C, SECONDS_PER_YEAR, PC, PI, HP, K_BOLTZ, aunit, eV, &
-        uISRF, uISRF_UV, Lsun, SB_CONST, ZETA_0
+        uISRF, uISRF_UV, Lsun, SB_CONST, ZETA_0, AMU
     use DEFAULTPARAMETERS
     use extinction_module, only: extcurve_obs
     use numerics, only: evaluate_polynomial, integrate_trapezoid, logspace
@@ -101,9 +101,21 @@ module physicscore
     real(dp), parameter :: wave1 = HP * C * 1.0e4_dp / (13.6_dp * eV)  !in micron
     real(dp), parameter :: wave2 = 20.0_dp  ! in micron
 
+
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !Grain surface parameters
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    real(dp), parameter :: GRAIN_RADIUS = 1.0e-5_dp  ! Radius of grain in cm
+    real(dp), parameter :: GRAIN_DENSITY = 3.0_dp  ! Mass density of a dust grain in g cm-3
+    !reciprocal of fractional abundance of dust grains (we only divide by number density so better to store reciprocal)
+    !Derived from gas_dust_mass_ratio (DefaultParameters); kept in sync by RECOMPUTE_GAS_DUST_DENSITY_RATIO below.
+    !Not a PARAMETER, but do not set it directly. Initial value here matches the gas_dust_mass_ratio default (100.0).
+    real(dp) :: GAS_DUST_DENSITY_RATIO = (4.0_dp*PI*(GRAIN_RADIUS**3)*GRAIN_DENSITY*100.0_dp)/(3.0_dp * AMU)
+
 contains
     !basic initialization of physics. All physics modules should call this and then
     !do their own initialization.
+
     subroutine coreInitializePhysics(successFlag)
         integer, intent(out) :: successFlag
         timeInYears=currentTime/SECONDS_PER_YEAR
@@ -495,7 +507,6 @@ contains
     !
     !-----------------------------------------------------------------------
     subroutine RECOMPUTE_GAS_DUST_DENSITY_RATIO()
-      GAS_DUST_DENSITY_RATIO = (4.0*PI*(GRAIN_RADIUS**3)*GRAIN_DENSITY*GAS_DUST_MASS_RATIO)/(3.0 * AMU)
+      GAS_DUST_DENSITY_RATIO = (4.0_dp*PI*(GRAIN_RADIUS**3)*GRAIN_DENSITY*gas_dust_mass_ratio)/(3.0_dp * AMU)
     end subroutine RECOMPUTE_GAS_DUST_DENSITY_RATIO
-
 end module physicscore
