@@ -557,38 +557,17 @@ class SolverEfficiencySummary(NamedTuple):
 
     @property
     def efficiency_ratio(self) -> float:
-        """Ratio of successful to total number of attempts.
-
-        Returns
-        -------
-        float
-            Efficiency ratio
-
-        """
+        """The ratio of successful to total number of attempts."""
         return self.successful_attempts / self.total_attempts
 
     @property
     def failed_attempts(self) -> int:
-        """Number of failed (ISTATE < 0) attempts of solver.
-
-        Returns
-        -------
-        int
-            Number of failed attempts
-
-        """
+        """The number of failed (ISTATE < 0) attempts of solver."""
         return self.total_attempts - self.successful_attempts
 
     @property
     def wasted_fraction(self) -> float:
-        """Fraction of CPU time spent in failed solver attempts.
-
-        Returns
-        -------
-        float
-            Fraction of CPU time spent in failed solver attempts.
-
-        """
+        """The fraction of CPU time spent in failed solver attempts."""
         return (
             self.wasted_cpu_time / self.total_cpu_time if self.total_cpu_time > 0 else 0.0
         )
@@ -4915,14 +4894,7 @@ class GridRunner:
 
     @property
     def num_models(self) -> int:
-        """The number of models in the grid.
-
-        Returns
-        -------
-        int
-            The number of models
-
-        """
+        """The number of models in the grid."""
         param_dicts = self.grid_iter(
             self.full_parameters,
             list(self.parameters_to_grid.keys()),
