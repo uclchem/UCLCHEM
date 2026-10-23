@@ -781,7 +781,7 @@ class Species:
             True if it is ionized
 
         """
-        return self.get_charge() == 0
+        return self.get_charge() != 0
 
     def add_default_freeze(self) -> None:
         """Add a default freezeout, which is freezing out to the species itself,.

@@ -2363,7 +2363,7 @@ class AbstractModel(ABC):
             },
             coords={
                 "physics_values": list(PHYSICAL_PARAMETERS),
-                "chemical_abun_values": get_species_names(),
+                "chemical_abun_values": list(get_species_names()),
                 "time_step": np.arange(self.physics_array.shape[0]),
                 "point": np.arange(self._param_dict["points"]),
             },
@@ -2619,7 +2619,7 @@ class AbstractModel(ABC):
         except Exception:
             chem_len = None
         if chem_len is not None:
-            species_names = get_species_names()
+            species_names = list(get_species_names())
             if "chemical_abun_values" in self._data.coords:
                 if len(self._data.coords["chemical_abun_values"]) != chem_len:
                     if len(species_names) == chem_len:
