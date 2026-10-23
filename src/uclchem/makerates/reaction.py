@@ -9,16 +9,18 @@ from copy import deepcopy
 from typing import TYPE_CHECKING
 
 from uclchem.makerates.species import (
-    Species,
+    determine_charge,
+    determine_constituents,
+    determine_molecular_mass,
     elementList,
     elementMass,
-    normalize_species_name,
-    species_header,
+    strip_prefix_from_species_name,
 )
+from uclchem.makerates.utils import normalize_species_name
 from uclchem.utils import MISSING_VALUE_FLOAT
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Container, Generator, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +28,20 @@ logger = logging.getLogger(__name__)
 _skip_reaction_validation = False
 
 
+class ElementalConservationError(Exception):
+    """Error to indicate that a reaction does not conserve elements."""
+
+
+class ChargeConservationError(Exception):
+    """Error to indicate that a reaction does not conserve charge."""
+
+
+class InvalidReactionTypeError(Exception):
+    """Error to indicate that a reaction type is not valid for a set of reactants and products."""
+
+
 @contextmanager
-def skip_reaction_validation() -> Iterator[None]:
+def skip_reaction_validation() -> Generator[None]:
     """Context manager to temporarily disable reaction validation.
 
     This is useful when loading pre-validated networks where you do not necessarily
@@ -41,12 +55,12 @@ def skip_reaction_validation() -> Iterator[None]:
     Examples
     --------
     >>> with skip_reaction_validation():
-    ...     reaction = Reaction(["#C2N", "LH", "NAN", "#CH3CNH", "NAN", "NAN", "NAN"]+ [0] * 10)
-    >>> reaction = Reaction(["#C2N", "LH", "NAN", "#CH3CNH", "NAN", "NAN", "NAN"] + [0] * 10)
+    ...     reaction = Reaction(["#C2N", "#H", "LH", "#CH3CNH", "NAN", "NAN", "NAN"]+ [0] * 10)
+    >>> reaction = Reaction(["#C2N", "#H", "LH", "#CH3CNH", "NAN", "NAN", "NAN"] + [0] * 10)
     Traceback (most recent call last):
     ...
-    ValueError: Elements not conserved in a reaction.
-    The following reaction caused this error: #C2N + LH -> #CH3CNH.
+    uclchem.makerates.reaction.ElementalConservationError: Elements not conserved in a reaction.
+    The following reaction caused this error: #C2N + #H + LH -> #CH3CNH.
     ...
 
     """
@@ -59,42 +73,45 @@ def skip_reaction_validation() -> Iterator[None]:
         _skip_reaction_validation = old_value
 
 
-REACTION_TYPES = [
-    "PHOTON",
-    "CRP",
-    "CRPHOT",
-    "FREEZE",
-    "DESORB",
-    "THERM",
-    "DESOH2",
-    "DESCR",
-    "DEUVCR",
-    "H2FORM",
-    "ER",
-    "ERDES",
-    "LH",
-    "LHDES",
-    "BULKSWAP",
-    "SURFSWAP",
-    "IONOPOL1",
-    "IONOPOL2",
-    "CRS",
-    "EXSOLID",
-    "EXRELAX",
-    "GAR",
-    "TWOBODY",
-    "ED",
-]
+REACTION_TYPES = frozenset(
+    [
+        "PHOTON",
+        "CRP",
+        "CRPHOT",
+        "FREEZE",
+        "DESORB",
+        "THERM",
+        "DESOH2",
+        "DESCR",
+        "DEUVCR",
+        "H2FORM",
+        "ER",
+        "ERDES",
+        "LH",
+        "LHDES",
+        "BULKSWAP",
+        "SURFSWAP",
+        "IONOPOL1",
+        "IONOPOL2",
+        "CRS",
+        "EXSOLID",
+        "EXRELAX",
+        "GAR",
+        "TWOBODY",
+        "ED",
+    ]
+)
 
 
-LH_REACTION_TYPES = {"LH", "LHDES"}
+LH_REACTION_TYPES = frozenset({"LH", "LHDES"})
 
-ER_REACTION_TYPES = {"ER", "ERDES"}
+ER_REACTION_TYPES = frozenset({"ER", "ERDES"})
 
 TUNNELING_REACTION_TYPES = LH_REACTION_TYPES | ER_REACTION_TYPES
 
+BULK_REACTION_TYPES = frozenset({"CRP", "CRPHOT", "PHOTON", "LH", "EXSOLID", "EXRELAX"})
 
-reaction_header = [
+REACTION_HEADER = (
     "REACTANT 1",
     "REACTANT 2",
     "REACTANT 3",
@@ -110,7 +127,112 @@ reaction_header = [
     "REDUCED_MASS",
     "EXTRAPOLATE",
     "EXOTHERMICITY",
-]
+)
+
+
+def _infer_reaction_type(reactants: list[str]) -> str:
+    if reactants[2] in REACTION_TYPES:
+        return reactants[2]
+    if reactants[1] in REACTION_TYPES:
+        return reactants[1]
+    return "TWOBODY"
+
+
+def get_duplicate_reactions(
+    reactions: Sequence[Reaction],
+) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
+    """Get indices of any duplicate reactions in a list of reactions.
+
+    Parameters
+    ----------
+    reactions : Sequence[Reaction]
+        List of reactions
+
+    Returns
+    -------
+    overlapping : list[tuple[int, int]]
+        List of indices of duplicate reaction pairs.
+    overlapping_umist : list[tuple[int, int]]
+        List of indices of duplicate reaction pairs that have their source set as ``UMIST``.
+
+    """
+    overlapping: list[tuple[int, int]] = []
+    overlapping_umist: list[tuple[int, int]] = []
+
+    duplicates = [False] * len(reactions)
+    for i, reaction1 in enumerate(reactions):
+        for j, reaction2 in enumerate(reactions):
+            if j <= i or duplicates[j]:
+                continue
+
+            if reaction1 != reaction2:
+                continue
+
+            if (reaction1.get_templow() >= reaction2.get_temphigh()) or (
+                reaction1.get_temphigh() <= reaction2.get_templow()
+            ):
+                continue
+
+            if reaction1.get_source() == reaction2.get_source() == "UMIST":
+                overlapping_umist.append((i, j))
+                continue
+
+            overlapping.append((i, j))
+            duplicates[i], duplicates[j] = True, True
+    return overlapping, overlapping_umist
+
+
+def get_body_count(n_reactants: int, reaction_type: str) -> int:
+    """Get the body count of a reaction.
+
+    A reactions body count is the number of factors of density to include in ODE.
+
+    Parameters
+    ----------
+    n_reactants : int
+        Number of reactants
+    reaction_type : str
+        Reaction type (e.g. "LH", "FREEZE", etc)
+
+    Returns
+    -------
+    body_count : int
+        Number of times the rate constant should be multiplied with the
+        density to get the rate constant.
+
+    Raises
+    ------
+    ValueError
+        If `reaction_type` is not a valid reaction type, i.e. is not in :data:`REACTION_TYPES`.
+
+    Notes
+    -----
+    We drop a factor of density from both the LHS and RHS of ODES because we work in
+    terms of abundances wrt hydrogen. So, reactions with 1 body have no factors of density.
+
+    Examples
+    --------
+    >>> get_body_count(2, "TWOBODY")
+    1
+    >>> get_body_count(2, "LH")
+    0
+    >>> get_body_count(1, "FREEZE")
+    1
+
+    """
+    if reaction_type not in REACTION_TYPES:
+        msg = f"Unknown reaction type '{reaction_type}'. Valid options are {REACTION_TYPES}."
+        raise ValueError(msg)
+
+    body_count = -1
+    # For each reactant, it should be multiplied with the density
+    body_count += n_reactants
+
+    if reaction_type in LH_REACTION_TYPES:
+        body_count -= 1
+    elif reaction_type in {"DESOH2", "FREEZE"}:
+        body_count += 1
+    return body_count
 
 
 class Reaction:
@@ -139,16 +261,13 @@ class Reaction:
         if isinstance(input_row, Reaction):
             self.set_reactants(input_row.get_reactants())
             self.set_products(input_row.get_products())
-            if not _skip_reaction_validation:
-                self.check_element_conservation()
-                self.check_charge_conservation()
             self.set_alpha(input_row.get_alpha())
             self.set_beta(input_row.get_beta())
             self.set_gamma(input_row.get_gamma())
             self.set_templow(input_row.get_templow())
             self.set_temphigh(input_row.get_temphigh())
             self.set_reduced_mass(input_row.get_reduced_mass())
-            self.set_extrapolation(input_row.get_extrapolation())
+            self.set_extrapolation(enabled=input_row.get_extrapolation())
             self.set_exothermicity(input_row.get_exothermicity())
         else:
             try:
@@ -167,46 +286,41 @@ class Reaction:
                         normalize_species_name(str(input_row[6])),
                     ]
                 )
-                if not _skip_reaction_validation:
-                    self.check_element_conservation()
-                    self.check_charge_conservation()
 
                 self.set_alpha(float(input_row[7]))
                 self.set_beta(float(input_row[8]))
                 self.set_gamma(float(input_row[9]))
                 self.set_templow(float(input_row[10]))
                 self.set_temphigh(float(input_row[11]))
-                if len(input_row) > 12:  # noqa: PLR2004
+                if len(input_row) > 12:  # ruff: ignore[magic-value-comparison]
                     self.set_reduced_mass(float(input_row[12]))
                 else:
                     self.set_reduced_mass(MISSING_VALUE_FLOAT)
                 self.set_extrapolation(
-                    bool(input_row[13]) if len(input_row) > 13 else False  # noqa: PLR2004
+                    enabled=bool(input_row[13]) if len(input_row) > 13 else False  # ruff: ignore[magic-value-comparison]
                 )
                 self.set_exothermicity(
                     float(input_row[14])
-                    if (len(input_row) > 14 and input_row[14])  # noqa: PLR2004
+                    if (len(input_row) > 14 and input_row[14])  # ruff: ignore[magic-value-comparison]
                     else 0.0
                 )
 
-            except IndexError as error:
+            except IndexError as e:
                 msg = "Input for Reaction should be a list of length 12 with optional 13th entry for reduced mass and 14th for extrapolation flag."
-                raise ValueError(msg) from error
+                raise ValueError(msg) from e
+
+        if not _skip_reaction_validation:
+            self.check_element_conservation()
+            self.check_charge_conservation()
+            self.check_reaction_type_is_possible()
+
         self.duplicate = False
         self.source = reaction_source  # The source of the reaction, e.g. UMIST, KIDA or user defined
 
-        # body_count is the number of factors of density to include in ODE
-        # we drop a factor of density from both the LHS and RHS of ODES
-        # So reactions with 1 body have no factors of density
-        # which we manage by counting from -1
-        self.body_count = -1
-        for reactant in self.get_reactants():
-            if (reactant not in REACTION_TYPES) and reactant != "NAN":
-                self.body_count += 1
-            if reactant in {"DESOH2", "FREEZE"}:
-                self.body_count += 1
-            if reactant in LH_REACTION_TYPES:
-                self.body_count -= 1
+        self._reaction_type: str  # Making mypy happy
+        self.body_count = get_body_count(
+            len(self.get_pure_reactants()), self._reaction_type
+        )
 
         if (self.get_reaction_type() == "FREEZE") and (
             self.get_reactants()[0][-1] == "+"
@@ -243,20 +357,10 @@ class Reaction:
             The list of reacting species.
 
         """
-        return [
-            r
-            for r in self._reactants[:]
-            if r
-            not in REACTION_TYPES
-            + [
-                "NAN",
-            ]
-        ]
+        return [r for r in self._reactants[:] if r not in {*REACTION_TYPES, "NAN"}]
 
     def get_sorted_reactants(self) -> list[str]:
-        """Get the four reactants present in the reaction,.
-
-        sorted for fast comparisons.
+        """Get the four reactants present in the reaction, sorted for fast comparisons.
 
         Returns
         -------
@@ -267,9 +371,7 @@ class Reaction:
         return self._sorted_reactants
 
     def set_reactants(self, reactants: list[str]) -> None:
-        """Set the four reactants present in the reaction,.
-
-        padded with NAN for nonexistent entries.
+        """Set the four reactants present in the reaction, padded with NAN for nonexistent entries.
 
         Parameters
         ----------
@@ -278,6 +380,12 @@ class Reaction:
 
         """
         self._reactants = reactants
+        reaction_type = _infer_reaction_type(reactants)
+        if hasattr(self, "_reaction_type") and reaction_type != self._reaction_type:
+            logger.info(
+                f"Reaction type {reaction_type} for reaction '{self}' changed, was '{self._reaction_type}'."
+            )
+        self._reaction_type = reaction_type
         # Store a sorted version for comparisons
         self._sorted_reactants = sorted(self._reactants)
 
@@ -305,20 +413,10 @@ class Reaction:
             The list of produced species.
 
         """
-        return [
-            r
-            for r in self._products[:]
-            if r
-            not in REACTION_TYPES
-            + [
-                "NAN",
-            ]
-        ]
+        return [r for r in self._products[:] if r not in {*REACTION_TYPES, "NAN"}]
 
     def get_sorted_products(self) -> list[str]:
-        """Get the four products present in the reaction,.
-
-        sorted for fast comparisons.
+        """Get the four products present in the reaction, sorted for fast comparisons.
 
         Returns
         -------
@@ -478,6 +576,11 @@ class Reaction:
 
         This is used in the calculation of the tunneling rates.
 
+        Raises
+        ------
+        RuntimeError
+            If the reaction only has one reactant.
+
         Examples
         --------
         >>> reaction = Reaction(["#CH3OH", "#H", "LH", "#CH3O", "#H2", "NAN", "NAN"] + [0] * 10)
@@ -498,40 +601,43 @@ class Reaction:
         1.0
 
         """
-        reac_constituents = []
-        reac_species = []
-        # Get all reactant species and their elemental buildup
-        for reac in self._reactants:
-            if reac in REACTION_TYPES:
-                continue
-            specie = Species([reac] + [0] * len(species_header))
-            atoms = specie.find_constituents(quiet=True)
-            reac_species.append(specie)
-            reac_constituents.append(atoms)
+        reactants = self.get_pure_reactants()
+        if len(reactants) == 1:
+            msg = f"Tried to predict reduced mass of reaction '{self}' with only one reactant."
+            raise RuntimeError(msg)
 
-        prod_constituents = []
-        prod_species = []
+        reac_constituents = []
+        reac_masses = []
+        # Get all reactant species and their elemental buildup
+        for reac in reactants:
+            reac = strip_prefix_from_species_name(reac)
+            atoms = determine_constituents(reac)
+            reac_constituents.append(atoms)
+            reac_masses.append(determine_molecular_mass(atoms))
+
+        products = self.get_pure_products()
         # Get all product species and their elemental buildup
-        for prod in self._products:
-            if prod in "NAN":
-                continue
-            specie = Species([prod] + [0] * len(species_header))
-            atoms = specie.find_constituents(quiet=True)
-            prod_species.append(specie)
+        prod_constituents = []
+        prod_masses = []
+        for prod in products:
+            prod = strip_prefix_from_species_name(prod)
+            atoms = determine_constituents(prod)
             prod_constituents.append(atoms)
+            prod_masses.append(determine_molecular_mass(atoms))
 
         # Get mass and number of reactants and products
-        m_reacs = [reac_specie.get_mass() for reac_specie in reac_species]
-        naive_reduced_mass = m_reacs[0] * m_reacs[1] / (m_reacs[0] + m_reacs[1])
+        naive_reduced_mass = (
+            reac_masses[0] * reac_masses[1] / (reac_masses[0] + reac_masses[1])
+        )
         n_reacs = len(reac_constituents)
         n_prods = len(prod_constituents)
         if n_reacs == n_prods:
-            for _i, reac_constituent in enumerate(reac_constituents):
+            for reac_constituent in reac_constituents:
                 # For each reactant, find which product is
                 # closest (most similar in buildup) to it.
                 min_total = int(1e10)
                 min_diff = None
-                for _j, prod_constituent in enumerate(prod_constituents):
+                for prod_constituent in prod_constituents:
                     diff = deepcopy(reac_constituent)
                     diff.subtract(prod_constituent)
                     total_change = 0
@@ -547,7 +653,7 @@ class Reaction:
                 items = changing_species.items()
                 if len(items) == 1:
                     # Exchange reaction
-                    tuple_items = tuple(items)[0]
+                    tuple_items = next(iter(items))
                     if abs(tuple_items[1]) == 1:
                         # One element is switched
                         element_index = elementList.index(tuple_items[0])
@@ -558,35 +664,31 @@ class Reaction:
                             f"Predicted reduced mass of '{self}' to be {self._reduced_mass} (would have been {naive_reduced_mass})"
                         )
                         return
-        elif n_reacs == 2 and n_prods == 1:  # noqa: PLR2004
+        elif n_reacs == 2 and n_prods == 1:  # ruff: ignore[magic-value-comparison]
             # Addition reaction
-            if reac_species[0].get_name().strip("#@") == reac_species[1].get_name().strip(
-                "#@"
-            ):
+            if reactants[0].strip("#@") == reactants[1].strip("#@"):
                 # If the two species are the same (e.g. #H+#H-> #H2), set reduced mass to m/2
-                mass = reac_species[0].get_mass()
+                mass = reac_masses[0]
                 reduced_mass = float(mass) / 2.0
                 self.set_reduced_mass(reduced_mass)
                 logger.debug(
                     f"Predicted reduced mass of '{self}' to be {self._reduced_mass} (would have been {naive_reduced_mass})"
                 )
                 return
-            elif any(species == Counter({"H": 1}) for species in reac_constituents):
+            if any(species == Counter({"H": 1}) for species in reac_constituents):
                 # If one of the species is #H, set reduced mass to 1
                 self.set_reduced_mass(1.0)
                 logger.debug(
                     f"Predicted reduced mass of '{self}' to be {self._reduced_mass} (would have been {naive_reduced_mass})"
                 )
                 return
-            else:
-                pass
-        elif n_reacs == 1 and n_prods == 2:  # noqa: PLR2004
+        elif n_reacs == 1 and n_prods == 2:  # ruff: ignore[magic-value-comparison]
             # Splitting reaction. Not in network
             # (also not LH or ER type, so would never get here)
             pass
-        msg = f"Could not predict reduced mass of '{self}' cleverly.\n"
+        msg = f"Could not predict reduced mass of '{self}'. "
         msg += f"Instead, using regular definition with masses of two reactants (mu={naive_reduced_mass:.3})."
-        if self._gamma == 0.0:
+        if self._gamma == 0:
             msg += " (Reaction is barrierless anyway)"
         logger.warning(msg)
         self.set_reduced_mass(naive_reduced_mass)
@@ -620,10 +722,7 @@ class Reaction:
     # C
 
     def get_reaction_type(self) -> str:
-        """Get the type of a reaction from the reactants.
-
-        First check the third reactant for a reaction type, then the second. If there are none
-        in there, it will be regarded as a two body reaction.
+        """Get the type of the reaction.
 
         Returns
         -------
@@ -631,12 +730,7 @@ class Reaction:
             reaction type
 
         """
-        if self.get_reactants()[2] in REACTION_TYPES:
-            return self.get_reactants()[2]
-        elif self.get_reactants()[1] in REACTION_TYPES:
-            return self.get_reactants()[1]
-        else:
-            return "TWOBODY"
+        return self._reaction_type
 
     def get_source(self) -> str | None:
         """Get the source of the reaction.
@@ -660,25 +754,17 @@ class Reaction:
         """
         self.source = source
 
-    def set_extrapolation(self, flag: bool) -> None:
+    def set_extrapolation(self, *, enabled: bool = True) -> None:
         """Set whether extrapolation is applied for this reaction.
 
         Parameters
         ----------
-        flag : bool
-            whether extrapolation is applied.
-
-        Raises
-        ------
-        AssertionError
-            If ``flag`` is not a boolean.
+        enabled : bool
+            whether extrapolation is applied. Default=True.
 
         """
-        logger.info(f"Setting for {self} extrapolation to {flag}")
-        if not isinstance(flag, bool):
-            msg = f"Expected bool, got {type(flag)}"
-            raise AssertionError(msg)
-        self.extrapolate = flag
+        logger.info(f"Setting for {self} extrapolation to {enabled}")
+        self.extrapolate = enabled
 
     def get_extrapolation(self) -> bool:
         """Get whether extrapolation is applied for this reaction.
@@ -701,7 +787,7 @@ class Reaction:
 
         Raises
         ------
-        ValueError
+        ElementalConservationError
             If the elements are not conserved by the reaction.
 
         """
@@ -710,29 +796,27 @@ class Reaction:
 
         counter_reactants: Counter[str] = Counter()
         for reac in self._reactants:
-            if reac in REACTION_TYPES:
+            if reac in {*REACTION_TYPES, "NAN", "E-"}:
                 continue
-            if reac in {"NAN", "E-"}:
-                continue
-            specie = Species([reac] + [0] * len(species_header))
-            atoms_counter_specie = specie.find_constituents(quiet=True)
+            atoms_counter_specie = determine_constituents(
+                strip_prefix_from_species_name(reac)
+            )
             counter_reactants += atoms_counter_specie
 
         counter_products: Counter[str] = Counter()
         for prod in self._products:
-            if prod in REACTION_TYPES:
+            if prod in {*REACTION_TYPES, "NAN", "E-"}:
                 continue
-            if prod in {"NAN", "E-"}:
-                continue
-            specie = Species([prod] + [0] * len(species_header))
-            atoms_counter_specie = specie.find_constituents(quiet=True)
+            atoms_counter_specie = determine_constituents(
+                strip_prefix_from_species_name(prod)
+            )
             counter_products += atoms_counter_specie
 
         if counter_products != counter_reactants:
             msg = "Elements not conserved in a reaction.\n"
             msg += f"The following reaction caused this error: {self}.\n"
             msg += f"Reactants: {counter_reactants}. Products: {counter_products}"
-            raise ValueError(msg)
+            raise ElementalConservationError(msg)
 
     def check_charge_conservation(self) -> None:
         """Check that the charge is conserved by this reaction.
@@ -742,38 +826,114 @@ class Reaction:
 
         Raises
         ------
-        ValueError
+        ChargeConservationError
             If charge is not conserved by the reaction.
 
         """
-        # Grain reactions don't need to conserve charge (grains can absorb/release electrons)
         if self.is_ice_reaction(
             include_reactants=True, include_products=True, strict=False
         ):
+            # Grain reactions don't need to conserve charge (grains can absorb/release electrons)
             return
-        charge_reactants = 0
-        for reac in self._reactants:
-            if reac in {"NAN"}:
-                continue
-            specie = Species([reac] + [0] * len(species_header))
-            charge_reactants += specie.get_charge()
-        charge_products = 0
-        for prod in self._products:
-            if prod in {"NAN"}:
-                continue
-            specie = Species([prod] + [0] * len(species_header))
-            charge_products += specie.get_charge()
-
-        if charge_products != charge_reactants:
+        if self.get_reaction_type() in {"GAR", "FREEZE"}:
             # GAR and FREEZE reactions do not conserve charge
-            if self.get_reaction_type() in {"GAR", "FREEZE"}:
-                # GAR reactions rely on grain electrons
-                # FREEZE reactions can have electron freeze-out (E- -> nothing with alpha=0)
-                return
+            # FREEZE reactions can have electron freeze-out (E- -> nothing with alpha=0)
+            return
+
+        charge_reactants = sum(
+            determine_charge(reactant) for reactant in self.get_pure_reactants()
+        )
+        charge_products = sum(
+            determine_charge(product) for product in self.get_pure_products()
+        )
+        if charge_products != charge_reactants:
             msg = "Charges not conserved in a reaction.\n"
             msg += f"The following reaction caused this error: {self}.\n"
             msg += f"Reactants: {charge_reactants}. Products: {charge_products}"
-            raise ValueError(msg)
+            raise ChargeConservationError(msg)
+
+    def check_reaction_type_is_possible(self) -> None:
+        """Check that the reaction type is valid for the reactants and products.
+
+        Check that the combination of the number of species (reactant and product)
+        and their phases, matches with the given reaction type.
+
+        Raises
+        ------
+        InvalidReactionTypeError
+            - If a TWOBODY reaction has a species on the ice
+            - If an LH reaction has a species in the gas-phase
+            - If an ER reaction does not have one reactant on the ice and one in the gas-phase
+            - If a THERM reaction does not have all reactants on the ice
+                and all products in the gas-phase
+            - If a FREEZE reaction does not have all reactants in the gas-phase
+                and all products on the ice
+            - If an LH, LHDES, ER, ERDES or TWOBODY reaction does not have two reagents
+            - If a THERM, FREEZE, DESCR, DESOH2, DEUVCR, SURFSWAP or BULKSWAP reaction
+                does not have only one reagent.
+
+        """
+        reaction_type = self.get_reaction_type()
+        if reaction_type == "TWOBODY":
+            if self.is_ice_reaction(
+                include_reactants=True, include_products=True, strict=False
+            ):
+                msg = f"TWOBODY reactions must happen in the gas-phase, but reaction '{self}' has reactants or products on the ice."
+                raise InvalidReactionTypeError(msg)
+        elif reaction_type == "LH":
+            if not self.is_ice_reaction(
+                include_reactants=True, include_products=True, strict=True
+            ):
+                msg = f"LH reactions must happen fully on the ice, but '{self}' has reactants or products in the gas."
+                raise InvalidReactionTypeError(msg)
+        elif reaction_type == "ER":
+            if not self.is_ice_reaction(
+                include_reactants=True, include_products=False, strict=False
+            ) or not self.is_gas_reaction(
+                include_reactants=True, include_products=False, strict=False
+            ):
+                msg = f"ER reactions must have one reactant on ice, and one in the gas, but '{self}' did not."
+                raise InvalidReactionTypeError(msg)
+            if not self.is_ice_reaction(
+                include_reactants=False, include_products=True, strict=True
+            ):
+                msg = f"ER reactions must have all products on ice, but '{self}' did not."
+                raise InvalidReactionTypeError(msg)
+        elif reaction_type == "THERM":
+            if not self.is_ice_reaction(
+                include_reactants=True, include_products=False, strict=True
+            ) or not self.is_gas_reaction(
+                include_reactants=False, include_products=True, strict=True
+            ):
+                msg = f"THERM reactions must have all reactants on ice and products in gas, but '{self}' did not."
+                raise InvalidReactionTypeError(msg)
+        elif reaction_type == "FREEZE" and self.get_pure_reactants() != [
+            "E-"
+        ]:  # Skip electron freeze-out because it is absorbed by grain
+            if not self.is_gas_reaction(
+                include_reactants=True, include_products=False, strict=True
+            ) or not self.is_ice_reaction(
+                include_reactants=False, include_products=True, strict=True
+            ):
+                msg = f"FREEZE reactions must have all reactants in gas and products on ice, but '{self}' did not."
+                raise InvalidReactionTypeError(msg)
+
+        if reaction_type in {"LH", "LHDES", "ER", "ERDES", "TWOBODY"}:
+            if len(self.get_pure_reactants()) != 2:  # ruff: ignore[magic-value-comparison]
+                msg = f"Reactions with type '{reaction_type}' should have two reactants, but reaction '{self}' had {len(self.get_pure_reactants())}"
+                raise InvalidReactionTypeError(msg)
+        elif reaction_type in {
+            "THERM",
+            "FREEZE",
+            "DESCR",
+            "DESOH2",
+            "DEUVCR",
+            "SURFSWAP",
+            "BULKSWAP",
+        }:
+            if len(self.get_pure_reactants()) != 1:
+                msg = f"Reactions with type '{reaction_type}' should have only one reactant, but reaction '{self}' had {len(self.get_pure_reactants())}"
+                raise InvalidReactionTypeError(msg)
 
     def convert_gas_to_surf(self) -> None:
         """Convert the gas-phase species to surface species in place for this reaction.
@@ -783,7 +943,7 @@ class Reaction:
         absorbed by the grain.
 
         """
-        do_not_convert = REACTION_TYPES + ["E-", "NAN"]
+        do_not_convert = [*REACTION_TYPES, "E-", "NAN"]
         self.set_reactants(
             [
                 "#" + reac if reac not in do_not_convert else reac
@@ -815,6 +975,8 @@ class Reaction:
         """
         if not isinstance(other, Reaction):
             return NotImplemented
+        if self._reaction_type != other._reaction_type:
+            return False
         return (
             self.get_sorted_reactants() == other.get_sorted_reactants()
             and self.get_sorted_products() == other.get_sorted_products()
@@ -887,8 +1049,7 @@ class Reaction:
         ):
             # if the number of ice species changes
             return self.changes_surface_count()
-        else:
-            return False
+        return False
 
     def generate_ode_bit(self, i: int, species_names: list[str]) -> None:
         """Generate the ODE string of this reaction.
@@ -951,7 +1112,7 @@ class Reaction:
         return formatted_reaction
 
     def _is_reaction_wrap(
-        self, include_reactants: bool = True, include_products: bool = True
+        self, *, include_reactants: bool = True, include_products: bool = True
     ) -> list[str]:
         if not (include_reactants or include_products):
             msg = "Either include reactants or products"
@@ -965,14 +1126,15 @@ class Reaction:
 
     def is_gas_reaction(
         self,
+        *,
         include_reactants: bool = True,
         include_products: bool = True,
         strict: bool = True,
     ) -> bool:
-        """Check whether it is a gas reaction. By default it is strict - all.
+        """Check whether it is a gas reaction.
 
-        reactions must be in the gas-phase - if strict=False; any reaction in
-        the gas-phase returns true.
+        By default it is strict, meaning that all reactants must be in the gas-phase.
+        If strict=False; any reaction in the gas-phase returns true.
 
         Parameters
         ----------
@@ -991,13 +1153,16 @@ class Reaction:
 
         """
         checklist = [
-            not (s.startswith("#") or s.startswith("@"))
-            for s in self._is_reaction_wrap(include_reactants, include_products)
+            not s.startswith(("#", "@"))
+            for s in self._is_reaction_wrap(
+                include_reactants=include_reactants, include_products=include_products
+            )
         ]
         return all(checklist) if strict else any(checklist)
 
     def is_ice_reaction(
         self,
+        *,
         include_reactants: bool = True,
         include_products: bool = True,
         strict: bool = True,
@@ -1024,22 +1189,26 @@ class Reaction:
 
         """
         checklist = [
-            (s.startswith("#") or s.startswith("@"))
-            for s in self._is_reaction_wrap(include_reactants, include_products)
+            s.startswith(("#", "@"))
+            for s in self._is_reaction_wrap(
+                include_reactants=include_reactants, include_products=include_products
+            )
         ]
         return all(checklist) if strict else any(checklist)
 
     def is_surface_reaction(
         self,
+        *,
         include_reactants: bool = True,
         include_products: bool = True,
         strict: bool = False,
     ) -> bool:
-        """Check whether it is a surface reaction. Defaults to non-strict since many.
+        """Check whether it is a surface reaction.
 
-        important surface reactions can lead to desorption in some way.
+        Defaults to non-strict since many important surface reactions
+        can lead to desorption in some way.
 
-        By default it is NOT strict (strict=False); any species on the surface returns true
+        By default it is NOT strict (strict=False); any species on the surface returns true.
         If strict=True; all species must be on the ice phase
 
         Parameters
@@ -1060,12 +1229,15 @@ class Reaction:
         """
         checklist = [
             s.startswith("#")
-            for s in self._is_reaction_wrap(include_reactants, include_products)
+            for s in self._is_reaction_wrap(
+                include_reactants=include_reactants, include_products=include_products
+            )
         ]
         return all(checklist) if strict else any(checklist)
 
     def is_bulk_reaction(
         self,
+        *,
         include_reactants: bool = True,
         include_products: bool = True,
         strict: bool = False,
@@ -1095,9 +1267,31 @@ class Reaction:
         """
         checklist = [
             s.startswith("@")
-            for s in self._is_reaction_wrap(include_reactants, include_products)
+            for s in self._is_reaction_wrap(
+                include_reactants=include_reactants, include_products=include_products
+            )
         ]
         return all(checklist) if strict else any(checklist)
+
+    def has_unknown_species(self, species: Container[str]) -> bool:
+        """Determine whether this reaction involves any species not in `species`.
+
+        Parameters
+        ----------
+        species : Container[str]
+            Collection of available species in the network.
+
+        Returns
+        -------
+        bool
+            True if there is a reactant or product that is not in `species`,
+            False otherwise
+
+        """
+        for spec in self.get_pure_reactants() + self.get_pure_products():
+            if spec not in species:
+                return True
+        return False
 
     def __str__(self) -> str:
         """Return a human-readable string of the reaction.
@@ -1111,7 +1305,7 @@ class Reaction:
         return (
             " + ".join(filter(lambda r: r != "NAN", self.get_reactants()))
             + " -> "
-            + " + ".join(filter(lambda p: p != "NAN", self.get_products()))
+            + " + ".join(self.get_pure_products())
         )
 
     def __repr__(self) -> str:
@@ -1126,14 +1320,9 @@ class Reaction:
         return (
             self.get_reaction_type()
             + " reaction: "
-            + " + ".join(
-                filter(
-                    lambda r: (r != "NAN") and (r not in REACTION_TYPES),
-                    self.get_reactants(),
-                )
-            )
+            + " + ".join(self.get_pure_reactants())
             + " -> "
-            + " + ".join(filter(lambda p: p != "NAN", self.get_products()))
+            + " + ".join(self.get_pure_products())
         )
 
     def __hash__(self) -> int:
@@ -1150,56 +1339,40 @@ class Reaction:
         )
 
 
+def _get_original_partner(reaction: Reaction | CoupledReaction) -> Reaction:
+    while isinstance(reaction, CoupledReaction):
+        # If the current loop reaction is also coupled, get its partner.
+        partner = reaction.partner
+        reaction = partner
+    return reaction
+
+
 class CoupledReaction(Reaction):
     """Representation of reactions that are coupled to another Reaction instance.
 
     This means that if a reaction has a parameter changed by, for example,
-    `network.change_binding_energy()`, every CoupledReaction that has that instance
+    `network.change_energy_barrier()`, every CoupledReaction that has that instance
     as its partner also has its binding energy changed to that value.
 
     """
 
-    def __init__(self, input: list[str | float] | Reaction):
+    def __init__(
+        self, input_row: list[str | float] | Reaction, partner: Reaction | CoupledReaction
+    ):
         """Initialize the CoupledReaction.
 
         Parameters
         ----------
-        input : list[str | float] | Reaction
+        input_row : list[str | float] | Reaction
             Either a Reaction object to copy, or a list with reaction data.
+        partner : Reaction | CoupledReaction
+            Reaction that this instance should be coupled to.
+            If `partner` is also a CoupledReaction, get the partner of `partner`
+            and set the "root" as partner to this instance.
 
         """
-        super().__init__(input)
-        self.partner: Reaction | None = None
-
-    def set_partner(self, partner: Reaction) -> None:
-        """Set the partner.
-
-        Parameters
-        ----------
-        partner : Reaction
-            partner of this reaction.
-
-        Raises
-        ------
-        TypeError
-            if `parter` is not an instance of a `Reaction`.
-
-        """
-        if not isinstance(partner, Reaction):
-            msg = f"partner should be of type Reaction, but got type {type(partner)}"
-            raise TypeError(msg)
-        self.partner = partner
-
-    def get_partner(self) -> Reaction | None:
-        """Get the partner.
-
-        Returns
-        -------
-        Reaction | None
-            partner of this reaction.
-
-        """
-        return self.partner
+        super().__init__(input_row)
+        self.partner = _get_original_partner(partner)
 
 
 def _generate_reaction_ode_bit(
@@ -1209,9 +1382,10 @@ def _generate_reaction_ode_bit(
     reactants: list[str],
     reaction_type: str | None = None,
 ) -> str:
-    """Every reaction contributes a fixed rate of change to whatever species it.
+    """Generate a string that calculates the the rate of change of a reaction in Fortran.
 
-    affects. We create the string of fortran code describing that change here.
+    Every reaction contributes a fixed rate of change to whatever species it affects.
+    We create the string of fortran code describing that change here.
 
     Parameters
     ----------
@@ -1231,11 +1405,23 @@ def _generate_reaction_ode_bit(
 
     Returns
     -------
-    str
+    ode_bit : str
         String fragment of the ODE term for this reaction.
 
+    Notes
+    -----
+    Warm-up stiffness guards: ``safeMantle``/``safeBulk`` (defined in
+    :func:`build_ode_string`) sit at the ``MIN_ABUND`` floor once ice has mostly thermally
+    desorbed, at which point ice-normalized ratios (``SURFSWAP``, ``DEUVCR``/``DESCR``/
+    ``DESOH2``/``ER``/``ERDES``) divide two floor-scale, solver-noise-dominated quantities
+    and can blow up. Two guards keep this bounded: every ice-phase reactant factor is
+    clamped non-negative (``MAX(0.0_dp, Y(...))``), and ``mantleEmpty``/``bulkEmpty``
+    (also from :func:`build_ode_string`) short-circuit these ratios to their correct
+    physical limit of zero once the mantle/bulk is numerically empty, instead of evaluating
+    the division.
+
     """
-    ode_bit = f"+RATE({i + 1})"
+    ode_bit = f"+RATE_CONSTANTS({i + 1})"
     # every body after the first requires a factor of density
     for _ in range(body_count):
         ode_bit += "*D"
@@ -1247,17 +1433,34 @@ def _generate_reaction_ode_bit(
     # then bring in factors of abundances
     for species in reactants:
         if species in species_names:
-            ode_bit += f"*Y({species_names.index(species) + 1})"
+            if species.startswith(("#", "@")):
+                # Warm-up stiffness guard (see Notes): non-negativity clamp, ice phase only.
+                ode_bit += f"*MAX(0.0_dp, Y({species_names.index(species) + 1}))"
+            else:
+                ode_bit += f"*Y({species_names.index(species) + 1})"
         elif species == "BULKSWAP":
             ode_bit += "*ratioSurfaceToBulk"
         elif species == "SURFSWAP":
-            ode_bit += "*totalSwap/safeMantle"
+            # Warm-up stiffness guard (see Notes): ratio -> 0 once mantle is empty.
+            ode_bit += "*MERGE(0.0_dp, MIN(1.0_dp, totalSwap/safeMantle), mantleEmpty)"
         elif species in {"DEUVCR", "DESCR", "DESOH2", "ER", "ERDES"}:
-            ode_bit += "/safeMantle"
+            # Warm-up stiffness guard (see Notes): divide by a large value once mantle is
+            # empty, so the term collapses to zero instead of a noise-dominated ratio.
+            ice_reactant = next(
+                (r for r in reactants if r in species_names and r.startswith(("#", "@"))),
+                None,
+            )
+            if ice_reactant is not None:
+                ode_bit += (
+                    "/MERGE(1.0e30_dp, MAX(safeMantle, "
+                    f"Y({species_names.index(ice_reactant) + 1})), mantleEmpty)"
+                )
+            else:
+                ode_bit += "/MERGE(1.0e30_dp, safeMantle, mantleEmpty)"
             if species == "DESOH2":
-                ode_bit += f"*Y({species_names.index('H') + 1})"
-        elif species in {"ED"}:
-            ode_bit += f"*Y({species_names.index('#H2') + 1})"
+                ode_bit += f"*MAX(0.0_dp, Y({species_names.index('H') + 1}))"
+        elif species == "ED":
+            ode_bit += f"*MAX(0.0_dp, Y({species_names.index('#H2') + 1}))"
 
         if "H2FORM" in reactants:
             # only 1 factor of H abundance in Cazaux & Tielens 2004 H2 formation

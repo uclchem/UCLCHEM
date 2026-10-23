@@ -29,7 +29,7 @@ class MakeratesConfig(BaseModel):
     Examples
     --------
     >>> from uclchem.utils import UCLCHEM_ROOT_DIR
-    >>> config = MakeratesConfig.from_yaml(UCLCHEM_ROOT_DIR/ "../../Makerates/user_settings.yaml")
+    >>> config = MakeratesConfig.from_yaml(UCLCHEM_ROOT_DIR / "../../Makerates/user_settings.yaml")
     >>> print(config.species_file)
     data/default/default_species.csv
 
@@ -48,7 +48,7 @@ class MakeratesConfig(BaseModel):
         ...,
         description=(
             "Path(s) to database reaction files. Can be a single path or list of paths. "
-            "Common databases: UMIST12, KIDA2014, etc."
+            "Common databases: UMIST, KIDA2014, etc."
         ),
     )
 
@@ -56,7 +56,7 @@ class MakeratesConfig(BaseModel):
         ...,
         description=(
             "Type(s) of reaction database corresponding to database_reaction_file. "
-            "Supported types: 'UMIST12', 'KIDA', 'UCL'. "
+            "Supported types: 'UMIST', 'KIDA', 'UCL'. "
             "Must have same length as database_reaction_file if both are lists."
         ),
     )
@@ -105,7 +105,7 @@ class MakeratesConfig(BaseModel):
     # OPTIONAL PARAMETERS - Exothermicity & Heating
     # ============================================================================
 
-    derive_reaction_exothermicity: bool | str | list[str] = Field(
+    derive_reaction_exothermicity: bool | str | set[str] = Field(
         default=False,
         description=(
             "Calculate reaction exothermicity from species binding energies and formation enthalpies. "
@@ -555,10 +555,10 @@ database_reaction_file: "data/umist12_reactions.csv"
 #   - "data/additional_reactions.csv"
 
 # Type(s) of reaction databases (must match database_reaction_file length)
-database_reaction_type: "UMIST12"
+database_reaction_type: "UMIST"
 # Or as a list:
 # database_reaction_type:
-#   - "UMIST12"
+#   - "UMIST"
 #   - "UCL"
 
 # ============================================================================
@@ -651,8 +651,7 @@ database_reaction_type: "UMIST12"
 # - Then reinstall: pip install .
 """
 
-        with Path(output_path).open("w") as f:
-            f.write(template)
+        Path(output_path).write_text(template)
 
         print(f"✓ Template configuration written to: {output_path}")
         print(
@@ -715,10 +714,9 @@ database_reaction_type: "UMIST12"
         path = Path(path)
         if path.is_absolute():
             return path
-        elif self._config_dir:
+        if self._config_dir:
             return (self._config_dir / path).resolve()
-        else:
-            return path.resolve()
+        return path.resolve()
 
     def get_all_reaction_files(self) -> list[Path]:
         """Get all reaction files (database + custom) as resolved paths.
@@ -781,3 +779,5 @@ database_reaction_type: "UMIST12"
             value = getattr(self, field_name)
             if value != field_info.default:  # Only log non-default values
                 logger.info(f"  {field_name}: {value}")
+            else:
+                logger.debug(f"  {field_name}: {value} (default)")

@@ -6,17 +6,18 @@ Deprecated
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import pandas as pd
+    from collections.abc import Iterable
+
 
 import uclchem
-from uclchem.constants import default_elements_to_check
+from uclchem.constants import ELEMENTS_TO_CHECK
 
 
 def test_ode_conservation(
-    element_list: list[str] | None = None,
+    element_list: Iterable[str] = ELEMENTS_TO_CHECK,  # ruff: ignore[pytest-parameter-with-default-argument]
 ) -> dict[str, float]:
     """Test whether the ODEs conserve elements.
 
@@ -25,9 +26,9 @@ def test_ode_conservation(
 
     Parameters
     ----------
-    element_list : list[str] | None
+    element_list : Iterable[str]
         A list of elements for which to check the conservation.
-        If None, use ``uclchem.constants.default_elements_to_check``. Default = None.
+        Default = ``uclchem.constants.ELEMENTS_TO_CHECK``.
 
     Returns
     -------
@@ -36,9 +37,6 @@ def test_ode_conservation(
         representing the total change of each element.
 
     """
-    if element_list is None:
-        element_list = default_elements_to_check
-
     param_dict = {
         "endatfinaldensity": False,
         "freefall": True,
@@ -50,9 +48,9 @@ def test_ode_conservation(
     model = uclchem.model.Cloud(param_dict)
     model.check_error()
 
-    physics_df, abundances_df = model.get_dataframes(joined=False)
+    _physics_df, abundances_df = model.get_split_dataframes()
     result = uclchem.analysis.check_element_conservation(
-        cast("pd.DataFrame", abundances_df),
+        abundances_df,
         element_list=element_list,
         percent=False,
     )

@@ -62,6 +62,7 @@ def test_assignment_array_goes_to_dataset():
     m = Cloud()
     arr = np.zeros((3, 1, 4))
     m.test_array = arr
+    assert m._data is not None
     assert "test_array" in m._data, "Array attribute not stored in _data Dataset"
     # stored array should match the input
     np.testing.assert_array_equal(m._data["test_array"].values, arr)
@@ -73,7 +74,7 @@ def test_meta_survives_dataset_replace():
     # public scalar attributes (not PHYSICAL_PARAMETERS or specname which are global)
     run_type_to_store = "local"
     custom_flag_to_store = 42
-    m.run_type = run_type_to_store
+    m.run_type = run_type_to_store  # ty: ignore[invalid-assignment]
     m.custom_flag = custom_flag_to_store
 
     # Simulate dataset replacement (as happens on load/pickle)
@@ -124,6 +125,7 @@ def test_pickle_roundtrip_preserves_meta_and_arrays():
     assert m.some_meta == "meta", (
         "String metadata 'some_meta' not preserved after pickle/unpickle"
     )
+    assert m._data is not None
     assert "example_array" in m._data, (
         "Array attribute 'example_array' not preserved after pickle/unpickle"
     )
@@ -157,6 +159,7 @@ def test_legacy_read_infers_dstep_and_uses_global_constants(legacy_file_without_
     )
 
     # Coordinates should match global constants
+    assert model._data is not None
     assert list(model._data.coords["physics_values"].values) == list(
         PHYSICAL_PARAMETERS
     ), "physics_values coordinate mismatch after inferring dstep"
@@ -175,7 +178,7 @@ def test_physical_parameters_always_from_global():
     # Both should use the same global constant (can't be modified per-instance)
     from uclchem.constants import PHYSICAL_PARAMETERS as CONST
 
-    assert PHYSICAL_PARAMETERS == [
+    assert PHYSICAL_PARAMETERS == (
         "Time",
         "Density",
         "gasTemp",
@@ -187,7 +190,7 @@ def test_physical_parameters_always_from_global():
         "parcel_radius",
         "av_internal",
         "radfield_internal",
-    ], "PHYSICAL_PARAMETERS constant has been modified!"
+    ), "PHYSICAL_PARAMETERS constant has been modified!"
     assert list(PHYSICAL_PARAMETERS) == list(CONST), "PHYSICAL_PARAMETERS mismatch"
     assert len(PHYSICAL_PARAMETERS) >= 8, (
         "UCLCHEM having less than 8 physical parameters is suspicious"
@@ -220,12 +223,14 @@ def test_setattr_preserves_underscored_attributes():
 def test_scalar_meta_not_stored_in_dataset():
     """Non-array scalar values should be stored in _meta, not in xarray Dataset."""
     m = Cloud()
-    m.scalar_value = 42.5
-    m.string_value = "test"
+    test_value = 42.5
+    test_string = "test"
+    m.scalar_value = test_value
+    m.string_value = test_string
 
     # Should be in _meta, not in _data
-    assert m.scalar_value == 42.5, "Scalar value mismatch in _meta"
-    assert m.string_value == "test", "String value mismatch in _meta"
+    assert m.scalar_value == test_value, "Scalar value mismatch in _meta"
+    assert m.string_value == test_string, "String value mismatch in _meta"
     assert "scalar_value" in m._meta, "Scalar value not found in _meta"
     assert "string_value" in m._meta, "String value not found in _meta"
 
@@ -238,6 +243,7 @@ def test_dstep_inference_validation(legacy_file_without_dstep):
         model = Cloud(read_file=legacy_file_without_dstep)
 
     # Verify dstep was properly added
+    assert model._data is not None
     assert "dstep" in model._data.coords["physics_values"].values, (
         "dstep coordinate not found in physics_values"
     )

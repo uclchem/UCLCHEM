@@ -76,12 +76,13 @@ Usage Patterns
 
 """
 
-from typing import Any, cast
+from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
-from uclchem.constants import TIMEPOINTS, default_elements_to_check
+from uclchem.constants import ELEMENTS_TO_CHECK, TIMEPOINTS
 from uclchem.model import (
     AbstractModel,
     Cloud,
@@ -94,11 +95,11 @@ from uclchem.model import (
 
 def __validate_functional_api_params__(
     param_dict: dict | None,
-    return_array: bool,
-    return_dataframe: bool,
-    return_rate_constants: bool,
-    return_heating: bool,
-    starting_chemistry: np.ndarray | None,  # noqa: ARG001
+    *,
+    return_array: bool = False,
+    return_dataframe: bool = False,
+    return_rate_constants: bool = False,
+    return_heating: bool = False,
     return_stats: bool = False,
 ) -> None:
     """Validate functional API specific constraints.
@@ -110,15 +111,13 @@ def __validate_functional_api_params__(
     param_dict : dict | None
         The parameter dictionary
     return_array : bool
-        Whether arrays are being returned
+        Whether arrays are being returned. Default = False.
     return_dataframe : bool
-        Whether DataFrames are being returned
+        Whether DataFrames are being returned. Default = False.
     return_rate_constants : bool
-        Whether rate constants are being returned
+        Whether rate constants are being returned. Default = False.
     return_heating : bool
-        Whether heating arrays are being returned
-    starting_chemistry : np.ndarray | None
-        Starting chemistry array if provided
+        Whether heating arrays are being returned. Default = False.
     return_stats : bool
         Whether DVODE statistics should be returned. Default = False.
 
@@ -153,7 +152,7 @@ def __validate_functional_api_params__(
 def _write_column_file(
     model_object: AbstractModel,
     original_param_dict: dict | None,
-    out_species: list[str] | None,
+    out_species: Sequence[str] | None,
 ) -> None:
 
     if original_param_dict is None:
@@ -176,12 +175,13 @@ def _write_column_file(
 
 def __functional_return__(
     model_object: AbstractModel,
+    out_species: Sequence[str] | None = ELEMENTS_TO_CHECK,
+    *,
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
-    out_species: list[str] | None = None,
 ) -> tuple:
     """Return function that takes in the object that was modeled and returns the values.
 
@@ -192,6 +192,9 @@ def __functional_return__(
     model_object : AbstractModel
         model_object of a class that inherited from AbstractModel,
         from which the results should be returned.
+    out_species : Sequence[str] | None
+        List of species names to return abundances for.
+        Default = :data:`uclchem.constants.ELEMENTS_TO_CHECK`.
     return_array : bool
         A boolean on whether a np.array should be returned to a user.
         If both return_array and return_dataframe are false, the function will return
@@ -210,8 +213,6 @@ def __functional_return__(
         should be returned to a user. (Default value = False)
     return_stats : bool
         Whether DVODE statistics should be returned. Default = False.
-    out_species : list[str] | None
-        List of species names to return abundances for. (Default value = None)
 
     Returns
     -------
@@ -262,9 +263,9 @@ def __functional_return__(
     if return_dataframe:
         # If multiple spatial points are present, return DataFrames concatenated across points
         points = model_object._param_dict.get("points", 1)
-        rate_constants_df = None
-        heating_df = None
-        stats_df = None
+        rate_constants_df: pd.DataFrame | None = None
+        heating_df: pd.DataFrame | None = None
+        stats_df: pd.DataFrame | None = None
 
         if points > 1:
             physics_list: list[pd.DataFrame] = []
@@ -273,32 +274,27 @@ def __functional_return__(
             heating_list: list[pd.DataFrame] = []
             stats_list: list[pd.DataFrame] = []
             for pt in range(points):
-                res = model_object.get_dataframes(
+                res = model_object.get_split_dataframes(
                     point=pt,
-                    joined=False,
                     with_rate_constants=return_rate_constants,
                     with_heating=return_heating,
                     with_stats=return_stats,
                 )
-                phys = cast("pd.DataFrame", res[0]).copy()
-                chem = cast("pd.DataFrame", res[1]).copy()
+                phys = res[0].copy()
+                chem = res[1].copy()
                 phys["Point"] = pt + 1
                 chem["Point"] = pt + 1
                 physics_list.append(phys)
                 chemistry_list.append(chem)
                 idx = 2
                 if return_rate_constants and len(res) > idx:
-                    rate_constants_list.append(
-                        cast("pd.DataFrame", res[idx]).assign(Point=pt + 1)
-                    )
+                    rate_constants_list.append(res[idx].assign(Point=pt + 1))
                     idx += 1
                 if return_heating and len(res) > idx:
-                    heating_list.append(
-                        cast("pd.DataFrame", res[idx]).assign(Point=pt + 1)
-                    )
+                    heating_list.append(res[idx].assign(Point=pt + 1))
                     idx += 1
                 if return_stats and len(res) > idx:
-                    stats_list.append(cast("pd.DataFrame", res[idx]).assign(Point=pt + 1))
+                    stats_list.append(res[idx].assign(Point=pt + 1))
 
             phys_df: pd.DataFrame = pd.concat(physics_list, ignore_index=True)
             chem_df: pd.DataFrame = pd.concat(chemistry_list, ignore_index=True)
@@ -313,23 +309,22 @@ def __functional_return__(
             stats_df = pd.concat(stats_list, ignore_index=True) if stats_list else None
         else:
             # Single point: behave as before but include a Point column
-            result_dfs = model_object.get_dataframes(
-                joined=False,
+            result_dfs = model_object.get_split_dataframes(
                 with_rate_constants=return_rate_constants,
                 with_heating=return_heating,
                 with_stats=return_stats,
             )
-            phys_df = cast("pd.DataFrame", result_dfs[0])
-            chem_df = cast("pd.DataFrame", result_dfs[1])
+            phys_df = result_dfs[0]
+            chem_df = result_dfs[1]
             idx = 2
             if return_rate_constants and len(result_dfs) > idx:
-                rate_constants_df = cast("pd.DataFrame", result_dfs[idx])
+                rate_constants_df = result_dfs[idx]
                 idx += 1
             if return_heating and len(result_dfs) > idx:
-                heating_df = cast("pd.DataFrame", result_dfs[idx])
+                heating_df = result_dfs[idx]
                 idx += 1
             if return_stats and len(result_dfs) > idx:
-                stats_df = cast("pd.DataFrame", result_dfs[idx])
+                stats_df = result_dfs[idx]
             phys_df["Point"] = 1
             chem_df["Point"] = 1
 
@@ -339,10 +334,11 @@ def __functional_return__(
             result.append(stats_df)
         if hasattr(model_object, "dissipation_time"):
             result.append(model_object.dissipation_time)
-        result.append(model_object.next_starting_chemistry_array)
-        result.append(model_object.success_flag)
+        result.extend(
+            (model_object.next_starting_chemistry_array, model_object.success_flag)
+        )
         return tuple(result)
-    elif return_array:
+    if return_array:
         # Build result tuple - stats only included when requested (for backward compatibility)
         result = [
             model_object.physics_array,
@@ -359,26 +355,27 @@ def __functional_return__(
         return tuple(result)
     # Disk mode with file output
     # FIXED format: [success_flag, abundances] OR [success_flag, dissipation_time, abundances]
-    elif hasattr(model_object, "dissipation_time"):
+    if hasattr(model_object, "dissipation_time"):
         return (
             model_object.success_flag,
             model_object.dissipation_time,
-        ) + tuple(out_species_abundances_array)
-    else:
-        return (model_object.success_flag,) + tuple(out_species_abundances_array)
+            *tuple(out_species_abundances_array),
+        )
+    return (model_object.success_flag, *tuple(out_species_abundances_array))
 
 
-def __cloud__(
+def cloud(
     param_dict: dict | None = None,
-    out_species: list[str] | None = None,
+    out_species: Sequence[str] | None = ELEMENTS_TO_CHECK,
+    starting_chemistry: np.ndarray | None = None,
+    timepoints: int = TIMEPOINTS,
+    *,
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
-    starting_chemistry: np.ndarray | None = None,
-    timepoints: int = TIMEPOINTS,
-):
+) -> tuple:
     """Run cloud model from UCLCHEM.
 
     Parameters
@@ -386,10 +383,16 @@ def __cloud__(
     param_dict : dict | None
         A dictionary of parameters where keys are any of the variables in
         `defaultparameters.f90` and values are value for current run.
-    out_species : list[str] | None
+    out_species : Sequence[str] | None
         A list of species for which final abundance will be returned.
         If None, no abundances will be returned.
-        Defaults to `uclchem.constants.default_elements_to_check`.
+        Defaults to `uclchem.constants.ELEMENTS_TO_CHECK`.
+    starting_chemistry : np.ndarray | None
+        Array containing the starting chemical abundances
+        needed by uclchem. (Default value = None)
+    timepoints : int
+        Integer value of how many timesteps should be calculated before
+        aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
     return_array : bool
         A boolean on whether a np.array should be returned to a user.
         If both return_array and return_dataframe are false,
@@ -406,18 +409,13 @@ def __cloud__(
         be returned to a user. (Default value = False)
     return_stats : bool
         Whether DVODE statistics should be returned. Default = False.
-    starting_chemistry : np.ndarray | None
-        Array containing the starting chemical abundances
-        needed by uclchem. (Default value = None)
-    timepoints : int
-        Integer value of how many timesteps should be calculated before
-        aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
 
     Returns
     -------
-    if return_array and return_dataframe are False
-        - A list where the first element is always an integer which is negative if the model failed
-                to run. Can be passed to `uclchem.utils.check_error()` to see more details.
+    tuple
+        if return_array and return_dataframe are False
+            - A list where the first element is always an integer which is negative if the model
+                failed to run. Can be passed to `uclchem.utils.check_error()` to see more details.
                 If the `out_species` parameter is provided, the remaining elements of this list
                 will be the final abundances of the species in out_species.
         if return_array is True:
@@ -450,9 +448,6 @@ def __cloud__(
                 Can be passed to `uclchem.utils.check_error()` to see more details.
 
     """
-    if out_species is None:
-        out_species = default_elements_to_check
-
     # Validate functional API constraints
     __validate_functional_api_params__(
         param_dict=param_dict,
@@ -460,7 +455,6 @@ def __cloud__(
         return_dataframe=return_dataframe,
         return_rate_constants=return_rate_constants,
         return_heating=return_heating,
-        starting_chemistry=starting_chemistry,
         return_stats=return_stats,
     )
 
@@ -483,18 +477,19 @@ def __cloud__(
     )
 
 
-def __collapse__(
+def collapse(
     collapse: str,
     param_dict: dict | None = None,
-    out_species: list[str] | None = None,
+    out_species: Sequence[str] | None = ELEMENTS_TO_CHECK,
+    starting_chemistry: np.ndarray | None = None,
+    timepoints: int = TIMEPOINTS,
+    *,
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
-    starting_chemistry: np.ndarray | None = None,
-    timepoints: int = TIMEPOINTS,
-):
+) -> tuple:
     """Run collapse model from UCLCHEM based on Priestley et al 2018 AJ 156 51 (https://ui.adsabs.harvard.edu/abs/2018AJ....156...51P/abstract).
 
     Parameters
@@ -505,10 +500,16 @@ def __collapse__(
     param_dict : dict | None
         A dictionary of parameters where keys are any of the variables in
         `defaultparameters.f90` and values are value for current run.
-    out_species : list[str] | None
+    out_species : Sequence[str] | None
         A list of species for which final abundance will be returned.
         If None, no abundances will be returned.
-        Defaults to `uclchem.constants.default_elements_to_check`.
+        Defaults to `uclchem.constants.ELEMENTS_TO_CHECK`.
+    starting_chemistry : np.ndarray | None
+        Array containing the starting chemical abundances
+        needed by UCLCHEM. (Default value = None)
+    timepoints : int
+        Integer value of how many timesteps should be calculated before aborting
+        the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`
     return_array : bool
         A boolean on whether a np.array should be returned to a user.
         If both return_array and return_dataframe are false,
@@ -525,17 +526,12 @@ def __collapse__(
         returned to a user. Default = False.
     return_stats : bool
         Whether DVODE statistics should be returned. Default = False.
-    starting_chemistry : np.ndarray | None
-        Array containing the starting chemical abundances
-        needed by UCLCHEM. (Default value = None)
-    timepoints : int
-        Integer value of how many timesteps should be calculated before aborting
-        the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`
 
     Returns
     -------
-    if return_array and return_dataframe are False
-        - A list where the first element is always an integer which is negative if the model
+    tuple
+        if return_array and return_dataframe are False
+            - A list where the first element is always an integer which is negative if the model
                 failed to run. Can be passed to `uclchem.utils.check_error()` to see more details.
                 If the `out_species` parameter is provided, the remaining elements of this list
                 will be the final abundances of the species in out_species.
@@ -569,16 +565,12 @@ def __collapse__(
                 Can be passed to `uclchem.utils.check_error()` to see more details.
 
     """
-    if out_species is None:
-        out_species = default_elements_to_check
-
     __validate_functional_api_params__(
         param_dict,
-        return_array,
-        return_dataframe,
-        return_rate_constants,
-        return_heating,
-        starting_chemistry,
+        return_array=return_array,
+        return_dataframe=return_dataframe,
+        return_rate_constants=return_rate_constants,
+        return_heating=return_heating,
         return_stats=return_stats,
     )
 
@@ -602,19 +594,20 @@ def __collapse__(
     )
 
 
-def __prestellar_core__(
+def prestellar_core(
     temp_index: int = 1,
     max_temperature: float = 300.0,
     param_dict: dict | None = None,
-    out_species: list[str] | None = None,
+    out_species: Sequence[str] | None = ELEMENTS_TO_CHECK,
+    starting_chemistry: np.ndarray | None = None,
+    timepoints: int = TIMEPOINTS,
+    *,
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
-    starting_chemistry: np.ndarray | None = None,
-    timepoints: int = TIMEPOINTS,
-):
+) -> tuple:
     """Run prestellar core model from UCLCHEM, based on Viti et al. 2004 and Collings et al. 2004.
 
     This model type was previously known as hot core.
@@ -629,10 +622,16 @@ def __prestellar_core__(
     param_dict : dict | None
         A dictionary of parameters where keys are any of the variables
         in `defaultparameters.f90` and values are value for current run.
-    out_species : list[str] | None
+    out_species : Sequence[str] | None
         A list of species for which final abundance will be returned.
         If None, no abundances will be returned.
-        Defaults to `uclchem.constants.default_elements_to_check`.
+        Defaults to `uclchem.constants.ELEMENTS_TO_CHECK`.
+    starting_chemistry : np.ndarray | None
+        Array containing the starting chemical abundances
+        needed by uclchem (Default value = None)
+    timepoints : int
+        Integer value of how many timesteps should be calculated before aborting
+        the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
     return_array : bool
         A boolean on whether a np.array should be returned to a user.
         If both return_array and return_dataframe are false,
@@ -649,18 +648,13 @@ def __prestellar_core__(
         returned to a user. (Default value = False)
     return_stats : bool
         Whether DVODE statistics should be returned. Default = False.
-    starting_chemistry : np.ndarray | None
-        Array containing the starting chemical abundances
-        needed by uclchem (Default value = None)
-    timepoints : int
-        Integer value of how many timesteps should be calculated before aborting
-        the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
 
     Returns
     -------
-    if return_array and return_dataframe are False
-        - A list where the first element is always an integer which is negative if the model failed
-                to run and can be sent to `uclchem.utils.check_error()` to see more details.
+    tuple
+        if return_array and return_dataframe are False
+            - A list where the first element is always an integer which is negative if the model
+                failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
                 If the `out_species` parameter is provided, the remaining elements of this list
                 will be the final abundances of the species in out_species.
         if return_array is True:
@@ -693,16 +687,12 @@ def __prestellar_core__(
                 Can be passed to `uclchem.utils.check_error()` to see more details.
 
     """
-    if out_species is None:
-        out_species = default_elements_to_check
-
     __validate_functional_api_params__(
         param_dict,
-        return_array,
-        return_dataframe,
-        return_rate_constants,
-        return_heating,
-        starting_chemistry,
+        return_array=return_array,
+        return_dataframe=return_dataframe,
+        return_rate_constants=return_rate_constants,
+        return_heating=return_heating,
         return_stats=return_stats,
     )
 
@@ -727,20 +717,21 @@ def __prestellar_core__(
     )
 
 
-def __cshock__(
+def cshock(
     shock_vel: float,
     timestep_factor: float = 0.01,
     minimum_temperature: float = 0.0,
     param_dict: dict | None = None,
-    out_species: list[str] | None = default_elements_to_check,
+    out_species: Sequence[str] | None = ELEMENTS_TO_CHECK,
+    starting_chemistry: np.ndarray | None = None,
+    timepoints: int = TIMEPOINTS,
+    *,
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
-    starting_chemistry: np.ndarray | None = None,
-    timepoints: int = TIMEPOINTS,
-):
+) -> tuple:
     """Run C-type shock model from UCLCHEM.
 
     Parameters
@@ -757,10 +748,16 @@ def __cshock__(
     param_dict : dict | None
         A dictionary of parameters where keys are any of the variables
         in `defaultparameters.f90` and values are value for current run.
-    out_species : list[str] | None
+    out_species : Sequence[str] | None
         A list of species for which final
         abundance will be returned. If None, no abundances will be returned.
-        Default = `uclchem.constants.default_elements_to_check`.
+        Default = `uclchem.constants.ELEMENTS_TO_CHECK`.
+    starting_chemistry : np.ndarray | None
+        np.ndarray containing the starting chemical abundances needed
+        by UCLCHEM. (Default value = None)
+    timepoints : int
+        Integer value of how many timesteps should be calculated before
+        aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
     return_array : bool
         Whether a np.array should be returned.
         If both return_array and return_dataframe are false,
@@ -775,17 +772,12 @@ def __cshock__(
         Whether the heating/cooling arrays should be returned to a user. (Default value = False)
     return_stats : bool
         Whether DVODE statistics should be returned. Default = False.
-    starting_chemistry : np.ndarray | None
-        np.ndarray containing the starting chemical abundances needed
-        by UCLCHEM. (Default value = None)
-    timepoints : int
-        Integer value of how many timesteps should be calculated before
-        aborting the UCLCHEM model. Defaults to `uclchem.constants.TIMEPOINTS`.
 
     Returns
     -------
-    if return_array and return_dataframe are False
-        - A list where the first element is always an integer which is negative if the model
+    tuple
+        if return_array and return_dataframe are False
+            - A list where the first element is always an integer which is negative if the model
                 failed to run and can be sent to `uclchem.utils.check_error()` to see more details.
                 If the model succeeded, the second element is the dissipation time and further
                 elements are the abundances of all species in `out_species`.
@@ -821,16 +813,12 @@ def __cshock__(
                 Can be passed to `uclchem.utils.check_error()` to see more details.
 
     """
-    if out_species is None:
-        out_species = default_elements_to_check
-
     __validate_functional_api_params__(
         param_dict,
-        return_array,
-        return_dataframe,
-        return_rate_constants,
-        return_heating,
-        starting_chemistry,
+        return_array=return_array,
+        return_dataframe=return_dataframe,
+        return_rate_constants=return_rate_constants,
+        return_heating=return_heating,
         return_stats=return_stats,
     )
 
@@ -856,18 +844,19 @@ def __cshock__(
     )
 
 
-def __jshock__(
+def jshock(
     shock_vel: float,
     param_dict: dict | None = None,
-    out_species: list[str] | None = default_elements_to_check,
+    out_species: Sequence[str] | None = ELEMENTS_TO_CHECK,
+    starting_chemistry: np.ndarray | None = None,
+    timepoints: int = TIMEPOINTS,
+    *,
     return_array: bool = False,
     return_dataframe: bool = False,
     return_rate_constants: bool = False,
     return_heating: bool = False,
     return_stats: bool = False,
-    starting_chemistry: np.ndarray | None = None,
-    timepoints: int = TIMEPOINTS,
-):
+) -> tuple:
     """Run J-type shock model from UCLCHEM.
 
     Parameters
@@ -877,10 +866,16 @@ def __jshock__(
     param_dict : dict | None
         A dictionary of parameters where keys are any of the variables in
         `defaultparameters.f90` and values are value for current run.
-    out_species : list[str] | None
+    out_species : Sequence[str] | None
         A list of species for which final abundance will be returned.
         If None, no abundances will be returned.
-        Defaults to `uclchem.constants.default_elements_to_check`.
+        Default = :data:`uclchem.constants.ELEMENTS_TO_CHECK`.
+    starting_chemistry : np.ndarray | None
+        np.ndarray containing the starting
+        chemical abundances needed by UCLCHEM. Default = None.
+    timepoints : int
+        Integer value of how many timesteps should be calculated
+        before aborting the UCLCHEM model. Defaults to uclchem.constants.TIMEPOINTS
     return_array : bool
         A boolean on whether a np.array should be returned to a user.
         If both return_array and return_dataframe are false, this function will default
@@ -897,17 +892,12 @@ def __jshock__(
         should be returned to a user. Default = False.
     return_stats : bool
         Whether to return DVODE stats. Default = False.
-    starting_chemistry : np.ndarray | None
-        np.ndarray containing the starting
-        chemical abundances needed by UCLCHEM. Default = None.
-    timepoints : int
-        Integer value of how many timesteps should be calculated
-        before aborting the UCLCHEM model. Defaults to uclchem.constants.TIMEPOINTS
 
     Returns
     -------
-    if return_array and return_dataframe are False
-        - A list where the first element is always an integer which is negative
+    tuple
+        if return_array and return_dataframe are False
+            - A list where the first element is always an integer which is negative
                 if the model failed to run. Can be passed to `uclchem.utils.check_error()`
                 to see more details. If the model succeeded, the second element
                 is the dissipation time and further elements are the abundances
@@ -942,16 +932,12 @@ def __jshock__(
                 Can be passed to `uclchem.utils.check_error()` to see more details.
 
     """
-    if out_species is None:
-        out_species = default_elements_to_check
-
     __validate_functional_api_params__(
         param_dict,
-        return_array,
-        return_dataframe,
-        return_rate_constants,
-        return_heating,
-        starting_chemistry,
+        return_array=return_array,
+        return_dataframe=return_dataframe,
+        return_rate_constants=return_rate_constants,
+        return_heating=return_heating,
         return_stats=return_stats,
     )
 
@@ -975,10 +961,4 @@ def __jshock__(
     )
 
 
-# Expose the functional API functions at module level
-cloud = __cloud__
-collapse = __collapse__
-prestellar_core = __prestellar_core__
-hot_core = __prestellar_core__  # Alias for backward compatibility
-cshock = __cshock__
-jshock = __jshock__
+hot_core = prestellar_core  # Alias for backward compatibility

@@ -17,8 +17,7 @@
 #
 # A common task is to run UCLCHEM over a grid of parameter combinations. This notebook shows how to use the built-in ```GridRunner``` class to doing so for regular grids.
 
-import os
-
+import pathlib
 from typing import Any
 
 import numpy as np
@@ -26,8 +25,8 @@ import numpy as np
 import uclchem
 
 # Ensure output directory exists
-if not os.path.exists("./output_3"):
-    os.makedirs("./output_3")
+if not pathlib.Path("./output_3").exists():
+    pathlib.Path("./output_3").mkdir(parents=True)
 
 
 # ## A Simple Grid
@@ -66,7 +65,7 @@ grid.run()
 # After running, we can do two things. First, we can validate element conservation using the ```check_conservation``` method. Second, we can check the status of the individual models by inspecting the list of models that were run.
 
 grid.check_conservation()
-grid.models
+print(grid.models)
 
 
 # Each model is stored in the "./output_3/grid_basic.h5" under the name listed in the key 'Model' for each of the entries of ```grid.models```. Each of these models can be loaded individually using the ```load_model``` function. If we wanted to load the model '9' with initialDens=10000, initialTemp=30 and zeta=10 we could do the following.
@@ -81,32 +80,36 @@ cloud = uclchem.model.load_model(file="./output_3/grid_basic.h5", name="9")
 # This class can be used in isolation, in the following way.
 
 # +
-sequential_model_params: list[dict[str, Any]] = [{
-    "Cloud": {
-        "param_dict": {
-            "endAtFinalDensity": False,  # stop at finalTime
-            "freefall": True,  # increase density in freefall
-            "initialDens": 1e2,  # starting density
-            "finalDens": 1e6,  # final density
-            "initialTemp": 10.0,  # temperature of gas
-            "finalTime": 6.0e6,  # final time
-            "rout": 0.1,  # radius of cloud in pc
-            "baseAv": 1.0,  # visual extinction at cloud edge.
+sequential_model_params: list[dict[str, Any]] = [
+    {
+        "Cloud": {
+            "param_dict": {
+                "endAtFinalDensity": False,  # stop at finalTime
+                "freefall": True,  # increase density in freefall
+                "initialDens": 1e2,  # starting density
+                "finalDens": 1e6,  # final density
+                "initialTemp": 10.0,  # temperature of gas
+                "finalTime": 6.0e6,  # final time
+                "rout": 0.1,  # radius of cloud in pc
+                "baseAv": 1.0,  # visual extinction at cloud edge.
+            }
         }
-    }},
-    {"CShock": {
-        "param_dict": {
-            "endAtFinalDensity": False,
-            "freefall": False,
-            "initialTemp": 10.0,
-            "finalTime": 1.0e5,
-            "abstol_factor": 1e-14,
-            "abstol_min": 1e-20,
-            "reltol": 1e-6,
-            "baseAv": 1,
-        },
-        "shock_vel": 10,
-    }}
+    },
+    {
+        "CShock": {
+            "param_dict": {
+                "endAtFinalDensity": False,
+                "freefall": False,
+                "initialTemp": 10.0,
+                "finalTime": 1.0e5,
+                "abstol_factor": 1e-14,
+                "abstol_min": 1e-20,
+                "reltol": 1e-6,
+                "baseAv": 1,
+            },
+            "shock_vel": 10,
+        }
+    },
 ]
 
 SequentialCShock = uclchem.model.SequentialRunner(
@@ -119,31 +122,35 @@ SequentialCShock = uclchem.model.SequentialRunner(
 
 # +
 models_to_run = [
-    {"Cloud": {
-        "param_dict": {
-            "endAtFinalDensity": False,  # stop at finalTime
-            "freefall": True,  # increase density in freefall
-            "initialDens": 1e2,  # starting density
-            "finalDens": np.logspace(4, 6, 3),  # final density
-            "initialTemp": 10.0,  # temperature of gas
-            "finalTime": 6.0e6,  # final time
-            "rout": 0.1,  # radius of cloud in pc
-            "baseAv": 1.0,  # visual extinction at cloud edge.
+    {
+        "Cloud": {
+            "param_dict": {
+                "endAtFinalDensity": False,  # stop at finalTime
+                "freefall": True,  # increase density in freefall
+                "initialDens": 1e2,  # starting density
+                "finalDens": np.logspace(4, 6, 3),  # final density
+                "initialTemp": 10.0,  # temperature of gas
+                "finalTime": 6.0e6,  # final time
+                "rout": 0.1,  # radius of cloud in pc
+                "baseAv": 1.0,  # visual extinction at cloud edge.
+            }
         }
-    }},
-    {"CShock": {
-        "param_dict": {
-            "endAtFinalDensity": False,
-            "freefall": False,
-            "initialTemp": 10.0,
-            "finalTime": 1.0e5,
-            "abstol_factor": 1e-14,
-            "abstol_min": 1e-20,
-            "reltol": 1e-6,
-            "baseAv": 1,
-        },
-        "shock_vel": np.linspace(10, 50, 3),
-    }},
+    },
+    {
+        "CShock": {
+            "param_dict": {
+                "endAtFinalDensity": False,
+                "freefall": False,
+                "initialTemp": 10.0,
+                "finalTime": 1.0e5,
+                "abstol_factor": 1e-14,
+                "abstol_min": 1e-20,
+                "reltol": 1e-6,
+                "baseAv": 1,
+            },
+            "shock_vel": np.linspace(10, 50, 3),
+        }
+    },
 ]
 
 complex_grid = uclchem.model.GridRunner(
@@ -153,8 +160,6 @@ complex_grid = uclchem.model.GridRunner(
     grid_file="./output_3/grid_complex.h5",
 )
 # -
-
-complex_grid.models
 
 # In the case of SequentialRunners being run in a grid, each individual model is saved using the naming convention of "<Model name>_<Model Class>_<Order in Sequence>" so the 6th model in our grid would consist of both "6_Cloud_0" and "6_CShock_1".
 
