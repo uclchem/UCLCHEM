@@ -6,8 +6,8 @@
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/uclchem/UCLCHEM/ci-lint.yml?style=for-the-badge&logo=precommit&label=pre-commit)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/uclchem/UCLCHEM/.github%2Fworkflows%2Fci-test-suite.yml?style=for-the-badge&logo=pytest&logoSize=auto)
 [![MIT License](https://img.shields.io/github/license/uclchem/UCLCHEM?style=for-the-badge)](https://github.com/uclchem/UCLCHEM/LICENSE.txt)
-![ty](https://img.shields.io/badge/ty-typed-brightgreen?style=for-the-badge&logo=ty&logoSize=auto&labelColor=%2330173d&color=007ec6)
-![ruff](https://img.shields.io/badge/ruff-lint-brightgreen?style=for-the-badge&logo=ruff&logoSize=auto&labelColor=%2330173d&color=007ec6)
+[![ty](https://img.shields.io/badge/-ty-gray?style=for-the-badge&logo=ty&logoColor=%2346ebe1&labelColor=gray&color=%2330173d)](https://github.com/astral-sh/ty)
+[![ruff](https://img.shields.io/badge/-ruff-gray?style=for-the-badge&logo=ruff&logoColor=%2346ebe1&labelColor=gray&color=%2330173d)](https://github.com/astral-sh/ruff)
 
 A gas-grain chemical code that propagates the abundances of chemical species through a network of user-defined reactions
 according to the physical conditions of the gas. We provide several physical models to enable the modeling of different
