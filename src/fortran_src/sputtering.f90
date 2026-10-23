@@ -16,8 +16,7 @@ module sputtering
     !f2py INTEGER, parameter :: dp
     use network, only: refractoryList, iceList, gasIceList, mass, &
         nh2, nhe, nc, no, nsi, nco, N_ICE_SPECIES
-    use physicscore, only: timeInYears
-    use SurfaceReactions, only: GAS_DUST_DENSITY_RATIO,GRAIN_RADIUS
+    use physicscore, only: timeInYears, GAS_DUST_DENSITY_RATIO, GRAIN_RADIUS
 
     implicit none
 
