@@ -6,6 +6,8 @@ fortran_parameters:
   - ckhion
   - ckldiss
   - cklion
+  - grain_density
+  - grain_radius
   - k_max
   - nw
   - tdsub
@@ -265,8 +267,6 @@ fortran_parameters:
   - diffuse_react_competition
   - effective_surface_mass
   - grain_crosssection_per_h
-  - grain_density
-  - grain_radius
   - grain_surfacearea_per_h
   - grains_have_ice
   - graphite_cross_section
