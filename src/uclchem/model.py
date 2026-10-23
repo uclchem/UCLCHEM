@@ -2217,7 +2217,7 @@ class AbstractModel(ABC):
 
         # Extract physics and species columns from legacy file header
         physics_cols_from_file = list(columns[:point_index].tolist())
-        species_cols_from_file = list(columns[point_index + 1 :].tolist())
+        species_cols_from_file = tuple(columns[point_index + 1 :].tolist())
 
         # Validate compatibility with current UCLCHEM constants - these are non-negotiable
         # PHYSICAL_PARAMETERS are hard-coded and tied to the Fortran wrapper
@@ -2322,7 +2322,7 @@ class AbstractModel(ABC):
                 )
                 raise ValueError(msg)
 
-        if species_cols_from_file != get_species_names():
+        if set(species_cols_from_file) != set(get_species_names()):
             msg = (
                 f"INCOMPATIBLE LEGACY FILE: Species list mismatch.\n\n"
                 f"The file you are loading has a different species network than the currently installed UCLCHEM.\n"

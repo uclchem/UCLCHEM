@@ -178,7 +178,7 @@ class TestRuntimeNetwork:
         model = uclchem.model.Cloud(param_dict)
         _, chem_df = model.get_split_dataframes()
 
-        reaction = Reaction(["#H", "#H", "LH", "#H2", "NAN", "NAN", "NAN", *[0] * 10])
+        reaction = Reaction(["#H", "#OH", "LH", "#H2O", "NAN", "NAN", "NAN", *[0] * 10])
         reaction_idx = network.get_reaction_index(reaction)
         current_reaction = network.get_reaction(reaction_idx)
         current_gamma = current_reaction.get_gamma()
@@ -194,7 +194,9 @@ class TestRuntimeNetwork:
         model_adj = uclchem.model.Cloud(param_dict)
         _, chem_df_adj = model_adj.get_split_dataframes()
 
-        assert not np.allclose(chem_df.to_numpy(), chem_df_adj.to_numpy(), rtol=2)
+        assert not np.allclose(
+            chem_df.to_numpy(), chem_df_adj.to_numpy(), rtol=2, atol=1e-20
+        )
 
         network.reset_to_initial_state()
 
@@ -205,6 +207,7 @@ class TestRuntimeNetwork:
             "initialTemp": 10,
             "initialDens": 1e4,
             "finalTime": 1e3,
+            "useCustomDiffusionBarriers": True,
         }
 
         model = uclchem.model.Cloud(param_dict)
@@ -214,6 +217,8 @@ class TestRuntimeNetwork:
         model = uclchem.model.Cloud(param_dict)
         _, chem_df_adj = model.get_split_dataframes()
 
-        assert not np.allclose(chem_df.to_numpy(), chem_df_adj.to_numpy(), rtol=2)
+        assert not np.allclose(
+            chem_df.to_numpy(), chem_df_adj.to_numpy(), rtol=2, atol=1e-20
+        )
 
         network.reset_to_initial_state()

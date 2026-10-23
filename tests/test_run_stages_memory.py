@@ -46,7 +46,7 @@ def test_static_model_return_array():
     )
 
     # Verify finalTime is respected (within 10% tolerance)
-    max_time = physics[:, 0].max()  # Time is first column
+    max_time = physics[:, 0, 0].max()  # Time is first column
     assert max_time <= 1.1 * params["finalTime"], (
         f"Model exceeded finalTime tolerance: {max_time:.2e} > {1.1 * params['finalTime']:.2e}"
     )
@@ -154,7 +154,7 @@ def test_collapse_hotcore_return_array():
     )
 
     # Verify finalTime is respected (within 10% tolerance)
-    max_time = physics[:, 0].max()
+    max_time = physics[:, 0, 0].max()
     assert max_time <= 1.1 * params["finalTime"], (
         f"Hot core exceeded finalTime tolerance: {max_time:.2e} > {1.1 * params['finalTime']:.2e}"
     )
