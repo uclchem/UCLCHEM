@@ -2,7 +2,14 @@ from contextlib import nullcontext
 
 import pytest
 
-from uclchem.makerates.reaction import CoupledReaction, Reaction, skip_reaction_validation
+from uclchem.makerates.reaction import (
+    ChargeConservationError,
+    CoupledReaction,
+    ElementalConservationError,
+    InvalidReactionTypeError,
+    Reaction,
+    skip_reaction_validation,
+)
 
 dummy_data = ["NAN"] * 8
 
@@ -12,7 +19,7 @@ with skip_reaction_validation():
         (Reaction(["H", "H", "NAN", "H", *dummy_data]), nullcontext()),
         (
             Reaction(["H+", "H", "NAN", "H2", *dummy_data]),
-            pytest.raises(ValueError, match="Charges not conserved"),
+            pytest.raises(ChargeConservationError, match="Charges not conserved"),
         ),
         (Reaction(["H+", "H-", "NAN", "H2", *dummy_data]), nullcontext()),
     ]
@@ -21,7 +28,7 @@ with skip_reaction_validation():
         (Reaction(["H", "H", "NAN", "H2", *dummy_data]), nullcontext()),
         (
             Reaction(["H", "H", "NAN", "H", *dummy_data]),
-            pytest.raises(ValueError, match="Elements not conserved"),
+            pytest.raises(ElementalConservationError, match="Elements not conserved"),
         ),
         (Reaction(["H+", "H", "NAN", "H2", *dummy_data]), nullcontext()),
         (Reaction(["H+", "H-", "NAN", "H2", *dummy_data]), nullcontext()),
@@ -36,34 +43,36 @@ with skip_reaction_validation():
         (
             Reaction(["#H", "H", "TWOBODY", "H2", *dummy_data]),
             pytest.raises(
-                ValueError,
+                InvalidReactionTypeError,
                 match="TWOBODY reactions must happen in the gas-phase",
             ),
         ),
         (
             Reaction(["H", "H", "TWOBODY", "#H2", *dummy_data]),
             pytest.raises(
-                ValueError,
+                InvalidReactionTypeError,
                 match="TWOBODY reactions must happen in the gas-phase",
             ),
         ),
         (
             Reaction(["H", "H", "TWOBODY", "H", "#H", *dummy_data]),
             pytest.raises(
-                ValueError, match="TWOBODY reactions must happen in the gas-phase"
+                InvalidReactionTypeError,
+                match="TWOBODY reactions must happen in the gas-phase",
             ),
         ),
         (
             Reaction(["H2", "TWOBODY", "NAN", "H", "H", *dummy_data]),
             pytest.raises(
-                ValueError,
+                InvalidReactionTypeError,
                 match="Reactions with type 'TWOBODY' should have two reactants",
             ),
         ),
         (
             Reaction(["#H2", "LH", "NAN", "#H", "#H", *dummy_data]),
             pytest.raises(
-                ValueError, match="Reactions with type 'LH' should have two reactants"
+                InvalidReactionTypeError,
+                match="Reactions with type 'LH' should have two reactants",
             ),
         ),
         (
@@ -73,7 +82,8 @@ with skip_reaction_validation():
         (
             Reaction(["#H", "THERM", "NAN", "#H", *dummy_data]),
             pytest.raises(
-                ValueError, match="THERM reactions must have all reactants on ice"
+                InvalidReactionTypeError,
+                match="THERM reactions must have all reactants on ice",
             ),
         ),
         (
@@ -83,14 +93,14 @@ with skip_reaction_validation():
         (
             Reaction(["#H", "FREEZE", "NAN", "#H", *dummy_data]),
             pytest.raises(
-                ValueError,
+                InvalidReactionTypeError,
                 match="FREEZE reactions must have all reactants in gas and products on ice",
             ),
         ),
         (
             Reaction(["H", "FREEZE", "NAN", "H", *dummy_data]),
             pytest.raises(
-                ValueError,
+                InvalidReactionTypeError,
                 match="FREEZE reactions must have all reactants in gas and products on ice",
             ),
         ),
@@ -100,15 +110,24 @@ with skip_reaction_validation():
         ),
         (
             Reaction(["H", "#H", "LH", "#H2", *dummy_data]),
-            pytest.raises(ValueError, match="LH reactions must happen fully on the ice"),
+            pytest.raises(
+                InvalidReactionTypeError,
+                match="LH reactions must happen fully on the ice",
+            ),
         ),
         (
             Reaction(["#H", "#H", "LH", "H2", *dummy_data]),
-            pytest.raises(ValueError, match="LH reactions must happen fully on the ice"),
+            pytest.raises(
+                InvalidReactionTypeError,
+                match="LH reactions must happen fully on the ice",
+            ),
         ),
         (
             Reaction(["#H", "#CH3OH", "LH", "#H2", "CH2O", *dummy_data]),
-            pytest.raises(ValueError, match="LH reactions must happen fully on the ice"),
+            pytest.raises(
+                InvalidReactionTypeError,
+                match="LH reactions must happen fully on the ice",
+            ),
         ),
         (
             Reaction(["H", "#CH3OH", "ER", "#H2", "#CH2O", *dummy_data]),
@@ -116,16 +135,20 @@ with skip_reaction_validation():
         ),
         (
             Reaction(["#H", "#CH3OH", "ER", "#H2", "#CH2O", *dummy_data]),
-            pytest.raises(ValueError, match="ER reactions must have one reactant"),
+            pytest.raises(
+                InvalidReactionTypeError, match="ER reactions must have one reactant"
+            ),
         ),
         (
             Reaction(["H", "CH3OH", "ER", "#H2", "#CH2O", *dummy_data]),
-            pytest.raises(ValueError, match="ER reactions must have one reactant"),
+            pytest.raises(
+                InvalidReactionTypeError, match="ER reactions must have one reactant"
+            ),
         ),
         (
             Reaction(["H", "H", "FREEZE", "#H2", *dummy_data]),
             pytest.raises(
-                ValueError,
+                InvalidReactionTypeError,
                 match="Reactions with type 'FREEZE' should have only one reactant",
             ),
         ),
