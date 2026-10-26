@@ -68,7 +68,7 @@ repos:
         description: "Format code consistently (indentation, quotes, whitespace)"
 
   - repo: https://github.com/JanEricNitschke/pymend
-    rev: v3.2.2
+    rev: v3.4.0
     hooks:
       - id: pymend
         name: "[style] Check docstrings with pymend"
