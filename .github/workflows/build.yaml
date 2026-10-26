@@ -38,7 +38,7 @@ jobs:
         run: python3 ./scripts/run_uclchem_tests.py
       
       - name: "[test:install] Run installation tests"
-        run: pytest tests/test_install.py -v
+        run: pytest tests/install/test_install.py -v
       
       - name: "[report:success] Installation successful - tests can proceed"
         run: echo "✓ Package installed and ready for testing"
