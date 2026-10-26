@@ -23,7 +23,7 @@ from pathlib import Path
 
 import yaml
 
-from uclchem.advanced.worker_state import _MODULE_NAMES
+from uclchem.advanced.constants import FORTRAN_MODULES
 from uclchem.utils import UCLCHEM_ROOT_DIR
 
 _FORTRAN_SRC = UCLCHEM_ROOT_DIR.parent / "fortran_src"
@@ -135,7 +135,6 @@ def parse_fortran_parameters(src_dir: Path) -> dict[str, list[str]]:
         Mapping of f2py module name (lowercase) to sorted list of PARAMETER names.
 
     """
-    known_modules = set(_MODULE_NAMES)
     result: dict[str, list[str]] = {}
 
     for f90 in sorted(src_dir.glob("*.f90")):
@@ -164,7 +163,7 @@ def parse_fortran_parameters(src_dir: Path) -> dict[str, list[str]]:
                     m = _MODULE_RE.match(line)
                     if m:
                         candidate = m.group(1).lower()
-                        if candidate in known_modules:
+                        if candidate in FORTRAN_MODULES:
                             module_name = candidate
 
                 if module_name is None:
@@ -186,6 +185,7 @@ def parse_fortran_parameters(src_dir: Path) -> dict[str, list[str]]:
         if module_name and params:
             result[module_name] = sorted(set(params))
 
+    print(result)
     return result
 
 

@@ -28,7 +28,12 @@ import numpy as np
 import uclchemwrap
 
 # Import parameter classifications from constants module
-from .constants import FILE_PATH_PARAMETERS, FORTRAN_PARAMETERS, INTERNAL_PARAMETERS
+from .constants import (
+    FILE_PATH_PARAMETERS,
+    FORTRAN_MODULES,
+    FORTRAN_PARAMETERS,
+    INTERNAL_PARAMETERS,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -547,28 +552,7 @@ class GeneralSettings:
     def _discover_modules(self):
         """Discover all available modules in uclchemwrap."""
         # Known module names
-        module_names = [
-            "defaultparameters",
-            "network",
-            "heating",
-            "physicscore",
-            "constants",
-            "cloud_mod",
-            "collapse_mod",
-            "cshock_mod",
-            "jshock_mod",
-            "hotcore",
-            "chemistry",
-            "rates",
-            "photoreactions",
-            "surfacereactions",
-            "io",
-            "f2py_constants",
-            "postprocess_mod",
-            "sputtering",
-        ]
-
-        for name in module_names:
+        for name in FORTRAN_MODULES:
             if hasattr(uclchemwrap, name):
                 module = getattr(uclchemwrap, name)
                 logger.debug(f"Creating ModuleSettings for module '{name}'")
@@ -579,6 +563,8 @@ class GeneralSettings:
                     INTERNAL_PARAMETERS,
                     FILE_PATH_PARAMETERS,
                 )
+            else:
+                logger.warning(f"Module 'uclchemwrap.{name}' not found.")
 
     def __getattr__(self, name: str) -> ModuleType:
         """Access modules as attributes.
