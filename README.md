@@ -1,6 +1,6 @@
 # UCLCHEM
 
-[![SciX](https://img.shields.io/badge/SciX-arXiv:2606.20265-blue?style=for-the-badge)](https://scixplorer.org/abs/2026arXiv260620265V/abstract)
+[![arXiv](https://img.shields.io/badge/arXiv-2606.20265-gray?style=for-the-badge&logo=arxiv&logoSize=auto&labelColor=gray&color=%23B31B1B)](https://https://arxiv.org/abs/2606.20265)
 [![GitHub Release](https://img.shields.io/github/v/release/uclchem/UCLCHEM?include_prereleases&style=for-the-badge)](https://github.com/uclchem/UCLCHEM/releases)
 ![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fuclchem%2FUCLCHEM%2Fmain%2Fpyproject.toml&style=for-the-badge&logo=python&logoSize=auto)
 [![Read the Docs](https://img.shields.io/readthedocs/uclchem?style=for-the-badge&logo=readthedocs)](https://uclchem.github.io)
