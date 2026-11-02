@@ -1,0 +1,124 @@
+{
+  "projectName": "UCLCHEM",
+  "projectOwner": "uclchem",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "files": [
+    "README.md"
+  ],
+  "badgeTemplate": "[![All Contributors](https://img.shields.io/github/all-contributors/uclchem/UCLCHEM?style=for-the-badge)](#contributors)",
+  "imageSize": 100,
+  "commitConvention": "angular",
+  "contributors": [
+    {
+      "login": "jonholdship",
+      "name": "Jon Holdship",
+      "avatar_url": "https://avatars.githubusercontent.com/u/11349588?v=4",
+      "profile": "https://github.com/jonholdship",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "GijsVermarien",
+      "name": "Gijs Vermariën",
+      "avatar_url": "https://avatars.githubusercontent.com/u/25642414?v=4",
+      "profile": "https://github.com/GijsVermarien",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "TobiasDijkhuis",
+      "name": "Tobias Dijkhuis",
+      "avatar_url": "https://avatars.githubusercontent.com/u/99098052?v=4",
+      "profile": "https://github.com/TobiasDijkhuis",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "Marcus-Keil",
+      "name": "Dr. Marcus Keil",
+      "avatar_url": "https://avatars.githubusercontent.com/u/37833544?v=4",
+      "profile": "https://github.com/Marcus-Keil",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "tomasjames",
+      "name": "Tomas James",
+      "avatar_url": "https://avatars.githubusercontent.com/u/5236734?v=4",
+      "profile": "https://github.com/tomasjames",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "Ross-ODonoghue",
+      "name": "Ross O'Donoghue",
+      "avatar_url": "https://avatars.githubusercontent.com/u/59836299?v=4",
+      "profile": "https://github.com/Ross-ODonoghue",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "Bamash",
+      "name": "Bamash",
+      "avatar_url": "https://avatars.githubusercontent.com/u/32938368?v=4",
+      "profile": "https://github.com/Bamash",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "lengoctram",
+      "name": "Le N. Tram",
+      "avatar_url": "https://avatars.githubusercontent.com/u/91097424?v=4",
+      "profile": "https://github.com/lengoctram",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "psharda",
+      "name": "Piyush Sharda",
+      "avatar_url": "https://avatars.githubusercontent.com/u/34922596?v=4",
+      "profile": "https://piyushsharda.wixsite.com/main",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "katarzynadutkowska",
+      "name": "Katarzyna M. Dutkowska",
+      "avatar_url": "https://avatars.githubusercontent.com/u/73302015?v=4",
+      "profile": "https://github.com/katarzynadutkowska",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "Diederick-V",
+      "name": "Diederick Vroom ",
+      "avatar_url": "https://avatars.githubusercontent.com/u/79215711?v=4",
+      "profile": "https://github.com/Diederick-V",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "JosephSalaris",
+      "name": "JosephSalaris",
+      "avatar_url": "https://avatars.githubusercontent.com/u/64165609?v=4",
+      "profile": "https://github.com/JosephSalaris",
+      "contributions": [
+        "bug"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "linkToUsage": true
+}
