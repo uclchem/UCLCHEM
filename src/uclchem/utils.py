@@ -441,11 +441,7 @@ def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
 
 @enum.unique
 class SuccessFlag(enum.IntEnum):
-    """SuccessFlag indicates whether the model failed or ran successfully,.
-
-    and if it failed how.
-
-    """
+    """SuccessFlag indicates whether the model failed or ran successfully, and if it failed how."""
 
     def __new__(cls, value: int, docstring: str) -> Self:  # ruff: ignore[undocumented-public-method]
         member = int.__new__(cls, value)
@@ -510,33 +506,35 @@ class SuccessFlag(enum.IntEnum):
             if not only_error:
                 print("Model ran successfully")
             return None
-        error_msg_dict = {
-            SuccessFlag.PARAMETER_READ_ERROR: "Parameter read failed. Likely due to a misspelled parameter name, compare your dictionary to the parameters docs.",
-            SuccessFlag.PHYSICS_INIT_ERROR: "Physics initialization failed. Often due to user choosing unacceptable parameters such as hot core masses or collapse modes that don't exist. Check the docs for your model function.",
-            SuccessFlag.CHEM_INIT_ERROR: "Chemistry initialization failed.",
-            SuccessFlag.INT_UNRECOVERABLE_ERROR: "Unrecoverable integrator error, DVODE failed to integrate the ODEs in a way that UCLCHEM could not fix. Run UCLCHEM tests to check your network works at all then try to see if bad parameter combination is at play.",
-            SuccessFlag.INT_TOO_MANY_FAILS_ERROR: "Too many integrator fails. DVODE failed to integrate the ODE and UCLCHEM repeatedly altered settings to try to make it pass but tried too many times without success so code aborted to stop infinite loop.",
-            SuccessFlag.NOT_ENOUGH_TIMEPOINTS_ERROR: "The model was stopped because there are not enough time points allocated in the time array. Increase the number of time points in the time array in constants.py and try again.",
-            SuccessFlag.PHYSICS_UPDATE_ERROR: "Physics update error during integration.",
-            SuccessFlag.SOLVER_STATS_OVERFLOW_ERROR: "Solver statistics array overflows, add more timepoints",
-            SuccessFlag.COOLANT_FILE_ERROR: "Coolant data file could not be opened. Check that coolant data files exist in the expected directory.",
-            SuccessFlag.COOLANT_DATA_ERROR: "Coolant data file has invalid format (bad NLEVEL, invalid partner ID, or too many temperature values).",
-            SuccessFlag.COOLANT_FREQ_TOL_ERROR: "Frequency tolerance exceeded: the deviation between energy-level-computed and LAMDA-file frequencies exceeds freq_rel_tol. Increase freq_rel_tol or check your coolant data files.",
-            SuccessFlag.COOLANT_POP_TOL_ERROR: "LTE population sum tolerance exceeded: level populations do not sum to total density within pop_rel_tol.",
-            SuccessFlag.COOLANT_SOLVER_ERROR: "Coolant solver numerical error (NaN in matrix, singular matrix, or negative populations). The statistical equilibrium solver failed for a coolant species.",
-            SuccessFlag.COOLANT_CONFIG_ERROR: "Coolant configuration error: parent species not found in network, or unphysical abundance detected.",
-            SuccessFlag.NEGATIVE_ABUNDANCE_ERROR: "Negative abundance detected. That exceeds solver tolerances, consider adjusting the negative_abundance_tol parameter in param_dict to a larger magnitude",
-            SuccessFlag.CONSERVATION_ERROR: "Runtime conservation check failed: an element changed by more than runtime_conservation_tolerance. This usually indicates a severe integrator error or network bug. Set runtime_conservation_tolerance to a negative value to disable the check.",
-            SuccessFlag.ZERO_INNER_RADIUS_ERROR: "rin must be > 0 when enable_radiative_transfer=True with multiple points. The innermost parcel would be placed at r=0, causing division by zero in G0_internal_at_r. Set rin to a small positive value (e.g. rout/100).",
-            SuccessFlag.MISSING_START_ABUNDANCE_ERROR: "Starting abundances were requested (givestartabund) but the abundanceStart array was missing, had fewer rows than points, or had an all-zero row. Without this check the model would silently start every species at the abundance floor. Check that starting_chemistry/previous_model provides one row of abundances per point.",
-        }
 
-        msg = error_msg_dict[self]
+        msg = _ERROR_MESSAGES[self]
         if raise_on_error:
             error_msg = f"UCLCHEM error (code {self.name}, {self.value}): {msg}"
             raise RuntimeError(error_msg)
         return msg
 
+
+_ERROR_MESSAGES = MappingProxyType(
+    {
+        SuccessFlag.PARAMETER_READ_ERROR: "Parameter read failed. Likely due to a misspelled parameter name, compare your dictionary to the parameters docs.",
+        SuccessFlag.PHYSICS_INIT_ERROR: "Physics initialization failed. Often due to user choosing unacceptable parameters such as hot core masses or collapse modes that don't exist. Check the docs for your model function.",
+        SuccessFlag.CHEM_INIT_ERROR: "Chemistry initialization failed.",
+        SuccessFlag.INT_UNRECOVERABLE_ERROR: "Unrecoverable integrator error, DVODE failed to integrate the ODEs in a way that UCLCHEM could not fix. Run UCLCHEM tests to check your network works at all then try to see if bad parameter combination is at play.",
+        SuccessFlag.INT_TOO_MANY_FAILS_ERROR: "Too many integrator fails. DVODE failed to integrate the ODE and UCLCHEM repeatedly altered settings to try to make it pass but tried too many times without success so code aborted to stop infinite loop.",
+        SuccessFlag.NOT_ENOUGH_TIMEPOINTS_ERROR: "The model was stopped because there are not enough time points allocated in the time array. Increase the number of time points in the time array in constants.py and try again.",
+        SuccessFlag.PHYSICS_UPDATE_ERROR: "Physics update error during integration.",
+        SuccessFlag.SOLVER_STATS_OVERFLOW_ERROR: "Solver statistics array overflows, add more timepoints",
+        SuccessFlag.COOLANT_FILE_ERROR: "Coolant data file could not be opened. Check that coolant data files exist in the expected directory.",
+        SuccessFlag.COOLANT_DATA_ERROR: "Coolant data file has invalid format (bad NLEVEL, invalid partner ID, or too many temperature values).",
+        SuccessFlag.COOLANT_FREQ_TOL_ERROR: "Frequency tolerance exceeded: the deviation between energy-level-computed and LAMDA-file frequencies exceeds freq_rel_tol. Increase freq_rel_tol or check your coolant data files.",
+        SuccessFlag.COOLANT_POP_TOL_ERROR: "LTE population sum tolerance exceeded: level populations do not sum to total density within pop_rel_tol.",
+        SuccessFlag.COOLANT_SOLVER_ERROR: "Coolant solver numerical error (NaN in matrix, singular matrix, or negative populations). The statistical equilibrium solver failed for a coolant species.",
+        SuccessFlag.COOLANT_CONFIG_ERROR: "Coolant configuration error: parent species not found in network, or unphysical abundance detected.",
+        SuccessFlag.NEGATIVE_ABUNDANCE_ERROR: "Negative abundance detected. That exceeds solver tolerances, consider adjusting the negative_abundance_tol parameter in param_dict to a larger magnitude",
+        SuccessFlag.CONSERVATION_ERROR: "Runtime conservation check failed: an element changed by more than runtime_conservation_tolerance. This usually indicates a severe integrator error or network bug. Set runtime_conservation_tolerance to a negative value to disable the check.",
+        SuccessFlag.ZERO_INNER_RADIUS_ERROR: "rin must be > 0 when enable_radiative_transfer=True with multiple points. The innermost parcel would be placed at r=0, causing division by zero in G0_internal_at_r. Set rin to a small positive value (e.g. rout/100).",
+    }
+)
 
 # -------------------------------------------------------------------------------
 # 1D hot core helper routines:
