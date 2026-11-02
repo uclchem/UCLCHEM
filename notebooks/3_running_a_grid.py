@@ -17,8 +17,7 @@
 #
 # A common task is to run UCLCHEM over a grid of parameter combinations. This notebook shows how to use the built-in ```GridRunner``` class to doing so for regular grids.
 
-import os
-
+import pathlib
 from typing import Any
 
 import numpy as np
@@ -26,8 +25,8 @@ import numpy as np
 import uclchem
 
 # Ensure output directory exists
-if not os.path.exists("./output_3"):
-    os.makedirs("./output_3")
+if not pathlib.Path("./output_3").exists():
+    pathlib.Path("./output_3").mkdir(parents=True)
 
 
 # ## A Simple Grid
@@ -54,7 +53,7 @@ grid = uclchem.model.GridRunner(
     model_name_prefix="",
     delay_run=True,
 )
-print(f"Total models to run: {len(grid.flat_grids)}")
+print(f"Total models to run: {grid.num_models}")
 
 # # Run Grid
 #

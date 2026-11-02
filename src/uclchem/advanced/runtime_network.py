@@ -841,14 +841,11 @@ class RuntimeNetwork(BaseNetwork):
 
     @property
     def fortran_module(self) -> ModuleType:
-        """Direct access to Fortran module for advanced users.
+        """The fortran module.
+
+        Direct access to Fortran module for advanced users.
 
         Warning: Use with caution. Direct modification bypasses safety checks.
-
-        Returns
-        -------
-        ModuleType
-            The underlying Fortran module handle for this runtime network.
 
         """
         warnings.warn(

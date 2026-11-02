@@ -57,19 +57,20 @@ def legacy_file_without_dstep(tmp_path):
 # ============================================================================
 
 
-def test_assignment_array_goes_to_dataset():
+def test_assignment_array_goes_to_dataset(basic_cloud_copy):
     """Array variables with _array suffix should be stored in the xarray Dataset."""
-    m = Cloud()
     arr = np.zeros((3, 1, 4))
-    m.test_array = arr
-    assert "test_array" in m._data, "Array attribute not stored in _data Dataset"
+    basic_cloud_copy.test_array = arr
+    assert "test_array" in basic_cloud_copy._data, (
+        "Array attribute not stored in _data Dataset"
+    )
     # stored array should match the input
-    np.testing.assert_array_equal(m._data["test_array"].values, arr)
+    np.testing.assert_array_equal(basic_cloud_copy._data["test_array"].values, arr)
 
 
-def test_meta_survives_dataset_replace():
+def test_meta_survives_dataset_replace(basic_cloud_copy):
     """Scalar metadata should survive when _data Dataset is replaced."""
-    m = Cloud()
+    m = basic_cloud_copy
     # public scalar attributes (not PHYSICAL_PARAMETERS or specname which are global)
     run_type_to_store = "local"
     custom_flag_to_store = 42
@@ -87,9 +88,9 @@ def test_meta_survives_dataset_replace():
     )
 
 
-def test_save_load_restores_meta(tmp_path):
+def test_save_load_restores_meta(tmp_path, basic_cloud_copy):
     """Metadata should be preserved through save/load cycle."""
-    m = Cloud()
+    m = basic_cloud_copy
     m.some_meta = "xyz"
     m.custom_value = 123
 
@@ -109,9 +110,9 @@ def test_save_load_restores_meta(tmp_path):
     )
 
 
-def test_pickle_roundtrip_preserves_meta_and_arrays():
+def test_pickle_roundtrip_preserves_meta_and_arrays(basic_cloud_copy):
     """Both metadata and arrays should be preserved through pickle/unpickle."""
-    m = Cloud()
+    m = basic_cloud_copy
     m.some_meta = "meta"
     arr = np.ones((2, 1, 3))
     m.example_array = arr
@@ -202,24 +203,24 @@ def test_species_names_always_from_global():
     assert len(species) >= 20, "UCLCHEM having less than 20 species is suspicious"
 
 
-def test_getattr_raises_on_missing_attribute():
+def test_getattr_raises_on_missing_attribute(basic_cloud_copy):
     """__getattr__ should raise AttributeError for non-existent attributes."""
-    m = Cloud()
+    m = basic_cloud_copy
     with pytest.raises(AttributeError, match="no attribute"):
         _ = m.nonexistent_attribute
 
 
-def test_setattr_preserves_underscored_attributes():
+def test_setattr_preserves_underscored_attributes(basic_cloud_copy):
     """Attributes starting with underscore should be set as real attributes."""
-    m = Cloud()
+    m = basic_cloud_copy
     m._custom_internal = "value"
     assert m._custom_internal == "value", "Underscored attribute value mismatch"
     assert "_custom_internal" in m.__dict__, "Underscored attribute not set in __dict__"
 
 
-def test_scalar_meta_not_stored_in_dataset():
+def test_scalar_meta_not_stored_in_dataset(basic_cloud_copy):
     """Non-array scalar values should be stored in _meta, not in xarray Dataset."""
-    m = Cloud()
+    m = basic_cloud_copy
     m.scalar_value = 42.5
     m.string_value = "test"
 

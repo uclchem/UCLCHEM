@@ -123,7 +123,7 @@ plt.show()
 
 # %%
 if model.stats_array is None:
-    msg = f"Statistics array of model is None"
+    msg = "Statistics array of model is None"
     raise ValueError(msg)
 print(f"Stats array shape: {model.stats_array.shape}")
 print(f"Total function evaluations: {model.stats_array[:, 0, 6].sum():.0f}")

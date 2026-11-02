@@ -2,7 +2,7 @@
 species_file: species.csv
 
 #core reactions from gas phase database
-database_reaction_file : ../../../Makerates/data/databases/umist22.csv
+database_reaction_file : ../../../../Makerates/data/databases/umist22.csv
 database_reaction_type : UMIST
 #database_reaction_file : inputFiles/kida.uva.2014.dat
 #database_reaction_type : KIDA

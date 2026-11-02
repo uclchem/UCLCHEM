@@ -9,14 +9,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     import pandas as pd
 
 import uclchem
-from uclchem.constants import default_elements_to_check
+from uclchem.constants import DEFAULT_ELEMENTS_TO_CHECK
 
 
 def test_ode_conservation(
-    element_list: list[str] | None = None,
+    element_list: Iterable[str] | None = None,
 ) -> dict[str, float]:
     """Test whether the ODEs conserve elements.
 
@@ -25,7 +27,7 @@ def test_ode_conservation(
 
     Parameters
     ----------
-    element_list : list[str] | None
+    element_list : Iterable[str] | None
         A list of elements for which to check the conservation.
         If None, use ``uclchem.constants.default_elements_to_check``. Default = None.
 
@@ -37,7 +39,7 @@ def test_ode_conservation(
 
     """
     if element_list is None:
-        element_list = default_elements_to_check
+        element_list = DEFAULT_ELEMENTS_TO_CHECK
 
     param_dict = {
         "endatfinaldensity": False,

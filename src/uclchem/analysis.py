@@ -57,6 +57,7 @@ except ImportError as E:
         "Failed to import surfacereactions.f90 from uclchemwrap, did the installation with f2py succeed?"
     )
     raise
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, TextIO
 
@@ -64,7 +65,7 @@ import numpy as np
 import pandas as pd
 from pandas import Series, read_csv
 
-from uclchem.constants import default_elements_to_check, n_reactions, n_species
+from uclchem.constants import DEFAULT_ELEMENTS_TO_CHECK, n_reactions, n_species
 from uclchem.makerates.network import Network
 from uclchem.makerates.reaction import LH_REACTION_TYPES, Reaction
 from uclchem.makerates.species import Species, elementList
@@ -842,7 +843,7 @@ def total_element_abundance(element: str, df: pd.DataFrame) -> pd.Series:
 
 
 def check_element_conservation(
-    df: pd.DataFrame, element_list: list[str] | None = None, percent: bool = True
+    df: pd.DataFrame, element_list: Iterable[str] | None = None, percent: bool = True
 ) -> dict[str, str]:
     """Check the conservation of elements by comparing their total.
 
@@ -852,9 +853,9 @@ def check_element_conservation(
     ----------
     df : pd.DataFrame
         UCLCHEM output in format from `read_output_file`
-    element_list : list[str] | None
+    element_list : Iterable[str] | None
         List of elements to check. If None,
-        defaults to `uclchem.constants.default_elements_to_check`.
+        defaults to `uclchem.constants.DEFAULT_ELEMENTS_TO_CHECK`.
     percent : bool
         Whether to return the change formatted as a percentage. Default = False.
 
@@ -866,7 +867,7 @@ def check_element_conservation(
 
     """
     if element_list is None:
-        element_list = default_elements_to_check
+        element_list = DEFAULT_ELEMENTS_TO_CHECK
     result = {}
     for element in element_list:
         discrep = total_element_abundance(element, df).values

@@ -9,7 +9,7 @@ from uclchemwrap import f2py_constants
 from uclchem.advanced import HeatingSettings
 from uclchem.constants import PLANCK_CONSTANT_CGS, SPEED_OF_LIGHT_CGS
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 # Number of statistical evolution statistics per coolant
 # (converged flag, iterations, max_rel_change)
@@ -95,14 +95,14 @@ def get_energy_levels_info(
                 found_levels = True
                 nlevel = int(lines[j + 1].strip())
                 n_total_levels += nlevel
-                logger.debug(f"Coolant {coolant_name}: {nlevel} levels")
+                _logger.debug(f"Coolant {coolant_name}: {nlevel} levels")
                 break
 
         if not found_levels:
             msg = f"No 'NUMBER OF ENERGY LEVELS' marker found in {filepath}"
             raise ValueError(msg)
 
-    logger.info(
+    _logger.info(
         f"Total energy levels across {len(coolant_names)} coolants: {n_total_levels}"
     )
     return n_total_levels, N_SE_STATS_PER_COOLANT
@@ -236,7 +236,7 @@ def validate_coolant_frequencies(
         max_deviations[coolant_name] = max_dev
 
         if max_dev > 0.01:  # noqa: PLR2004 # Warn for > 1% deviation
-            logger.warning(
+            _logger.warning(
                 f"Coolant '{coolant_name}' ({coolant_file}): max frequency deviation "
                 f"{max_dev:.4f} ({max_dev * 100:.2f}%) at transition {worst_transition}"
             )
@@ -325,5 +325,5 @@ def load_coolant_level_names() -> dict[int, list[str]]:
         msg = "Some coolants have no parsed levels. Check coolant file format."
         raise RuntimeError(msg)
 
-    logger.debug(f"Loaded level names for {len(level_names)} coolants")
+    _logger.debug(f"Loaded level names for {len(level_names)} coolants")
     return level_names

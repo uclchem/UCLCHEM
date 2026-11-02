@@ -24,7 +24,7 @@ from uclchem.utils import UCLCHEM_ROOT_DIR, get_reaction_table, get_species_tabl
 from .reaction import REACTION_TYPES, CoupledReaction, Reaction
 from .species import Species
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 # ============================================================================
 # Abstract Base Classes
@@ -48,19 +48,19 @@ class NetworkABC(ABC):
     @property
     @abstractmethod
     def species(self) -> dict[str, Species]:
-        """Get the species collection."""
+        """The species collection."""
         pass
 
     @property
     @abstractmethod
     def reactions(self) -> dict[int, Reaction]:
-        """Get the reactions collection."""
+        """The reactions collection."""
         pass
 
     # Species Read Interface
     @abstractmethod
     def get_species_list(self) -> list[Species]:
-        """Get all species in the network."""
+        """All species in the network."""
         pass
 
     @abstractmethod
@@ -352,26 +352,12 @@ class BaseNetwork(NetworkABC):
 
     @property
     def species(self) -> dict[str, Species]:
-        """Get species dictionary.
-
-        Returns
-        -------
-        dict[str, Species]
-            Ordered dict of species in the network, keyed by name.
-
-        """
+        """Get species dictionary."""
         return self._species_dict
 
     @property
     def reactions(self) -> dict[int, Reaction]:
-        """Get reactions dictionary.
-
-        Returns
-        -------
-        dict[int, Reaction]
-            Ordered dict of reactions in the network, keyed by index.
-
-        """
+        """Get reactions dictionary."""
         return self._reactions_dict
 
     # ========================================================================
@@ -690,7 +676,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         if isinstance(reactions_path, bytes):
             reactions_path = reactions_path.decode()
 
-        logger.debug(f"Loading network from {species_path} and {reactions_path}")
+        _logger.debug(f"Loading network from {species_path} and {reactions_path}")
 
         # Load CSVs
         species_data = get_species_table(species_path)
@@ -811,14 +797,7 @@ class Network(BaseNetwork, MutableNetworkABC):
 
     @property
     def species(self) -> dict[str, Species]:
-        """Get species dictionary.
-
-        Returns
-        -------
-        dict[str, Species]
-            Ordered dict of species in the network, keyed by name.
-
-        """
+        """Get species dictionary."""
         return self._species_dict
 
     # Note: Read operations (get_species_list, get_reaction_list, etc.)
@@ -874,7 +853,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         species_list: list[Species]
         if isinstance(species, list):
             if len(species) == 0:
-                logger.warning("Tried to add empty species list, ignoring.")
+                _logger.warning("Tried to add empty species list, ignoring.")
                 return
             elif isinstance(species[0], Species):
                 species_list = species  # type: ignore[assignment]
@@ -897,12 +876,14 @@ class Network(BaseNetwork, MutableNetworkABC):
         for specie in species_list:
             # Filter out reaction types
             if specie.get_name() in REACTION_TYPES:
-                logger.info(f"Ignoring reaction type {specie.get_name()} in species list")
+                _logger.info(
+                    f"Ignoring reaction type {specie.get_name()} in species list"
+                )
                 continue
 
             # Warn on duplicates
             if specie.get_name() in self._species_dict:
-                logger.warning(
+                _logger.warning(
                     f"Species {specie.get_name()} already exists, keeping old definition"
                 )
                 continue
@@ -925,7 +906,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         if specie_name in self._species_dict:
             del self._species_dict[specie_name]
         else:
-            logger.warning(f"Species {specie_name} not found in network")
+            _logger.warning(f"Species {specie_name} not found in network")
 
     def sort_species(self) -> None:
         """Sort species by type and mass, with electron last."""
@@ -1010,7 +991,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         reactions_list: list[Reaction]
         if isinstance(reactions, list):
             if len(reactions) == 0:
-                logger.warning("Tried to add empty reactions list, ignoring.")
+                _logger.warning("Tried to add empty reactions list, ignoring.")
                 return
             elif isinstance(reactions[0], Reaction):
                 reactions_list = reactions  # type: ignore[assignment]
@@ -1058,7 +1039,7 @@ class Network(BaseNetwork, MutableNetworkABC):
             reaction_idx, _ = similar_reactions[0]
             del self._reactions_dict[reaction_idx]
         elif len(similar_reactions) == 0:
-            logger.warning(f"Reaction {reaction} not found in network")
+            _logger.warning(f"Reaction {reaction} not found in network")
         else:
             msg = (
                 f"Found {len(similar_reactions)} reactions matching {reaction}. "
@@ -1082,7 +1063,7 @@ class Network(BaseNetwork, MutableNetworkABC):
         if reaction_idx in self._reactions_dict:
             del self._reactions_dict[reaction_idx]
         else:
-            logger.warning(f"Reaction index {reaction_idx} not found in network")
+            _logger.warning(f"Reaction index {reaction_idx} not found in network")
 
     def get_reactions_by_types(self, reaction_type: str | list[str]) -> list[Reaction]:
         """Get the union of all reactions of a certain type.
@@ -1178,7 +1159,7 @@ class Network(BaseNetwork, MutableNetworkABC):
             if "@" in specie and "@H2O" in self._species_dict:
                 h2o_be = self._species_dict["@H2O"].get_binding_energy()
                 if self._species_dict[specie].get_binding_energy() == h2o_be:
-                    logger.warning(
+                    _logger.warning(
                         f"Changing binding energy of bulk species {specie} "
                         "that was previously @H2O binding energy limited"
                     )
@@ -1211,7 +1192,7 @@ class Network(BaseNetwork, MutableNetworkABC):
             self._reactions_dict[reaction_idx].set_gamma(barrier)
 
         elif len(similar_reactions) == 0:
-            logger.warning(f"Reaction {reaction} not found in network")
+            _logger.warning(f"Reaction {reaction} not found in network")
         else:
             msg = (
                 f"Found {len(similar_reactions)} reactions matching {reaction}. "

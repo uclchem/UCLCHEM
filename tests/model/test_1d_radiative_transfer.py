@@ -77,6 +77,10 @@ def hotcore_1d_params(base_1d_params):
             # (DVODE MXSTEP overflows from the hot-gas desorption front).
             "lum_star": 1e4,  # Stellar luminosity in Lsun
             "temp_star": 3e4,  # Stellar temperature in K
+            # 1e3 yr already gives the inner-warmer-than-outer gradient the tests
+            # check. Running to 1e4 yr takes hours per test now that chained models
+            # really start from the cloud abundances (see #215).
+            "finalTime": 1.0e3,
         }
     )
     return params
@@ -271,12 +275,12 @@ class Test1DHotcore:
 
         # Run with low stellar luminosity
         params_low = base_1d_params.copy()
-        params_low.update({"lum_star": 1e3, "temp_star": 3000})
+        params_low.update({"lum_star": 1e3, "temp_star": 3000, "finalTime": 1.0e3})
         code_low, radfield_low = _run_hotcore(params_low)
 
         # Run with high stellar luminosity (overwrites Fortran buffers from first run)
         params_high = base_1d_params.copy()
-        params_high.update({"lum_star": 1e4, "temp_star": 3e4})
+        params_high.update({"lum_star": 1e4, "temp_star": 3e4, "finalTime": 1.0e3})
         code_high, radfield_high = _run_hotcore(params_high)
 
         assert (

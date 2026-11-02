@@ -1,20 +1,8 @@
 import logging
-import shutil
 import sys
 import tempfile
-from pathlib import Path
-
-import pytest
 
 import uclchem
-
-
-@pytest.fixture(scope="module")
-def common_output_directory(request):
-    """Create temporary directory for test outputs."""
-    temp_dir = Path(tempfile.mkdtemp())
-    yield temp_dir
-    shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 def test_configure_suppress_logging(caplog):
@@ -65,7 +53,7 @@ def test_configure_logging_levels():
     for message_level in level_names_mapping:
         for logger_level in level_names_mapping:
             with tempfile.NamedTemporaryFile(mode="w+") as file:
-                uclchem.utils.configure_logging(level=logger_level, stream=file.name)  # ty: ignore[invalid-argument-type]
+                uclchem.utils.configure_logging(level=logger_level, stream=file.name)
                 uclchem_logger = logging.getLogger("uclchem")
                 log_method = getattr(uclchem_logger, message_level.lower())
                 uclchem_logger.propagate = True
@@ -82,23 +70,21 @@ def test_configure_logging_levels():
             )
 
 
-def test_model_logging(common_output_directory):
-    output_file = common_output_directory / "test_model_logging_debug.dat"
+def test_model_logging():
     with tempfile.NamedTemporaryFile(mode="w+") as file:
         uclchem.utils.configure_logging(level="DEBUG", stream=file.name)
-        model = uclchem.model.Cloud(param_dict={"outputFile": output_file})
+        model = uclchem.model.Cloud(param_dict={"finalTime": 1e3})
         model.check_error(only_error=True)
 
+        file.flush()
         lines = file.readlines()
     assert lines
 
-    output_file = common_output_directory / "test_model_logging_warn.dat"
     with tempfile.NamedTemporaryFile(mode="w+") as file:
         uclchem.utils.configure_logging(level="WARNING", stream=file.name)
-        model = uclchem.model.Cloud(param_dict={"outputFile": output_file})
+        model = uclchem.model.Cloud(param_dict={"finalTime": 1e3})
         model.check_error(only_error=True)
 
-        lines = file.readlines()
-
+        file.flush()
         lines = file.readlines()
     assert not lines

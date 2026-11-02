@@ -25,7 +25,8 @@
 # This is useful for understanding which physical processes drive the thermal evolution in your model.
 
 # %%
-import os
+
+import pathlib
 
 import matplotlib.pyplot as plt
 
@@ -33,7 +34,7 @@ import uclchem
 from uclchem import advanced
 
 # Ensure output directory exists
-os.makedirs("../examples/test-output", exist_ok=True)
+pathlib.Path("../examples/test-output").mkdir(exist_ok=True, parents=True)
 
 # %% [markdown]
 # ## Step 1: Run Baseline Model with All Mechanisms

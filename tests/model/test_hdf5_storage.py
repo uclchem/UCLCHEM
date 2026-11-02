@@ -56,22 +56,8 @@ _DEFAULT_PARAMS = {
 }
 
 
-@pytest.fixture(scope="module")
-def cloud_model():
-    """Create a single Cloud model to reuse across read-only tests.
-
-    Uses a short finalTime to keep the test fast while still producing
-    meaningful physics and chemistry arrays.
-
-    WARNING: Do not mutate this model (e.g. setting attributes or calling
-    save_model which is destructive). Use `fresh_cloud_model` instead.
-    """
-    model = Cloud(param_dict=dict(_DEFAULT_PARAMS))
-    return model
-
-
-@pytest.fixture(scope="module")
-def saved_model_file(cloud_model, tmp_path_factory):
+@pytest.fixture
+def saved_model_file(basic_cloud_copy, tmp_path_factory):
     """Save the module-scoped cloud model to a temp file ONCE and
     return (path, original arrays).
 
@@ -79,21 +65,15 @@ def saved_model_file(cloud_model, tmp_path_factory):
     arrays before saving so tests can compare against the originals.
     """
     # Snapshot arrays before save_model mutates _data
-    orig_physics = cloud_model.physics_array.copy()
-    orig_chem = cloud_model.chemical_abun_array.copy()
-    orig_param_dict = dict(cloud_model._param_dict)
-    orig_success_flag = cloud_model.success_flag
+    orig_physics = basic_cloud_copy.physics_array.copy()
+    orig_chem = basic_cloud_copy.chemical_abun_array.copy()
+    orig_param_dict = dict(basic_cloud_copy._param_dict)
+    orig_success_flag = basic_cloud_copy.success_flag
 
     tmpdir = tmp_path_factory.mktemp("saved")
     fpath = str(tmpdir / "saved.h5")
-    cloud_model.save_model(file=fpath, name="default", overwrite=True)
+    basic_cloud_copy.save_model(file=fpath, name="default", overwrite=True)
     return fpath, orig_physics, orig_chem, orig_param_dict, orig_success_flag
-
-
-@pytest.fixture
-def fresh_cloud_model():
-    """Create a fresh Cloud model (costly — use only when mutation is needed)."""
-    return Cloud(param_dict=dict(_DEFAULT_PARAMS))
 
 
 # ============================================================================
@@ -129,9 +109,9 @@ class TestSaveLoadRoundtrip:
             "_param_dict mismatch after save/load"
         )
 
-    def test_roundtrip_preserves_metadata(self, fresh_cloud_model, tmp_path):
+    def test_roundtrip_preserves_metadata(self, basic_cloud_copy, tmp_path):
         """Custom scalar metadata should survive save/load."""
-        model = fresh_cloud_model
+        model = basic_cloud_copy
         model.custom_meta_string = "test_value"
         model.custom_meta_int = 42
 
@@ -163,9 +143,9 @@ class TestSaveLoadRoundtrip:
 class TestMultipleModelsInFile:
     """Test storing and loading multiple models from a single HDF5 file."""
 
-    def test_two_models_different_names(self, tmp_path):
+    def test_two_models_different_names(self, basic_cloud_copy, tmp_path):
         """Two models saved under different names should both be loadable."""
-        model_a = Cloud(param_dict=dict(_DEFAULT_PARAMS))
+        model_a = basic_cloud_copy
         fpath = str(tmp_path / "multi.h5")
         model_a.save_model(file=fpath, name="model_a", overwrite=True)
 
@@ -190,9 +170,9 @@ class TestMultipleModelsInFile:
 class TestOverwrite:
     """Test overwrite=True and overwrite=False semantics."""
 
-    def test_overwrite_false_warns_and_does_not_replace(self, tmp_path):
+    def test_overwrite_false_warns_and_does_not_replace(self, basic_cloud_copy, tmp_path):
         """overwrite=False should warn and keep existing data unchanged."""
-        model = Cloud(param_dict=dict(_DEFAULT_PARAMS))
+        model = basic_cloud_copy
         orig_physics = model.physics_array.copy()
         fpath = str(tmp_path / "ow.h5")
         model.save_model(file=fpath, name="dup", overwrite=True)
@@ -469,9 +449,9 @@ class TestSequentialRunner:
 class TestSaveCreatesFile:
     """Verify save_model creates a new file when it doesn't exist."""
 
-    def test_save_is_non_destructive(self, tmp_path):
+    def test_save_is_non_destructive(self, basic_cloud_copy, tmp_path):
         """save_model should not mutate the model's internal _data dataset."""
-        model = Cloud(param_dict=dict(_DEFAULT_PARAMS))
+        model = basic_cloud_copy
         physics_before = model.physics_array.copy()
         chem_before = model.chemical_abun_array.copy()
         vars_before = set(model._data.variables)
@@ -490,9 +470,9 @@ class TestSaveCreatesFile:
             f"added={vars_after - vars_before}"
         )
 
-    def test_save_twice_produces_same_result(self, tmp_path):
+    def test_save_twice_produces_same_result(self, basic_cloud_copy, tmp_path):
         """Saving the same model twice to different files should produce identical loads."""
-        model = Cloud(param_dict=dict(_DEFAULT_PARAMS))
+        model = basic_cloud_copy
 
         fpath1 = str(tmp_path / "first.h5")
         fpath2 = str(tmp_path / "second.h5")
@@ -517,9 +497,9 @@ class TestSaveCreatesFile:
 class TestCoordinatePreservation:
     """Verify that xarray coordinates survive the save/load cycle."""
 
-    def test_coords_roundtrip(self, tmp_path):
+    def test_coords_roundtrip(self, basic_cloud_copy, tmp_path):
         """Coordinates in the xarray Dataset should be preserved."""
-        model = Cloud(param_dict=dict(_DEFAULT_PARAMS))
+        model = basic_cloud_copy
         # Snapshot coords before destructive save
         orig_coords = {k: v.values.copy() for k, v in model._data.coords.items()}
 
@@ -584,11 +564,11 @@ class TestDataIntegrity:
 class TestEngineParameterRemoved:
     """Verify that the old 'engine' parameter is no longer accepted."""
 
-    def test_save_model_rejects_engine_kwarg(self, fresh_cloud_model, tmp_path):
+    def test_save_model_rejects_engine_kwarg(self, basic_cloud_copy, tmp_path):
         """save_model should not accept an 'engine' parameter."""
         fpath = str(tmp_path / "engine.h5")
         with pytest.raises(TypeError):
-            fresh_cloud_model.save_model(file=fpath, name="default", engine="h5netcdf")
+            basic_cloud_copy.save_model(file=fpath, name="default", engine="h5netcdf")
 
     def test_load_model_rejects_engine_kwarg(self, saved_model_file):
         """load_model should not accept an 'engine' parameter."""
