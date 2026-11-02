@@ -857,12 +857,12 @@ def pad_to_length(array: np.ndarray, length: int, **kwargs) -> np.ndarray:
 
 
 def strip_comment(string: str, comment_char: str = "!") -> str:
-    """Remove Fortran inline comment (everything from ``!`` onward).
+    """Remove inline comment (everything from `comment_char` onward).
 
     Parameters
     ----------
     string : str
-        A single line of Fortran source code.
+        A single line of code.
     comment_char : str
         Character that indicates the beginning of a comment. Default = "!".
 

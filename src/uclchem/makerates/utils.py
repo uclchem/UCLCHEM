@@ -2,7 +2,7 @@
 
 import re
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 
@@ -128,10 +128,10 @@ def is_number(s: Any) -> bool:
 
 
 def sanitize_input_float(row: list[Any], index: int, default: Any = 0.0) -> float:
-    """Sanitize the input. If the index is out of bounds of the row or the value.
+    """Sanitize the input.
 
-    from the row cannot be turned into a float, use the `default` value.
-    Otherwise, just gets the value from the row.
+    If the index is out of bounds of the row or the value from the row cannot be turned into a
+    float, use the `default` value. Otherwise, just gets the value from the row.
 
     Parameters
     ----------
@@ -226,6 +226,8 @@ def check_reaction(reaction_row: list[Any], keep_list: list[str]) -> bool:
 
 FORTRAN_LINE_LENGTH = 80
 
+_FORTRAN_LINE_END_OPERATORS = frozenset({"*", "+", ",", '"'})
+
 
 def truncate_line(input_string: str, line_length: int = FORTRAN_LINE_LENGTH) -> str:
     """Take a string and add line endings at regular intervals.
@@ -248,8 +250,6 @@ def truncate_line(input_string: str, line_length: int = FORTRAN_LINE_LENGTH) -> 
     """
     result = ""
     i = 0
-    # we only want to split at operators to make it look nice
-    splits = ["*", "+", ",", '"']
     while len(input_string[i:]) > line_length:
         j = i + line_length
         if "\n" in input_string[i:j]:
@@ -257,7 +257,7 @@ def truncate_line(input_string: str, line_length: int = FORTRAN_LINE_LENGTH) -> 
             result += input_string[i:j]
         else:
             while (
-                input_string[j] not in splits
+                input_string[j] not in _FORTRAN_LINE_END_OPERATORS
                 or input_string[j - 1 : j + 1].lower() == "e+"
             ):
                 j -= 1
@@ -281,7 +281,7 @@ def replace_value_with_name(
     value : int | float
         value to replace
     replace_string : str
-        string to put instead of ``value``
+        string to put instead of `value`
     truncate : bool
         Whether to truncate the line using func:`truncate_line`.
         Default = True.
@@ -289,12 +289,12 @@ def replace_value_with_name(
     Returns
     -------
     replaced_string : str
-        string with ``value`` replaced.
+        string with `value` replaced.
 
     Raises
     ------
     TypeError
-        If ``value`` is not an instance of ``int`` or ``float``.
+        If `value` is not an instance of ``int`` or ``float``.
 
     Examples
     --------
@@ -344,7 +344,7 @@ def replace_value_with_name(
 def array_to_string(
     name: str,
     array: list | np.ndarray,
-    value_type: str = "int",
+    value_type: Literal["int", "float", "string", "logical"] = "int",
     length_name: str | None = None,
     *,
     parameter: bool = True,
@@ -357,9 +357,8 @@ def array_to_string(
         Variable name of array in Fortran
     array : list | np.ndarray
         List of values of array
-    value_type : str
-        The array's type. Must be one of "int", "float", "string" or "logical".
-        Defaults to "int".
+    value_type : Literal['int', 'float', 'string', 'logical']
+        The array's type. Defaults to "int".
     length_name : str | None
         Name to put in the ``dimension`` statement.
         If None, simply but the length of the array (or shape for 2D arrays).
@@ -459,7 +458,8 @@ def separate_common_terms(string: str, term_to_separate: str) -> str:
     Raises
     ------
     ValueError
-        If a term `string` does not contain ``f"*{term_to_separate}"``.
+        If a term `string` does not contain ``f"*{term_to_separate}"``, or if division
+        by `term_to_separate` is found.
 
     Notes
     -----
