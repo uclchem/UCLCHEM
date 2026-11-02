@@ -10,6 +10,10 @@
 [![ty](https://img.shields.io/badge/-ty-gray?style=for-the-badge&logo=ty&logoColor=%2346ebe1&labelColor=gray&color=%2330173d)](https://github.com/astral-sh/ty)
 [![ruff](https://img.shields.io/badge/-ruff-gray?style=for-the-badge&logo=ruff&logoColor=%2346ebe1&labelColor=gray&color=%2330173d)](https://github.com/astral-sh/ruff)
 
+<div align="center">
+  <img src="https://raw.githubusercontent.com/uclchem/UCLCHEM/main/images/uclchem.pdf" width="200">
+</div>
+
 A gas-grain chemical code that propagates the abundances of chemical species through a network of user-defined reactions
 according to the physical conditions of the gas. We provide several physical models to enable the modeling of different
 astrophysical environments and a utility script `MakeRates` to help the user produce a chemical network from simple
