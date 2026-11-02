@@ -161,6 +161,7 @@ We use the [MIT License](https://github.com/uclchem/UCLCHEM/blob/main/LICENSE.tx
 
 Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/en/reference/emoji-key/)):
 
+<!-- spellchecker:off -->
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable -->
@@ -196,7 +197,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/e
 
 <!-- markdownlint-restore -->
 <!-- prettier-ignore-end -->
-
 <!-- ALL-CONTRIBUTORS-LIST:END -->
+<!-- spellchecker:on -->
 
 This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!

@@ -137,7 +137,11 @@ extend-exclude = [
     # Working notes that intentionally list misspellings as before/after examples.
     "precommit_instructions.md",
     "pymend_instructions.md",
-    "pre_commit_output.txt"]
+    "pre_commit_output.txt",
+
+    # This file contains names that might be picked up as typos
+    ".all-contributorsrc",
+]
 
 [tool.typos.default]
 locale = "en-us"
@@ -147,7 +151,8 @@ extend-ignore-re = [
     # Ignore the line after `# spellchecker:ignore-next-line`:
     "(#|//)\\s*spellchecker:ignore-next-line\\n.*",
     # Ignore blocks between `# spellchecker:off` and `# spellchecker:on`
-    "(?s)(#|//)\\s*spellchecker:off.*?\\n\\s*(#|//)\\s*spellchecker:on",
+    "(?s)(#|//|<!--)\\s*spellchecker:off.*?\\n\\s*(#|//|<!--)\\s*spellchecker:on",
+    # Ignore blocks between `# spellchecker:off` and `# spellchecker:on`
 ]
 extend-ignore-identifiers-re = [
     "I[xyzXYZ]$",
