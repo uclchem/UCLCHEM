@@ -31,39 +31,40 @@ implicit none
     allocate(character(fileLength) :: paramDict)
     read(inputId) paramDict
     close(inputId)
+
     select case(modelType)
-    case("CLOUD")
-        call cloud(paramDict,DUMMY_STRING,.false.,.false.,.false.,500,1, &
-            abundance_out=abundances, specname_out=specname_out, successFlag=success)
-    ! case("HOTCORE")
-    !     !call hot_core (temp_indx,maxTemp,....)
-    !     ! Read the strings from the CLI, then convert them to int/float
-    !     call GET_COMMAND_ARGUMENT(3, model_arg1)
-    !     call GET_COMMAND_ARGUMENT(4, model_arg2)
-    !     read(model_arg1, *) model_index
-    !     read(model_arg2, *) max_temp
-    !     call hot_core(model_index,max_temp,paramDict,DUMMY_STRING,.false.,.false.,&
-    !         &abundances,success)
-    ! case("CSHOCK")
-    !     !call cshock(vs,timestep_factor,minimum_temp,....)
-    !     !sensible defaults in order: 20.0, 0.01d0, 10.0
-    !     ! Read the strings from the CLI, then convert them to int/float
-    !     call GET_COMMAND_ARGUMENT(3, model_arg1)
-    !     call GET_COMMAND_ARGUMENT(4, model_arg2)
-    !     call GET_COMMAND_ARGUMENT(5, model_arg3)
-    !     read(model_arg1, *) vshock
-    !     read(model_arg2, *) timestep_factor
-    !     read(model_arg3, *) minimum_temp
-    !     call cshock(vshock,timestep_factor,minimum_temp,paramDict,DUMMY_STRING,.false.,.false.,&
-    !         &abundances,dissipationResult,success)
-    ! case("POSTPROCESS")
-    !    call postprocess(paramDict,DUMMY_STRING,.false.,.false.,abundances,success)
-    case default
-        write(*,*) "Model type not recognized"
-        write(*,*) "Supported models are directly from Fortran: CLOUD"
-        write(*,*) "HOTCORE, CSHOCK, JSHOCK, COLLAPSE, POSTPROCESS are not available yet from pure Fortran."
-        write(*,*) "Please make an issue on GitHub, or open a pull request if you do want this."
-        write(*,*) "https://github.com/uclchem/UCLCHEM"
-        stop
+        case("CLOUD")
+            call cloud(paramDict, .false., .false., .false., 500, 1, outSpeciesIn=DUMMY_STRING, &
+                abundance_out=abundances, specname_out=specname_out, successFlag=success)
+        ! case("HOTCORE")
+        !     !call hot_core (temp_indx,maxTemp,....)
+        !     ! Read the strings from the CLI, then convert them to int/float
+        !     call GET_COMMAND_ARGUMENT(3, model_arg1)
+        !     call GET_COMMAND_ARGUMENT(4, model_arg2)
+        !     read(model_arg1, *) model_index
+        !     read(model_arg2, *) max_temp
+        !     call hot_core(model_index,max_temp,paramDict,DUMMY_STRING,.false.,.false.,&
+        !         &abundances,success)
+        ! case("CSHOCK")
+        !     !call cshock(vs,timestep_factor,minimum_temp,....)
+        !     !sensible defaults in order: 20.0, 0.01d0, 10.0
+        !     ! Read the strings from the CLI, then convert them to int/float
+        !     call GET_COMMAND_ARGUMENT(3, model_arg1)
+        !     call GET_COMMAND_ARGUMENT(4, model_arg2)
+        !     call GET_COMMAND_ARGUMENT(5, model_arg3)
+        !     read(model_arg1, *) vshock
+        !     read(model_arg2, *) timestep_factor
+        !     read(model_arg3, *) minimum_temp
+        !     call cshock(vshock,timestep_factor,minimum_temp,paramDict,DUMMY_STRING,.false.,.false.,&
+        !         &abundances,dissipationResult,success)
+        ! case("POSTPROCESS")
+        !    call postprocess(paramDict,DUMMY_STRING,.false.,.false.,abundances,success)
+        case default
+            write(*,*) "Model type not recognized"
+            write(*,*) "Supported models are directly from Fortran: CLOUD"
+            write(*,*) "HOTCORE, CSHOCK, JSHOCK, COLLAPSE, POSTPROCESS are not available yet from pure Fortran."
+            write(*,*) "Please make an issue on GitHub, or open a pull request if you do want this."
+            write(*,*) "https://github.com/uclchem/UCLCHEM"
+            stop
     end select
 end program uclchem

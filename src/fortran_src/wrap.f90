@@ -49,8 +49,8 @@ module uclchemwrap
 
 
 contains
-    subroutine cloud(dictionary, outSpeciesIn, returnArray, returnRateConstants,&
-            &givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
+    subroutine cloud(dictionary, returnArray, returnRateConstants,&
+            &givestartabund,timePoints, gridPoints, outSpeciesIn, physicsarray,chemicalabunarray,&
             &rateConstantsArray, heatarray, statsarray, levelpopulationsarray, sestatsarray,&
             &abundanceStart ,abundance_out,specname_out,successFlag)
         !f2py threadsafe
@@ -59,11 +59,11 @@ contains
         !
         !Args:
         ! dictionary - python parameter dictionary
-        ! outSpeciesIn - list of species to output as a space separated string
         ! returnArray - boolean on whether arrays will be returned
         ! returnRateConstants - boolean on whether to write rates to file, or return to memory (if returnArray is True)
         ! givestartabund -  boolean on whether starting abundances were given
         ! gridPoints - number of points uclchem should simulate
+        ! outSpeciesIn - list of species to output as a space separated string
         ! physicsarray - array to be filled with physical information for each timestep
         ! chemicalabunarray - array to be filled with chemical abundances for each timestep
         ! abundanceStart - array containing starting chemical conditions
@@ -75,7 +75,7 @@ contains
         use cloud_mod, only: initializePhysics, updatePhysics, updateTargetTime, sublimation
 
         !f2py integer, intent(aux) :: nspec, nreac, ncoolants, n_physics_params, nHeatingTerms, N_DVODE_STATS, N_TOTAL_LEVELS, N_SE_STATS_PER_COOLANT
-        character(LEN=*), intent(inout) :: dictionary, outSpeciesIn
+        character(LEN=*), intent(inout) :: dictionary
         real(dp), intent(out), dimension(nSpec) :: abundance_out
         !f2py intent(out) abundance_out
         !f2py depend(nspec) abundance_out
@@ -95,6 +95,7 @@ contains
         !f2py intent(in) gridPoints
         integer, intent(in) :: timePoints
         !f2py intent(in) timePoints
+        character(LEN=*), intent(inout), optional :: outSpeciesIn
 
         real(dp), intent(inout), optional, dimension(timePoints+1, gridPoints, n_physics_params) :: physicsarray
         !f2py intent(in,out) physicsarray
@@ -135,10 +136,10 @@ contains
 
     end subroutine cloud
 
-    subroutine collapse(collapseIn,dictionary,outSpeciesIn,&
-            &returnArray,returnRateConstants,givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
-            &rateConstantsArray, heatarray, statsarray, levelpopulationsarray, sestatsarray,&
-            &abundanceStart, abundance_out,specname_out,successFlag)
+    subroutine collapse(collapseIn,dictionary,&
+            &returnArray,returnRateConstants,givestartabund,timePoints,gridPoints,outSpeciesIn, &
+            &physicsarray,chemicalabunarray, rateConstantsArray, heatarray, statsarray, levelpopulationsarray,&
+            &sestatsarray, abundanceStart, abundance_out,specname_out,successFlag)
         !f2py threadsafe
         !Subroutine to call a collapse model, used to interface with python
         ! Loads model specific subroutines and send to solveAbundances
@@ -146,10 +147,10 @@ contains
         !Args:
         ! collapseIn - integer indicating which collapse mode to run
         ! dictionary - python parameter dictionary
-        ! outSpeciesIn - list of species to output as a space separated string
         ! returnArray - boolean on whether arrays will be returned
         ! givestartabund -  boolean on whether starting abundances were given
         ! gridPoints - number of points uclchem should simulate
+        ! outSpeciesIn - list of species to output as a space separated string
         ! physicsarray - array to be filled with physical information for each timestep
         ! chemicalabunarray - array to be filled with chemical abundances for each timestep
         ! abundanceStart - array containing starting chemical conditions
@@ -162,7 +163,7 @@ contains
             collapse_mode
 
         !f2py integer, intent(aux) :: nspec, nreac, ncoolants, n_physics_params, nHeatingTerms, N_DVODE_STATS, N_TOTAL_LEVELS, N_SE_STATS_PER_COOLANT
-        character(LEN=*), intent(inout) :: dictionary, outSpeciesIn
+        character(LEN=*), intent(inout) :: dictionary
         real(dp), intent(out), dimension(nSpec) :: abundance_out
         !f2py intent(out) abundance_out
         !f2py depend(nspec) abundance_out
@@ -183,6 +184,8 @@ contains
         !f2py intent(in) gridPoints
         integer, intent(in) :: timePoints
         !f2py intent(in) timePoints
+        character(LEN=*), intent(inout), optional :: outSpeciesIn
+
         real(dp), intent(inout), optional, dimension(timePoints+1, gridPoints, n_physics_params) :: physicsarray
         !f2py intent(in,out) physicsarray
         !f2py depend(timePoints, gridPoints, N_PHYSICS_PARAMS) physicsarray
@@ -222,8 +225,8 @@ contains
         end if
     end subroutine collapse
 
-    subroutine hot_core(temp_index,max_temp,dictionary,outSpeciesIn,returnArray,&
-            &returnRateConstants,givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
+    subroutine hot_core(temp_index,max_temp,dictionary,returnArray,&
+            &returnRateConstants,givestartabund,timePoints,gridPoints,outSpeciesIn,physicsarray,chemicalabunarray,&
             &rateConstantsArray, heatarray, statsarray, levelpopulationsarray, sestatsarray,&
             &abundanceStart, abundance_out,specname_out,successFlag)
         !f2py threadsafe
@@ -234,10 +237,10 @@ contains
         ! temp_index - integer indicating which mass hot core to run - see hotcore.90
         ! max_temp - maximum temperature before we stop increasing.
         ! dictionary - python parameter dictionary
-        ! outSpeciesIn - list of species to output as a space separated string
         ! returnArray - boolean on whether arrays will be returned
         ! givestartabund -  boolean on whether starting abundances were given
         ! gridPoints - number of points uclchem should simulate
+        ! outSpeciesIn - list of species to output as a space separated string
         ! physicsarray - array to be filled with physical information for each timestep
         ! chemicalabunarray - array to be filled with chemical abundances for each timestep
         ! abundanceStart - array containing starting chemical conditions
@@ -248,7 +251,7 @@ contains
             maxTemp, tempIndx
 
         !f2py integer, intent(aux) :: nspec, nreac, ncoolants, n_physics_params, nheatingterms, n_dvode_stats, n_total_levels, n_se_stats_per_coolant
-        character(LEN=*), intent(inout) :: dictionary, outSpeciesIn
+        character(LEN=*), intent(inout) :: dictionary
         real(dp), intent(out) :: abundance_out(nSpec)
         !f2py intent(out) abundance_out
         !f2py depend(nspec) abundance_out
@@ -270,6 +273,8 @@ contains
         !f2py intent(in) gridPoints
         integer, intent(in) :: timePoints
         !f2py intent(in) timePoints
+        character(LEN=*), intent(inout), optional :: outSpeciesIn
+
         real(dp), intent(inout), optional, dimension(timePoints+1, gridPoints, n_physics_params) :: physicsarray
         !f2py intent(in, out) physicsarray
         !f2py depend(gridPoints) physicsarray
@@ -309,8 +314,8 @@ contains
         end if
     end subroutine hot_core
 
-    subroutine cshock(shock_vel,timestep_factor,minimum_temperature,dictionary, outSpeciesIn,&
-            &returnArray,returnRateConstants,givestartabund,timePoints,gridPoints,physicsarray,chemicalabunarray,&
+    subroutine cshock(shock_vel,timestep_factor,minimum_temperature,dictionary,&
+            &returnArray,returnRateConstants,givestartabund,timePoints,gridPoints,outSpeciesIn, physicsarray,chemicalabunarray,&
             &rateConstantsArray, heatarray, statsarray, levelpopulationsarray, sestatsarray,&
             &abundanceStart, abundance_out,dissipation_time,specname_out,successFlag)
         !f2py threadsafe
@@ -324,10 +329,10 @@ contains
         ! minimum_temperature - float indicating minimum temperature before we stop post shock cooling.
         !                        set to zero to disable.
         ! dictionary - python parameter dictionary
-        ! outSpeciesIn - list of species to output as a space separated string
         ! returnArray - boolean on whether arrays will be returned
         ! givestartabund -  boolean on whether starting abundances were given
         ! gridPoints - number of points uclchem should simulate
+        ! outSpeciesIn - list of species to output as a space separated string
         ! physicsarray - array to be filled with physical information for each timestep
         ! chemicalabunarray - array to be filled with chemical abundances for each timestep
         ! abundanceStart - array containing starting chemical conditions
@@ -339,7 +344,7 @@ contains
             minimumPostshockTemp, dissipationTime, timestepFactor, vs
 
         !f2py integer, intent(aux) :: nspec, nreac, ncoolants, n_physics_params, nheatingterms, n_dvode_stats, n_total_levels, n_se_stats_per_coolant
-        character(LEN=*), intent(inout) :: dictionary, outSpeciesIn
+        character(LEN=*), intent(inout) :: dictionary
         real(dp), intent(out) :: abundance_out(nSpec)
         real(dp), intent(in) :: shock_vel,timestep_factor
         real(dp), intent(in) :: minimum_temperature
@@ -358,6 +363,8 @@ contains
         !f2py intent(in) gridPoints
         integer, intent(in) :: timePoints
         !f2py intent(in) timePoints
+        character(LEN=*), intent(inout), optional :: outSpeciesIn
+
         real(dp), intent(inout), optional, dimension(timePoints+1, gridPoints, n_physics_params) :: physicsarray
         !f2py intent(in, out) physicsarray
         !f2py depend(gridPoints) physicsarray
@@ -401,8 +408,8 @@ contains
         end if
     end subroutine cshock
 
-    subroutine jshock(shock_vel,dictionary,outSpeciesIn,returnArray,returnRateConstants,givestartabund,&
-            &timePoints,gridPoints,physicsarray,chemicalabunarray,&
+    subroutine jshock(shock_vel,dictionary,returnArray,returnRateConstants,givestartabund,&
+            &timePoints,gridPoints, outSpeciesIn, physicsarray,chemicalabunarray,&
             &rateConstantsArray, heatarray, statsarray, levelpopulationsarray, sestatsarray, &
             &abundanceStart,abundance_out,specname_out,successFlag)
         !f2py threadsafe
@@ -412,10 +419,10 @@ contains
         !Args:
         ! shock_vel - real(dp) shock velocity in km/s
         ! dictionary - python parameter dictionary
-        ! outSpeciesIn - list of species to output as a space separated string
         ! returnArray - boolean on whether arrays will be returned
         ! givestartabund -  boolean on whether starting abundances were given
         ! gridPoints - number of points uclchem should simulate
+        ! outSpeciesIn - list of species to output as a space separated string
         ! physicsarray - array to be filled with physical information for each timestep
         ! chemicalabunarray - array to be filled with chemical abundances for each timestep
         ! abundanceStart - array containing starting chemical conditions
@@ -425,7 +432,7 @@ contains
         use jshock_mod, only: initializePhysics, updatePhysics, updateTargetTime, sublimation, vs
 
         !f2py integer, intent(aux) :: nspec, nreac, ncoolants, n_physics_params, nheatingterms, n_dvode_stats, n_total_levels, n_se_stats_per_coolant
-        character(LEN=*), intent(inout) :: dictionary, outSpeciesIn
+        character(LEN=*), intent(inout) :: dictionary
         real(dp), intent(in) :: shock_vel
         real(dp), intent(out), dimension(nSpec) :: abundance_out
         integer, intent(out) :: successFlag
@@ -442,6 +449,7 @@ contains
         !f2py intent(in) gridPoints
         integer, intent(in) :: timePoints
         !f2py intent(in) timePoints
+        character(LEN=*), intent(inout), optional :: outSpeciesIn
         real(dp), intent(inout), optional, dimension(timePoints + 1, gridPoints, n_physics_params) :: physicsarray
         !f2py intent(in, out) physicsarray
         !f2py depend(gridPoints) physicsarray
@@ -479,9 +487,9 @@ contains
         end if
     end subroutine jshock
 
-    subroutine postprocess(dictionary,outSpeciesIn,returnArray,returnRateConstants,givestartabund,&
-        &timePoints,gridPoints,physicsarray,chemicalabunarray,rateConstantsArray,heatarray,statsarray,&
-        &levelpopulationsarray, sestatsarray, abundanceStart,timegrid,densgrid,gastempgrid,&
+    subroutine postprocess(dictionary,returnArray,returnRateConstants,givestartabund,&
+        &timePoints,gridPoints,outSpeciesIn, physicsarray,chemicalabunarray,rateConstantsArray,heatarray,&
+        &statsarray,levelpopulationsarray, sestatsarray, abundanceStart,timegrid,densgrid,gastempgrid,&
         &dusttempgrid,radfieldgrid,zetagrid,useav,avgrid,&
         &usecoldens,nhgrid,nh2grid,ncogrid,ncgrid,abundance_out,specname_out,successFlag)
         !f2py threadsafe
@@ -491,10 +499,10 @@ contains
         !Args:
         ! shock_vel - real(dp) shock velocity in km/s
         ! dictionary - python parameter dictionary
-        ! outSpeciesIn - list of species to output as a space separated string
         ! returnArray - boolean on whether arrays will be returned
         ! givestartabund -  boolean on whether starting abundances were given
         ! gridPoints - number of points uclchem should simulate
+        ! outSpeciesIn - list of species to output as a space separated string
         ! physicsarray - array to be filled with physical information for each timestep
         ! chemicalabunarray - array to be filled with chemical abundances for each timestep
         ! abundanceStart - array containing starting chemical conditions
@@ -504,7 +512,7 @@ contains
         use postprocess_mod, only: initializePhysics, updatePhysics, updateTargetTime, sublimation
 
         !f2py integer, intent(aux) :: nspec, nreac, ncoolants, n_physics_params, nheatingterms, n_dvode_stats, n_total_levels, n_se_stats_per_coolant
-        character(LEN=*), intent(inout) :: dictionary, outSpeciesIn
+        character(LEN=*), intent(inout) :: dictionary
         real(dp), intent(out) :: abundance_out(nSpec)
         integer, intent(out) :: successFlag
         character(LEN=32), intent(out) :: specname_out(nSpec)
@@ -524,6 +532,7 @@ contains
         !f2py intent(in) useav
         logical, intent(in) :: usecoldens
         !f2py intent(in) usecoldens
+        character(LEN=*), intent(inout), optional :: outSpeciesIn
         real(dp), intent(inout), optional, dimension(timePoints + 1, gridPoints, n_physics_params) :: physicsarray
         !f2py intent(in, out) physicsarray
         !f2py depend(gridPoints) physicsarray

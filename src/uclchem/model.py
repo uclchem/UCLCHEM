@@ -690,7 +690,6 @@ class AbstractModel(ABC):
         self._on_error = on_error
         self.success_flag: SuccessFlag | None = None
 
-        self.n_out = 0 if read_file is None else None
         self.timepoints = timepoints
         self.was_read = read_file is not None
 
@@ -1969,7 +1968,7 @@ class AbstractModel(ABC):
 
         def _handler(signum, frame):  # ruff: ignore[unused-function-argument, missing-type-function-argument]
             try:
-                self.on_interrupt()  # your “final steps”
+                self._on_interrupt()  # your “final steps”
             finally:
                 # Restore default and re-raise KeyboardInterrupt to stop execution
                 signal.signal(signal.SIGINT, self._orig_sigint)
@@ -1977,7 +1976,7 @@ class AbstractModel(ABC):
 
         signal.signal(signal.SIGINT, _handler)
         if self.run_type not in self.separate_worker_types:
-            output = self.run_fortran()
+            output = self._run_fortran()
         elif self.run_type in self.separate_worker_types:
             from uclchem.advanced.worker_state import (  # ruff: ignore[import-outside-top-level] circular
                 create_snapshot,
@@ -2090,7 +2089,7 @@ class AbstractModel(ABC):
                 raise
 
     @abstractmethod
-    def run_fortran(self) -> dict[str, int | list | None]:  # ruff: ignore[undocumented-public-method]
+    def _run_fortran(self) -> dict[str, int | list | None]:
         raise NotImplementedError
 
     # /Methods to start run of model
@@ -2807,11 +2806,6 @@ class AbstractModel(ABC):
 
         self._param_dict = remove_keys_with_none(self._param_dict)
 
-        # Still set these, because the fortran at this point still requires them.
-        self.out_species = ""
-        self.n_out = 0
-        self.out_species_list = ""
-
     # /Cleaning of array & inptus
 
     # Creation of arrays
@@ -3007,7 +3001,7 @@ class AbstractModel(ABC):
     # /Creation of arrays
 
     # Signal Interrupt Catch
-    def on_interrupt(self, model_name: str | None = None, *, grid: bool = False) -> None:
+    def _on_interrupt(self, model_name: str | None = None, *, grid: bool = False) -> None:
         """Catch interruption. Save model to file.
 
         Parameters
@@ -3181,7 +3175,7 @@ class Cloud(AbstractModel):
         if self.run_type != "external" and not self.was_read:
             self.run()
 
-    def run_fortran(self) -> dict[str, int | list | None]:
+    def _run_fortran(self) -> dict[str, int | list | None]:
         """Run the UCLCHEM model, first resetting the numpy arrays.
 
         Resetting uses `AbstractModel.run()`, then running the model. `check_error` and
@@ -3199,7 +3193,6 @@ class Cloud(AbstractModel):
         # [7] abundance_out, [8] specname_out, [9] successFlag
         result = wrap.cloud(
             dictionary=self._param_dict,
-            outspeciesin=self.out_species,
             timepoints=self.timepoints,
             gridpoints=self._param_dict["points"],
             returnarray=True,
@@ -3224,8 +3217,6 @@ class Cloud(AbstractModel):
     def _create_init_dict(self):
         return {
             "_param_dict": self._param_dict,
-            "out_species_list": self.out_species_list,
-            "out_species": self.out_species,
             "timepoints": self.timepoints,
             "give_start_abund": self.give_start_abund,
         }
@@ -3404,7 +3395,7 @@ class Collapse(AbstractModel):
             if self.run_type != "external":
                 self.run()
 
-    def run_fortran(self) -> dict[str, int | list | None]:
+    def _run_fortran(self) -> dict[str, int | list | None]:
         """Run the UCLCHEM model, first resetting the numpy arrays.
 
         Resetting uses `AbstractModel.run()`, then running the model. `check_error` and
@@ -3420,7 +3411,6 @@ class Collapse(AbstractModel):
         result = wrap.collapse(
             collapsein=self.collapse.value,
             dictionary=self._param_dict,
-            outspeciesin=self.out_species,
             timepoints=self.timepoints,
             gridpoints=self._param_dict["points"],
             returnarray=True,
@@ -3446,8 +3436,6 @@ class Collapse(AbstractModel):
         return {
             "collapse": self.collapse,
             "_param_dict": self._param_dict,
-            "out_species_list": self.out_species_list,
-            "out_species": self.out_species,
             "timepoints": self.timepoints,
             "give_start_abund": self.give_start_abund,
         }
@@ -3547,7 +3535,7 @@ class PrestellarCore(AbstractModel):
             if self.run_type != "external":
                 self.run()
 
-    def run_fortran(self) -> dict[str, int | list | None]:
+    def _run_fortran(self) -> dict[str, int | list | None]:
         """Run the UCLCHEM model, first resetting the numpy arrays.
 
         Resetting uses `AbstractModel.run()`, then running the model. `check_error` and
@@ -3565,7 +3553,6 @@ class PrestellarCore(AbstractModel):
                 temp_index=self.temp_indx,
                 max_temp=self.max_temperature,
                 dictionary=self._param_dict,
-                outspeciesin=self.out_species,
                 timepoints=self.timepoints,
                 gridpoints=self._param_dict["points"],
                 returnarray=True,
@@ -3592,8 +3579,6 @@ class PrestellarCore(AbstractModel):
             "temp_indx": self.temp_indx,
             "max_temperature": self.max_temperature,
             "_param_dict": self._param_dict,
-            "out_species_list": self.out_species_list,
-            "out_species": self.out_species,
             "timepoints": self.timepoints,
             "give_start_abund": self.give_start_abund,
         }
@@ -3691,7 +3676,7 @@ class CShock(AbstractModel):
             if self.run_type != "external":
                 self.run()
 
-    def run_fortran(self) -> dict[str, int | list | None]:
+    def _run_fortran(self) -> dict[str, int | list | None]:
         """Run the UCLCHEM model, first resetting the numpy arrays.
 
         Resetting uses `AbstractModel.run()`, then running the model. `check_error` and
@@ -3711,7 +3696,6 @@ class CShock(AbstractModel):
             timestep_factor=self.timestep_factor,
             minimum_temperature=self.minimum_temperature,
             dictionary=self._param_dict,
-            outspeciesin=self.out_species,
             timepoints=self.timepoints,
             gridpoints=self._param_dict["points"],
             returnarray=True,
@@ -3743,8 +3727,6 @@ class CShock(AbstractModel):
             "timestep_factor": self.timestep_factor,
             "minimum_temperature": self.minimum_temperature,
             "_param_dict": self._param_dict,
-            "out_species_list": self.out_species_list,
-            "out_species": self.out_species,
             "timepoints": self.timepoints,
             "give_start_abund": self.give_start_abund,
         }
@@ -3832,7 +3814,7 @@ class JShock(AbstractModel):
             if self.run_type != "external":
                 self.run()
 
-    def run_fortran(self) -> dict[str, int | list | None]:
+    def _run_fortran(self) -> dict[str, int | list | None]:
         """Run the UCLCHEM model, first resetting the numpy arrays.
 
         Resetting uses `AbstractModel.run()`, then running the model. `check_error` and
@@ -3848,7 +3830,6 @@ class JShock(AbstractModel):
         result = wrap.jshock(
             shock_vel=self.shock_vel,
             dictionary=self._param_dict,
-            outspeciesin=self.out_species,
             timepoints=self.timepoints,
             gridpoints=self._param_dict["points"],
             returnarray=True,
@@ -3874,8 +3855,6 @@ class JShock(AbstractModel):
         return {
             "shock_vel": self.shock_vel,
             "_param_dict": self._param_dict,
-            "out_species_list": self.out_species_list,
-            "out_species": self.out_species,
             "timepoints": self.timepoints,
             "give_start_abund": self.give_start_abund,
         }
@@ -4083,7 +4062,7 @@ class Postprocess(AbstractModel):
             msg = f"time_array must be an array if read_file is None. A value of {time_array} with type {type(time_array)} was given."
             raise ValueError(msg)
 
-    def run_fortran(self) -> dict[str, int | list | None]:
+    def _run_fortran(self) -> dict[str, int | list | None]:
         """Run the UCLCHEM model, first resetting the numpy arrays.
 
         Resetting uses `AbstractModel.run()`, then running the model. `check_error` and
@@ -4104,7 +4083,6 @@ class Postprocess(AbstractModel):
             useav=self.useav,
             **post_kwargs,
             dictionary=self._param_dict,
-            outspeciesin=self.out_species,
             timepoints=self.timepoints,
             gridpoints=self._param_dict["points"],
             returnarray=True,
@@ -4131,8 +4109,6 @@ class Postprocess(AbstractModel):
             "usecoldens": self.coldens_H_array is not None,
             "useav": self.useav,
             "_param_dict": self._param_dict,
-            "out_species_list": self.out_species_list,
-            "out_species": self.out_species,
             "timepoints": self.timepoints,
             "give_start_abund": self.give_start_abund,
             "postprocess_arrays": self.postprocess_arrays,
@@ -4279,7 +4255,7 @@ class Model(AbstractModel):
             msg = f"time_array must be an array if read_file is None. A value of {time_array} with type {type(time_array)} was given."
             raise ValueError(msg)
 
-    def run_fortran(self) -> dict[str, int | list | None]:
+    def _run_fortran(self) -> dict[str, int | list | None]:
         """Run the UCLCHEM model, first resetting the numpy arrays.
 
         Resetting uses `AbstractModel.run()`, then running the model. `check_error` and
@@ -4296,7 +4272,6 @@ class Model(AbstractModel):
             usecoldens=False,
             **self.postprocess_arrays,
             dictionary=self._param_dict,
-            outspeciesin=self.out_species,
             timepoints=self.timepoints,
             gridpoints=self._param_dict["points"],
             returnarray=True,
@@ -4321,8 +4296,6 @@ class Model(AbstractModel):
     def _create_init_dict(self):
         return {
             "_param_dict": self._param_dict,
-            "out_species_list": self.out_species_list,
-            "out_species": self.out_species,
             "timepoints": self.timepoints,
             "give_start_abund": self.give_start_abund,
             **self.postprocess_arrays,
@@ -4641,7 +4614,7 @@ def _run_grid_model(
 
 
 # The following parameters from various chemical models, cannot be used as grid parameters.
-NoGridParameters = frozenset(
+NO_GRID_PARAMETERS = frozenset(
     [
         "starting_chemistry",
         "debug",
@@ -4661,7 +4634,7 @@ class _NoDaemonProcess(mp.Process):
         pass
 
 
-class _NoDaemonPool(pool.Pool):
+class _NoDaemonPool(mp_pool.Pool):
     @staticmethod
     def Process(ctx, *args, **kwargs):  # ruff: ignore[missing-type-function-argument, unused-static-method-argument, invalid-function-name]
         return _NoDaemonProcess(*args, **kwargs)
@@ -4872,9 +4845,16 @@ class GridRunner:
 
     def _define_grid(self, key: str, value: Any, model_count: int | None = None) -> None:
         prefix: str = "" if model_count is None else f"{model_count}_"
+<<<<<<< HEAD
         if isinstance(value, list) and key not in NoGridParameters:
+=======
+        if isinstance(value, list) and key not in NO_GRID_PARAMETERS:
+            self.parameters_to_grid[prefix + key] = value
+>>>>>>> 4d10c78 (Remove outspecies passing and setting in model.py)
             self.parameters_to_grid[prefix + key] = np.array(value, dtype=object)
-        elif isinstance(value, (np.ndarray, np.generic)) and key not in NoGridParameters:
+        elif (
+            isinstance(value, (np.ndarray, np.generic)) and key not in NO_GRID_PARAMETERS
+        ):
             self.parameters_to_grid[prefix + key] = value.astype(dtype=object)
 
     def _log_main(self, msg: str) -> None:
@@ -5154,13 +5134,13 @@ class GridRunner:
 
     def _handler(self, signum: Any, frame: Any) -> None:  # ruff: ignore[unused-method-argument]
         try:
-            self.on_interrupt()  # your “final steps”
+            self._on_interrupt()  # your “final steps”
         finally:
             # Restore default and re-raise KeyboardInterrupt to stop execution
             signal.signal(signal.SIGINT, self._orig_sigint)
             raise KeyboardInterrupt
 
-    def on_interrupt(self) -> None:  # ruff: ignore[no-self-use]
+    def _on_interrupt(self) -> None:  # ruff: ignore[no-self-use]
         """Handle a keyboard interrupt during a grid run. Override in subclasses to add cleanup."""
         return
 
