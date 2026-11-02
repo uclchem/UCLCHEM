@@ -20,7 +20,7 @@ from uclchem.utils import MISSING_VALUE_FLOAT
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 # Global flag for validation control
 _skip_reaction_validation = False
@@ -554,7 +554,7 @@ class Reaction:
                         # Set reduced mass to mass of switched element
                         reduced_mass: float = float(elementMass[element_index])
                         self.set_reduced_mass(reduced_mass)
-                        logger.debug(
+                        _logger.debug(
                             f"Predicted reduced mass of '{self}' to be {self._reduced_mass} (would have been {naive_reduced_mass})"
                         )
                         return
@@ -567,14 +567,14 @@ class Reaction:
                 mass = reac_species[0].get_mass()
                 reduced_mass = float(mass) / 2.0
                 self.set_reduced_mass(reduced_mass)
-                logger.debug(
+                _logger.debug(
                     f"Predicted reduced mass of '{self}' to be {self._reduced_mass} (would have been {naive_reduced_mass})"
                 )
                 return
             elif any(species == Counter({"H": 1}) for species in reac_constituents):
                 # If one of the species is #H, set reduced mass to 1
                 self.set_reduced_mass(1.0)
-                logger.debug(
+                _logger.debug(
                     f"Predicted reduced mass of '{self}' to be {self._reduced_mass} (would have been {naive_reduced_mass})"
                 )
                 return
@@ -588,7 +588,7 @@ class Reaction:
         msg += f"Instead, using regular definition with masses of two reactants (mu={naive_reduced_mass:.3})."
         if self._gamma == 0.0:
             msg += " (Reaction is barrierless anyway)"
-        logger.warning(msg)
+        _logger.warning(msg)
         self.set_reduced_mass(naive_reduced_mass)
 
     def set_reduced_mass(self, reduced_mass: float) -> None:
@@ -674,7 +674,7 @@ class Reaction:
             If ``flag`` is not a boolean.
 
         """
-        logger.info(f"Setting for {self} extrapolation to {flag}")
+        _logger.info(f"Setting for {self} extrapolation to {flag}")
         if not isinstance(flag, bool):
             msg = f"Expected bool, got {type(flag)}"
             raise AssertionError(msg)

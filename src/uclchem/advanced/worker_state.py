@@ -26,7 +26,7 @@ from uclchem.advanced.runtime_network import RuntimeNetwork
 
 from .constants import FILE_PATH_PARAMETERS, FORTRAN_PARAMETERS, INTERNAL_PARAMETERS
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 # Module names mirroring GeneralSettings._discover_modules()
 _MODULE_NAMES = [
@@ -101,7 +101,7 @@ def create_snapshot() -> dict[str, Any]:
             try:
                 value = getattr(mod, attr)
             except Exception:
-                logger.debug(
+                _logger.debug(
                     "Could not read attribute %r from module %r; skipping.",
                     attr,
                     mod_name,
@@ -187,7 +187,7 @@ def restore_snapshot(snapshot: dict[str, Any]) -> None:
             continue
         mod = getattr(uclchemwrap, mod_name)
         for attr, value in settings_dict.items():
-            logger.debug("setattr(%s, %s, %r)", mod_name, attr, value)
+            _logger.debug("setattr(%s, %s, %r)", mod_name, attr, value)
             with contextlib.suppress(AttributeError, TypeError):
                 # read-only or incompatible – skip silently
                 setattr(mod, attr, value)

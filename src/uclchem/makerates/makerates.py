@@ -10,7 +10,7 @@ from uclchem.makerates._output_resolver import resolve_output_dirs
 from uclchem.makerates.config import MakeratesConfig
 from uclchem.makerates.network import Network
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 # Logging verbosity levels accepted by ``get_network``.
 LogLevel = Literal[10, 20, 30, 40, 50]
@@ -121,7 +121,7 @@ def run_makerates(
     # 3) defaults used by write_outputs.
     coolants_to_write = None
     if config.coolants is not None:
-        logger.info(f"Using {len(config.coolants)} inline coolants from config")
+        _logger.info(f"Using {len(config.coolants)} inline coolants from config")
         coolants_to_write = config.coolants
     elif config.coolants_file:
         coolants_path = config.resolve_path(config.coolants_file)
@@ -134,14 +134,14 @@ def run_makerates(
             raise ValueError(msg)
         try:
             _coolants = io.read_coolants_file(coolants_path)
-            logger.info(f"Loaded {len(_coolants)} coolants from {coolants_path}")
+            _logger.info(f"Loaded {len(_coolants)} coolants from {coolants_path}")
             coolants_to_write = _coolants
         except Exception as exc:
             msg = f"Error reading coolants_file {coolants_path}: {exc}"
             raise ValueError(msg) from exc
 
     if write_files:
-        logger.info(
+        _logger.info(
             "\n################################################\n"
             + "Checks complete, writing output files\n"
             + "################################################\n"
@@ -152,7 +152,7 @@ def run_makerates(
             output_dir=output_dir,
             write_files=write_files,
         )
-        logger.info(f"There are {len(dropped_reactions)} dropped reactions")
+        _logger.info(f"There are {len(dropped_reactions)} dropped reactions")
 
         # Check for GAR reactions and validate parameters
         gar_reactions = network.get_reactions_by_types("GAR")
@@ -199,9 +199,9 @@ def run_makerates(
         io.copy_coolant_files(source_dir=source_dir)
 
     ngrain = len([x for x in network.get_species_list() if x.is_surface_species()])
-    logger.info(f"Total number of species = {len(network.get_species_list())}")
-    logger.info(f"Number of surface species = {ngrain}")
-    logger.info(f"Number of reactions = {len(network.get_reaction_list())}")
+    _logger.info(f"Total number of species = {len(network.get_species_list())}")
+    _logger.info(f"Number of surface species = {ngrain}")
+    _logger.info(f"Number of reactions = {len(network.get_reaction_list())}")
 
     # Return the network for reuse in code/notebooks
     return network
@@ -272,7 +272,7 @@ def _get_network_from_files(
     derive_reaction_exothermicity: bool | str | list[str],
     database_reaction_exothermicity: list[Path] | None = None,
 ) -> tuple[Network, list[list[str]]]:
-    logger.info(
+    _logger.info(
         f"_get_network_from_files called with database_reaction_exothermicity={database_reaction_exothermicity}"
     )
     species_list, user_defined_bulk = io.read_species_file(species_file)
@@ -304,7 +304,7 @@ def _get_network_from_files(
 
     #################################################################################################
 
-    logger.info(
+    _logger.info(
         "\n################################################\n"
         + "Reading and checking input\n"
         + "################################################\n"

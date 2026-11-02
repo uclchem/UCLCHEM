@@ -13,7 +13,7 @@ import pandas as pd
 
 from .reaction import Reaction
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 # Physical constants (2019 SI definitions)
 AVOGADRO_NUMBER = 6.02214076e23  # mol^-1
@@ -266,7 +266,7 @@ def set_custom_exothermicities(
         try:
             exo_erg = convert_to_erg(row["exothermicity"], row["unit"])
         except ValueError as e:
-            logger.warning(f"Skipping row: {e}")
+            _logger.warning(f"Skipping row: {e}")
             continue
 
         reaction = match_reaction(reactants, products, reactions)
@@ -277,10 +277,10 @@ def set_custom_exothermicities(
                 matched += 1
         else:
             unmatched += 1
-            logger.warning(
+            _logger.warning(
                 f"No match: {' + '.join(r for r in reactants if r != 'NAN')} "
                 f"-> {' + '.join(p for p in products if p != 'NAN')}"
             )
 
-    logger.info(f"Custom exothermicities: {matched} matched, {unmatched} unmatched")
+    _logger.info(f"Custom exothermicities: {matched} matched, {unmatched} unmatched")
     return matched, unmatched

@@ -14,7 +14,7 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 ReactionFileTypes = Literal["UMIST", "KIDA", "UCL"]
 
@@ -438,7 +438,7 @@ class MakeratesConfig(BaseModel):
         """
         if self.database_reaction_exothermicity or self.derive_reaction_exothermicity:
             if not self.enable_rates_storage:
-                logger.warning(
+                _logger.warning(
                     "Exothermicity features require rate storage. "
                     "Automatically enabling enable_rates_storage=True. "
                     "Add 'enable_rates_storage: true' to your config to suppress this warning."
@@ -502,8 +502,8 @@ class MakeratesConfig(BaseModel):
             msg = f"Configuration file not found: {yaml_path}"
             raise FileNotFoundError(msg)
 
-        logger.info(f"Reading configuration from: {yaml_path}")
-        logger.info(f"Configuration directory: {yaml_path.parent}")
+        _logger.info(f"Reading configuration from: {yaml_path}")
+        _logger.info(f"Configuration directory: {yaml_path.parent}")
 
         with yaml_path.open() as f:
             data = yaml.safe_load(f)
@@ -774,10 +774,10 @@ database_reaction_type: "UMIST12"
 
     def log_configuration(self) -> None:
         """Log the current configuration for debugging."""
-        logger.info("Configuration loaded successfully:")
+        _logger.info("Configuration loaded successfully:")
         for field_name, field_info in self.__class__.model_fields.items():
             if field_name.startswith("_"):
                 continue
             value = getattr(self, field_name)
             if value != field_info.default:  # Only log non-default values
-                logger.info(f"  {field_name}: {value}")
+                _logger.info(f"  {field_name}: {value}")

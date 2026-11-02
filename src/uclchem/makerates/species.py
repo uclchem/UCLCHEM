@@ -19,7 +19,7 @@ from uclchem.utils import (
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 elementList = [
     "H",
@@ -517,7 +517,7 @@ class Species:
         """
         keys = self.freeze_products.keys()
         values = self.freeze_products.values()
-        logger.debug(f"freeze keys: {keys}, products {values}")
+        _logger.debug(f"freeze keys: {keys}, products {values}")
         for key, value in zip(keys, values, strict=False):
             yield key.split(","), value
 
@@ -759,7 +759,7 @@ class Species:
             mass += elementMass[elementList.index(atom)]
         if mass != int(self.get_mass()):
             if not quiet:
-                logger.warning(
+                _logger.warning(
                     f"Input mass of {self.get_name()} ({self.get_mass()}) does not match calculated mass of constituents, using calculated mass: {int(mass)}"
                 )
             self.set_mass(int(mass))
@@ -1197,11 +1197,11 @@ class Species:
             if self.symmetry_factor == 1:
                 return
             msg = f"For diatomic molecule consisting of two different atoms (in this case {self.name}), the symmetry factor should be 1, but was given to be {self.symmetry_factor}. Correcting to 1."
-            logger.warning(msg)
+            _logger.warning(msg)
             self.symmetry_factor = 1
             return
         if self.symmetry_factor == 2:  # noqa: PLR2004
             return
         msg = f"For diatomic molecule consisting of two of the same atoms (in this case {self.name}), the symmetry factor should be 2, but was given to be {self.symmetry_factor}. Correcting to 2."
-        logger.warning(msg)
+        _logger.warning(msg)
         self.symmetry_factor = 2
