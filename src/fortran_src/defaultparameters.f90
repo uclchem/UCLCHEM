@@ -28,6 +28,7 @@ REAL(dp) :: rin=0.0 !Minimum radial distance from cloud center to consider.
 REAL(dp) :: baseAv=2.0 !Extinction at cloud edge, Av of a parcel at rout.
 INTEGER :: points=1 !Number of gas parcels equally spaced between rin to rout to consider
 REAL(dp) :: bm0=1.0 !magnetic parameter [microgauss]: B0 = bm0*sqrt(initialDens)
+REAL(dp) :: gas_dust_mass_ratio=100.0 !Gas-to-dust mass ratio by mass.
 !Physical profiles for 1D model with pre-described gas density
 REAL(dp) :: density_scale_radius=0.05 !unit of pc, distance below which the gas volume density is constant, and above which the gas density drops as n ~ r^{-a}
 REAL(dp) :: density_power_index=2.0 !Power-law index for density profile: n(r) = n0/(1 + (r/density_scale_radius)^density_power_index)

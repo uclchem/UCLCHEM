@@ -281,8 +281,6 @@ def __functional_return__(
                     with_heating=return_heating,
                     with_stats=return_stats,
                 )
-                # get_dataframes() is annotated as DataFrame | tuple[DataFrame, ...];
-                # with joined=False it always returns the tuple, so narrow explicitly.
                 phys = cast("pd.DataFrame", res[0]).copy()
                 chem = cast("pd.DataFrame", res[1]).copy()
                 phys["Point"] = pt + 1
@@ -303,8 +301,8 @@ def __functional_return__(
                 if return_stats and len(res) > idx:
                     stats_list.append(cast("pd.DataFrame", res[idx]).assign(Point=pt + 1))
 
-            phys_df = pd.concat(physics_list, ignore_index=True)
-            chem_df = pd.concat(chemistry_list, ignore_index=True)
+            phys_df: pd.DataFrame = pd.concat(physics_list, ignore_index=True)
+            chem_df: pd.DataFrame = pd.concat(chemistry_list, ignore_index=True)
             rate_constants_df = (
                 pd.concat(rate_constants_list, ignore_index=True)
                 if rate_constants_list
