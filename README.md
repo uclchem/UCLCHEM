@@ -1,4 +1,4 @@
- UCLCHEM
+# UCLCHEM
 
 [![arXiv](https://img.shields.io/badge/arXiv-2606.20265-gray?style=for-the-badge&logo=arxiv&logoSize=auto&labelColor=gray&color=%23B31B1B)](https://arxiv.org/abs/2606.20265)
 [![GitHub Release](https://img.shields.io/github/v/release/uclchem/UCLCHEM?include_prereleases&style=for-the-badge)](https://github.com/uclchem/UCLCHEM/releases)
@@ -31,7 +31,7 @@ To build UCLCHEM, you'll need gfortran, make and python 3.11+.
 On MacOS, make sure to have xcode installed.
 See more detailed installation instructions [here](https://uclchem.github.io/develop/getting-started/installation.html).
 
-# Installation
+### Installation
 
 UCLCHEM is intended to be used as a python module but must be installed from source rather than an online index such as PyPI.
 This is because users are expected to modify the source code, at least by creating their own networks.
