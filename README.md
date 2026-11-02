@@ -8,7 +8,9 @@
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/uclchem/UCLCHEM/.github%2Fworkflows%2Fci-test-suite.yml?style=for-the-badge&logo=pytest&logoSize=auto)
 [![MIT License](https://img.shields.io/github/license/uclchem/UCLCHEM?style=for-the-badge)](https://github.com/uclchem/UCLCHEM/LICENSE.txt)
 [![ty](https://img.shields.io/badge/-ty-gray?style=for-the-badge&logo=ty&logoColor=%2346ebe1&labelColor=gray&color=%2330173d)](https://github.com/astral-sh/ty)
-[![ruff](https://img.shields.io/badge/-ruff-gray?style=for-the-badge&logo=ruff&logoColor=%2346ebe1&labelColor=gray&color=%2330173d)](https://github.com/astral-sh/ruff)
+[![ruff](https://img.shields.io/badge/-ruff-gray?style=for-the-badge&logo=ruff&logoColor=%2346ebe1&labelColor=gray&color=%2330173d)](https://github.com/astral-sh/ruff)<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+[![All Contributors](https://img.shields.io/github/all-contributors/uclchem/UCLCHEM?style=for-the-badge)](#contributors)
+<!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 <div align="center">
   <img src="https://raw.githubusercontent.com/uclchem/UCLCHEM/main/images/uclchem.pdf" width="200">
@@ -156,5 +158,50 @@ After adding or renaming Fortran `PARAMETER` declarations, regenerate `src/uclch
 ## License
 We use the [MIT License](https://github.com/uclchem/UCLCHEM/blob/main/LICENSE.txt), allowing the user liberties with how they use UCLCHEM. To foster our efforts and open science, we however kindly request the user to:
 1. Cite the paper if you use our code.
-2. Make public any flavors of UCLCHEM you derive and use for articles, in order of preference: as a pull request on this reposistory, as a fork, code uploaded somewhere.
+2. Make public any flavors of UCLCHEM you derive and use for articles, in order of preference: as a pull request on this repository, as a fork, code uploaded somewhere.
 
+
+## Contributors ✨
+
+Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/en/reference/emoji-key/)):
+
+<!-- spellchecker:off -->
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/jonholdship"><img src="https://avatars.githubusercontent.com/u/11349588?v=4&size=100" width="100px" height="100px" alt="Jon Holdship"/><br /><sub><b>Jon Holdship</b></sub></a><br /><a href="https://github.com/uclchem/UCLCHEM/commits?author=jonholdship" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/GijsVermarien"><img src="https://avatars.githubusercontent.com/u/25642414?v=4&size=100" width="100px" height="100px" alt="Gijs Vermariën"/><br /><sub><b>Gijs Vermariën</b></sub></a><br /><a href="https://github.com/uclchem/UCLCHEM/commits?author=GijsVermarien" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/TobiasDijkhuis"><img src="https://avatars.githubusercontent.com/u/99098052?v=4&size=100" width="100px" height="100px" alt="Tobias Dijkhuis"/><br /><sub><b>Tobias Dijkhuis</b></sub></a><br /><a href="https://github.com/uclchem/UCLCHEM/commits?author=TobiasDijkhuis" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Marcus-Keil"><img src="https://avatars.githubusercontent.com/u/37833544?v=4&size=100" width="100px" height="100px" alt="Dr. Marcus Keil"/><br /><sub><b>Dr. Marcus Keil</b></sub></a><br /><a href="https://github.com/uclchem/UCLCHEM/commits?author=Marcus-Keil" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/tomasjames"><img src="https://avatars.githubusercontent.com/u/5236734?v=4&size=100" width="100px" height="100px" alt="Tomas James"/><br /><sub><b>Tomas James</b></sub></a><br /><a href="https://github.com/uclchem/UCLCHEM/commits?author=tomasjames" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Ross-ODonoghue"><img src="https://avatars.githubusercontent.com/u/59836299?v=4&size=100" width="100px" height="100px" alt="Ross O'Donoghue"/><br /><sub><b>Ross O'Donoghue</b></sub></a><br /><a href="https://github.com/uclchem/UCLCHEM/commits?author=Ross-ODonoghue" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Bamash"><img src="https://avatars.githubusercontent.com/u/32938368?v=4&size=100" width="100px" height="100px" alt="Bamash"/><br /><sub><b>Bamash</b></sub></a><br /><a href="https://github.com/uclchem/UCLCHEM/commits?author=Bamash" title="Code">💻</a></td>
+    </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/lengoctram"><img src="https://avatars.githubusercontent.com/u/91097424?v=4&size=100" width="100px" height="100px" alt="Le N. Tram"/><br /><sub><b>Le N. Tram</b></sub></a><br /><a href="https://github.com/uclchem/UCLCHEM/commits?author=lengoctram" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://piyushsharda.wixsite.com/main"><img src="https://avatars.githubusercontent.com/u/34922596?v=4&size=100" width="100px" height="100px" alt="Piyush Sharda"/><br /><sub><b>Piyush Sharda</b></sub></a><br /><a href="https://github.com/uclchem/UCLCHEM/commits?author=psharda" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/katarzynadutkowska"><img src="https://avatars.githubusercontent.com/u/73302015?v=4&size=100" width="100px" height="100px" alt="Katarzyna M. Dutkowska"/><br /><sub><b>Katarzyna M. Dutkowska</b></sub></a><br /><a href="https://github.com/uclchem/UCLCHEM/commits?author=katarzynadutkowska" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Diederick-V"><img src="https://avatars.githubusercontent.com/u/79215711?v=4&size=100" width="100px" height="100px" alt="Diederick Vroom "/><br /><sub><b>Diederick Vroom </b></sub></a><br /><a href="https://github.com/uclchem/UCLCHEM/commits?author=Diederick-V" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/JosephSalaris"><img src="https://avatars.githubusercontent.com/u/64165609?v=4&size=100" width="100px" height="100px" alt="JosephSalaris"/><br /><sub><b>JosephSalaris</b></sub></a><br /><a href="https://github.com/uclchem/UCLCHEM/issues?q=author%3AJosephSalaris" title="Bug reports">🐛</a></td>
+    </tr>
+  </tbody>
+  <tfoot>
+    <tr>
+      <td align="center" size="13px" colspan="7">
+        <img src="https://raw.githubusercontent.com/all-contributors/all-contributors-cli/1b8533af435da9854653492b1327a23a4dbd0a10/assets/logo-small.svg">
+          <a href="https://all-contributors.js.org/docs/en/bot/usage">Add your contributions</a>
+        </img>
+      </td>
+    </tr>
+  </tfoot>
+</table>
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+<!-- spellchecker:on -->
+
+This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
