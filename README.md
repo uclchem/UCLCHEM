@@ -1,6 +1,6 @@
 # UCLCHEM
 
-[![arXiv](https://img.shields.io/badge/arXiv-2606.20265-gray?style=for-the-badge&logo=arxiv&logoSize=auto&labelColor=gray&color=%23B31B1B)](https://https://arxiv.org/abs/2606.20265)
+[![arXiv](https://img.shields.io/badge/arXiv-2606.20265-gray?style=for-the-badge&logo=arxiv&logoSize=auto&labelColor=gray&color=%23B31B1B)](https://arxiv.org/abs/2606.20265)
 [![GitHub Release](https://img.shields.io/github/v/release/uclchem/UCLCHEM?include_prereleases&style=for-the-badge)](https://github.com/uclchem/UCLCHEM/releases)
 ![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fuclchem%2FUCLCHEM%2Fmain%2Fpyproject.toml&style=for-the-badge&logo=python&logoSize=auto)
 [![Read the Docs](https://img.shields.io/readthedocs/uclchem?style=for-the-badge&logo=readthedocs)](https://uclchem.github.io)
@@ -9,11 +9,11 @@
 [![MIT License](https://img.shields.io/github/license/uclchem/UCLCHEM?style=for-the-badge)](https://github.com/uclchem/UCLCHEM/LICENSE.txt)
 [![ty](https://img.shields.io/badge/-ty-gray?style=for-the-badge&logo=ty&logoColor=%2346ebe1&labelColor=gray&color=%2330173d)](https://github.com/astral-sh/ty)
 [![ruff](https://img.shields.io/badge/-ruff-gray?style=for-the-badge&logo=ruff&logoColor=%2346ebe1&labelColor=gray&color=%2330173d)](https://github.com/astral-sh/ruff)<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/github/all-contributors/uclchem/UCLCHEM?style=for-the-badge)](#contributors)
+[![All Contributors](https://img.shields.io/github/all-contributors/uclchem/UCLCHEM?style=for-the-badge)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/uclchem/UCLCHEM/main/images/uclchem.pdf" width="200">
+  <img src="https://raw.githubusercontent.com/uclchem/uclchem/main/images/uclchem.svg" width="200">
 </div>
 
 A gas-grain chemical code that propagates the abundances of chemical species through a network of user-defined reactions
@@ -31,7 +31,7 @@ To build UCLCHEM, you'll need gfortran, make and python 3.11+.
 On MacOS, make sure to have xcode installed.
 See more detailed installation instructions [here](https://uclchem.github.io/develop/getting-started/installation.html).
 
-# Installation
+### Installation
 
 UCLCHEM is intended to be used as a python module but must be installed from source rather than an online index such as PyPI.
 This is because users are expected to modify the source code, at least by creating their own networks.
