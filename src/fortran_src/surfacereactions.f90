@@ -668,7 +668,7 @@ SUBROUTINE updateVdiffAndVdes(gasTemp, dustTemp, nIce, vdiff, vdes)
         DO i=1,nIce
             j = iceList(i)
             ! Original treatment by Hasegawa et al, 1992
-            vdes(i) = SQRT(HH_VDES_PREFACTOR*bindingEnergy(i)*mass(j))
+            vdes(i) = SQRT(HH_VDES_PREFACTOR*bindingEnergy(i)/mass(j))
             vdiff(i) = vdes(i)
         END DO
     ELSE
