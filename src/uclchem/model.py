@@ -4983,13 +4983,7 @@ class GridRunner:
     @property
     def num_models(self) -> int:
         """The number of models in the grid."""
-        param_dicts = self.grid_iter(
-            self.full_parameters,
-            list(self.parameters_to_grid.keys()),
-            self.flat_grids,
-            self.model_type,
-        )
-        return len(list(param_dicts))
+        return len(self.flat_grids[0])
 
     def get_models(self) -> Iterator[AbstractModel]:
         """Get an iterator that will yield over all the models in the grid.
