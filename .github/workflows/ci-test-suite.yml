@@ -155,4 +155,4 @@ jobs:
 
       - name: "[test:makefile] Test compilation using make"
         run: |
-          pytest -v tests/fortran/test_makefile.py
+          pytest --noconftest -v tests/fortran/test_makefile.py

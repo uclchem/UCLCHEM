@@ -12,6 +12,11 @@ def test_compilation(tmp_path):
     )
 
     result = subprocess.run(
+        "make clean", shell=True, text=True, capture_output=True, cwd="src/fortran_src"
+    )
+    assert result.returncode == 0, f"'make clean' failed:\n{result.stdout}\n{result.stderr}"
+
+    result = subprocess.run(
         "make", shell=True, text=True, capture_output=True, cwd="src/fortran_src"
     )
     assert result.returncode == 0, f"'make' failed:\n{result.stdout}\n{result.stderr}"
