@@ -2,7 +2,8 @@
 
 import re
 from collections.abc import Iterable
-from typing import Any, Literal
+from pathlib import Path
+from typing import Any, Literal, NotRequired, TypedDict
 
 import numpy as np
 
@@ -154,23 +155,32 @@ def sanitize_input_float(row: list[Any], index: int, default: Any = 0.0) -> floa
     return output
 
 
-def get_default_coolants() -> list[dict[str, str]]:
+class CoolantConfiguration(TypedDict):
+    """Configuration for coolant."""
+
+    file: Path
+    name: str
+    parent_species: NotRequired[str]
+    conversion_factor: NotRequired[float]
+
+
+def get_default_coolants() -> list[CoolantConfiguration]:
     """Get the default coolant configuration for UCLCHEM.
 
     Returns
     -------
-    list[dict[str, str]]
+    list[CoolantConfiguration]
         List of coolant dictionaries with 'file' and 'name' keys.
 
     """
     return [
-        {"file": "ly-a.dat", "name": "H"},
-        {"file": "12c+_nometa.dat", "name": "C+"},
-        {"file": "16o.dat", "name": "O"},
-        {"file": "12c.dat", "name": "C"},
-        {"file": "12co.dat", "name": "CO"},
-        {"file": "p-h2.dat", "name": "p-H2"},
-        {"file": "o-h2.dat", "name": "o-H2"},
+        {"file": Path("ly-a.dat"), "name": "H"},
+        {"file": Path("12c+_nometa.dat"), "name": "C+"},
+        {"file": Path("16o.dat"), "name": "O"},
+        {"file": Path("12c.dat"), "name": "C"},
+        {"file": Path("12co.dat"), "name": "CO"},
+        {"file": Path("p-h2.dat"), "name": "p-H2"},
+        {"file": Path("o-h2.dat"), "name": "o-H2"},
     ]
 
 
@@ -225,11 +235,16 @@ def check_reaction(reaction_row: list[Any], keep_list: list[str]) -> bool:
 
 
 FORTRAN_LINE_LENGTH = 80
+FORTRAN_INDENT_WIDTH = 4
 
-_FORTRAN_LINE_END_OPERATORS = frozenset({"*", "+", ",", '"'})
+_FORTRAN_LINE_END_OPERATORS = frozenset({"*", "+", ",", '"', "="})
 
 
-def truncate_line(input_string: str, line_length: int = FORTRAN_LINE_LENGTH) -> str:
+def truncate_line(
+    input_string: str,
+    line_length: int = FORTRAN_LINE_LENGTH,
+    indent_width: int = FORTRAN_INDENT_WIDTH,
+) -> str:
     """Take a string and add line endings at regular intervals.
 
     Keeps us from overshooting fortran's line limits and, frankly,
@@ -241,6 +256,8 @@ def truncate_line(input_string: str, line_length: int = FORTRAN_LINE_LENGTH) -> 
         Line of code to be truncated
     line_length : int
         rough line length. Default = :data:`FORTRAN_LINE_LENGTH`.
+    indent_width : int
+        Indentation width. Default = :data:`FORTRAN_INDENT_WIDTH`.
 
     Returns
     -------
@@ -250,6 +267,7 @@ def truncate_line(input_string: str, line_length: int = FORTRAN_LINE_LENGTH) -> 
     """
     result = ""
     i = 0
+    indentation = indent_width * " "
     while len(input_string[i:]) > line_length:
         j = i + line_length
         if "\n" in input_string[i:j]:
@@ -261,15 +279,13 @@ def truncate_line(input_string: str, line_length: int = FORTRAN_LINE_LENGTH) -> 
                 or input_string[j - 1 : j + 1].lower() == "e+"
             ):
                 j -= 1
-            result += input_string[i:j] + "&\n    &"
+            result += input_string[i:j] + f"&\n{indentation}&"
         i = j
     result += input_string[i:]
     return result
 
 
-def replace_value_with_name(
-    string: str, value: int | float, replace_string: str, *, truncate: bool = True
-) -> str:
+def replace_value_with_name(string: str, value: int | float, replace_string: str) -> str:
     """Replace all instances of `value` with a string `replace_string`.
 
     Uses func:`array_to_string` to determine how `value` would be formatted as a string.
@@ -282,9 +298,6 @@ def replace_value_with_name(
         value to replace
     replace_string : str
         string to put instead of `value`
-    truncate : bool
-        Whether to truncate the line using func:`truncate_line`.
-        Default = True.
 
     Returns
     -------
@@ -335,8 +348,6 @@ def replace_value_with_name(
         replace_string,
         string,
     )
-    if truncate:
-        replaced_string = truncate_line(replaced_string)
     replaced_string += suffix
     return replaced_string
 
@@ -413,7 +424,7 @@ def array_to_string(
             dtype = "logical"
             values = ",".join(".true." if v else ".false." for v in flat)
         param_str = ", parameter" if parameter else ""
-        out_string = f"{dtype}{param_str} :: {name}({shape_string}) = RESHAPE((/ {values} /), (/ {shape_string} /))\n"
+        out_string = f"{dtype}{param_str} :: {name}({shape_string}) = RESHAPE((/{values}/), (/{shape_string}/))\n"
     else:
         length_name: str = str(len(arr)) if length_name is None else length_name  # type: ignore[no-redef]
         if parameter:
@@ -435,7 +446,6 @@ def array_to_string(
             out_string = "logical" + out_string
             values = ",".join(f"{'.true.' if value else '.false.'}" for value in arr)
         out_string += values + "/)\n"
-    out_string = truncate_line(out_string)
     return out_string
 
 
@@ -533,6 +543,65 @@ def pad_to_max_length(strings: Iterable[str]) -> list[str]:
     list[str]
         List of padded strings
 
+    Examples
+    --------
+    >>> pad_to_max_length(['a', 'bc'])
+    ['a ', 'bc']
+    >>> pad_to_max_length(['short  ', 'loooooong   '])
+    ['short       ', 'loooooong   ']
+
     """
     max_length = max(len(string) for string in strings)
     return [string.ljust(max_length) for string in strings]
+
+
+def is_bare_path(path: str | Path) -> bool:
+    """Check whether the filepath is a bare file name, without directories.
+
+    Parameters
+    ----------
+    path : str | Path
+        The path
+
+    Returns
+    -------
+    bool
+        Whether the filepath is just bare, without any directories.
+
+    Examples
+    --------
+    >>> is_bare_path(Path("directory")/'file.txt')
+    False
+    >>> is_bare_path('file.txt')
+    True
+
+    """
+    return Path(path).name == str(path)
+
+
+def get_number_of_leading_spaces(string: str) -> int:
+    """Get the number of leading spaces in a string.
+
+    Parameters
+    ----------
+    string : str
+        String
+
+    Returns
+    -------
+    int
+        Number of leading spaces in the string
+
+    Examples
+    --------
+    >>> get_number_of_leading_spaces('hello')
+    0
+    >>> get_number_of_leading_spaces('  hello')
+    2
+    >>> get_number_of_leading_spaces('  hello  ')
+    2
+    >>> get_number_of_leading_spaces('')
+    0
+
+    """
+    return len(string) - len(string.lstrip(" "))

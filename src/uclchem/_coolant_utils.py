@@ -37,7 +37,7 @@ def _normalize_for_comparison(text: str) -> str:
 
 def get_energy_levels_info(
     coolant_names: list[str],
-    coolant_files: list[str],
+    coolant_files: list[Path],
     data_dir: str | Path,
 ) -> tuple[int, int]:
     """Compute energy level information from coolant data files.
@@ -50,7 +50,7 @@ def get_energy_levels_info(
     ----------
     coolant_names : list[str]
         List of coolant species names (e.g., ['H', 'C+', 'O', ...])
-    coolant_files : list[str]
+    coolant_files : list[Path]
         List of coolant data file names (e.g., ['ly-a.dat', ...])
     data_dir : str | Path
         Directory containing the coolant data files
@@ -118,7 +118,9 @@ def get_energy_levels_info_from_runtime() -> tuple[int, int]:
 
     """
     coolant_names = [str(name.decode()).strip() for name in f2py_constants.coolantnames]
-    coolant_files = [str(fname.decode()).strip() for fname in f2py_constants.coolantfiles]
+    coolant_files = [
+        Path(str(fname.decode()).strip()) for fname in f2py_constants.coolantfiles
+    ]
 
     # Get data directory
     heating_settings = HeatingSettings()

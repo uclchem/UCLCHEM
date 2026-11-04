@@ -7390,7 +7390,6 @@ contains
 
         surfGrowthUncorrected = YDOT(335)
 
-
         ! Update surface species for bulk growth
         if (YDOT(nSurface) < 0) then
             ! Since ydot(surface_index) is negative, bulk is lost and surface forms

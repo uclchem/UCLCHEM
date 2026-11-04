@@ -14,6 +14,8 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from uclchem.makerates.utils import CoolantConfiguration  # ruff: ignore[typing-only-first-party-import]
+
 _logger = logging.getLogger(__name__)
 
 ReactionFileTypes = Literal["UMIST", "KIDA", "UCL"]
@@ -161,7 +163,7 @@ class MakeratesConfig(BaseModel):
     # OPTIONAL PARAMETERS - Cooling / Coolants
     # ============================================================================
 
-    coolants: list[dict] | None = Field(
+    coolants: list[CoolantConfiguration] | None = Field(
         default=None,
         description=(
             "Optional inline list of coolant specifications. "
