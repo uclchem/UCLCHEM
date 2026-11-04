@@ -71,7 +71,6 @@ repos:
       - id: ty
         name: "[correctness] ty type checking"
         description: "Check for type errors"
-        args: [--all-extras]
 
   # ============================================================================
   # TIER 2: STYLE (Auto-fixable formatting and imports)
