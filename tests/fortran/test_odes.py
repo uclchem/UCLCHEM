@@ -30,6 +30,11 @@ def test_surfgrowthuncorrected_shrink():
 
     rate_constants[reaction_idx] = _rng.random()
     abundances[:] = _rng.random(uclchem.constants.n_species + 2)
+    # With Garrod & Pauly (2011) transfer the bulk only refills a fraction
+    # min(1, bulk/surface) of the surface loss, so the full compensation checked
+    # below requires the bulk to be larger than the surface.
+    bulk_species = [i for i, s in enumerate(species_list) if s.is_bulk_species()]
+    abundances[bulk_species] *= 10
 
     surface_index = uclchemwrap.network.nsurface - 1
     bulk_index = uclchemwrap.network.nbulk - 1
