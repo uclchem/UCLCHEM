@@ -139,10 +139,7 @@ jobs:
 
       - name: "[test:networks] Test custom network installation and simulation"
         run: |
-<<<<<<< HEAD
           pytest -v tests/install/test_install_custom_networks.py -k "installable or minimum_content or cloud_model"
-=======
-          pytest -v tests/test_install_custom_networks.py -k "installable or minimum_content or cloud_model"
 
   test-makefile:
     name: Test (Makefile)
@@ -158,5 +155,4 @@ jobs:
 
       - name: "[test:makefile] Test compilation using make"
         run: |
-          pytest -v tests/test_makefile.py
->>>>>>> 64dd616 (Add test for makefile.)
+          pytest -v tests/fortran/test_makefile.py
