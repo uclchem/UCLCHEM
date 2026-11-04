@@ -44,7 +44,7 @@ def test_get_final_abundances_for_species(basic_cloud):
 
     assert len(final_abundances) == len(species)
 
-    _, chem_df = basic_cloud.get_separate_dataframes()
+    _, chem_df = basic_cloud.get_split_dataframes()
     final_abundances_from_df = [chem_df[spec].iloc[-1] for spec in species]
     assert np.all(final_abundances_from_df == final_abundances)
 

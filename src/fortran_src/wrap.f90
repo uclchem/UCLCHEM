@@ -1315,7 +1315,7 @@ contains
             case("writestep")
                 read(inputValue,*,iostat=successFlag) writeStep
             case("writetimestepinfo","writetimestep")
-                read(inputValue,*,iostat=successFlag) writeTimestepInfo
+                read(inputValue,*,iostat=successFlag) writeTimeStepInfo
             case("heatingFlag", "heatingflag")
                 read(inputValue,*,iostat=successFlag) heatingFlag
             case("ebmaxh2")
