@@ -71,6 +71,11 @@ repos:
       - id: ty
         name: "[correctness] ty type checking"
         description: "Check for type errors"
+        # Install all dependencies (incl. the dev/docs extras, for pytest and
+        # notebook tooling imports) but not uclchem itself: building the Fortran
+        # extension needs meson-python/gfortran in the env (no build isolation),
+        # and ty resolves uclchem from src/ anyway.
+        args: [--no-install-project, --all-extras]
 
   # ============================================================================
   # TIER 2: STYLE (Auto-fixable formatting and imports)

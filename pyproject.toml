@@ -201,6 +201,13 @@ ATcT = "ATcT"
 # Physics variable name (inner radius) used in Fortran and Python sources.
 rin = "rin"
 
+[tool.mypy]
+# tests/ has no __init__.py; without this, tests/constants.py is seen as both
+# "constants" and "tests.constants". mypy_path marks src/ as a package root so
+# src/uclchem/... still maps to uclchem.... instead of src.uclchem....
+explicit_package_bases = true
+mypy_path = "src"
+
 [[tool.mypy.overrides]]
 module = ["yaml", "uclchemwrap", "h5py", "nbconvert.*", "nbformat", "pytest", "matplotlib", "matplotlib.*", "bs4", "pydantic", "uclchem._project_root"]
 ignore_missing_imports = true

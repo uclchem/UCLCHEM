@@ -130,6 +130,7 @@ DEFAULT_PARAMETER_DICTIONARY = MappingProxyType(
         "CRDesorb": True,
         "UVDesorb": True,
         "thermDesorb": True,
+        "chemDesorb": True,
         "instantSublimation": False,
         "cosmicRayAttenuation": False,
         "ionModel": "L",
