@@ -1,17 +1,10 @@
 from copy import deepcopy
 from functools import cache
-from pathlib import Path
 from types import MappingProxyType
 
 import pytest
 
 import uclchem
-
-
-@pytest.fixture
-def uclchem_root() -> Path:
-    return Path(__file__).parent.parent.resolve()
-
 
 DEFAULT_PARAMETER_DICTIONARY = MappingProxyType(
     {

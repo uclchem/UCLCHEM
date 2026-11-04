@@ -13,11 +13,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from tests.constants import UCLCHEM_ROOT_DIR
 from uclchem import advanced
-
-# Root of the UCLCHEM repo (tests/ is one level down)
-UCLCHEM_ROOT = Path(__file__).resolve().parent.parent
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -44,9 +41,9 @@ def _run(cmd: str, cwd: str | Path, timeout: int = 600) -> subprocess.CompletedP
 class TestMakeRatesWithHeating:
     """Test that makerates succeeds with the full coolant config."""
 
-    def test_makerates_runs_successfully(self, uclchem_root):
+    def test_makerates_runs_successfully(self):
         """Run makerates with user_settings_with_heating.yaml and verify success."""
-        makerates_dir = uclchem_root / "Makerates"
+        makerates_dir = UCLCHEM_ROOT_DIR / "Makerates"
         result = _run(
             f"{sys.executable} MakeRates.py user_settings_with_heating.yaml",
             cwd=makerates_dir,
@@ -55,23 +52,23 @@ class TestMakeRatesWithHeating:
             f"MakeRates failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
         )
 
-    def test_generated_f2py_constants_exists(self, uclchem_root):
+    def test_generated_f2py_constants_exists(self):
         """Verify f2py_constants.f90 was regenerated."""
-        f2py_path = uclchem_root / "src" / "fortran_src" / "f2py_constants.f90"
+        f2py_path = UCLCHEM_ROOT_DIR / "src" / "fortran_src" / "f2py_constants.f90"
         assert f2py_path.exists(), f"f2py_constants.f90 not found at {f2py_path}"
 
-    def test_generated_f2py_constants_has_coolant_active(self, uclchem_root):
+    def test_generated_f2py_constants_has_coolant_active(self):
         """Verify the generated f2py_constants.f90 contains coolant_active array."""
-        f2py_path = uclchem_root / "src" / "fortran_src" / "f2py_constants.f90"
+        f2py_path = UCLCHEM_ROOT_DIR / "src" / "fortran_src" / "f2py_constants.f90"
         content = f2py_path.read_text()
         assert "coolant_active" in content, (
             "coolant_active array missing from generated f2py_constants.f90"
         )
         assert "logical" in content.lower(), "'logical' type declaration missing"
 
-    def test_generated_f2py_constants_has_all_coolants(self, uclchem_root):
+    def test_generated_f2py_constants_has_all_coolants(self):
         """Verify the generated f2py_constants.f90 has the expected number of coolants."""
-        f2py_path = uclchem_root / "src" / "fortran_src" / "f2py_constants.f90"
+        f2py_path = UCLCHEM_ROOT_DIR / "src" / "fortran_src" / "f2py_constants.f90"
         content = f2py_path.read_text()
 
         # Extract NCOOLANTS value
@@ -93,16 +90,16 @@ class TestMakeRatesWithHeating:
         else:
             pytest.fail("Could not find 'NCOOLANTS PARAMETER' in f2py_constants.f90")
 
-    def test_generated_f2py_constants_has_conversion_factors(self, uclchem_root):
+    def test_generated_f2py_constants_has_conversion_factors(self):
         """Verify conversion factor arrays are present for ortho/para species."""
-        f2py_path = uclchem_root / "src" / "fortran_src" / "f2py_constants.f90"
+        f2py_path = UCLCHEM_ROOT_DIR / "src" / "fortran_src" / "f2py_constants.f90"
         content = f2py_path.read_text()
         assert "coolantConversionFactors" in content, "coolantConversionFactors missing"
         assert "coolantConversionMode" in content, "coolantConversionMode missing"
 
-    def test_generated_f2py_constants_has_parent_names(self, uclchem_root):
+    def test_generated_f2py_constants_has_parent_names(self):
         """Verify parent species names are present for abundance mapping."""
-        f2py_path = uclchem_root / "src" / "fortran_src" / "f2py_constants.f90"
+        f2py_path = UCLCHEM_ROOT_DIR / "src" / "fortran_src" / "f2py_constants.f90"
         content = f2py_path.read_text()
         assert "coolantparentnames" in content.lower(), "coolantParentNames missing"
 
@@ -116,28 +113,28 @@ class TestInstallWithHeating:
     """Test that pip install succeeds after makerates with full coolant set."""
 
     @pytest.mark.timeout(600)
-    def test_pip_install_succeeds(self, uclchem_root):
+    def test_pip_install_succeeds(self):
         """Install UCLCHEM with the regenerated Fortran sources."""
-        result = _run("pip install .", cwd=uclchem_root)
+        result = _run("pip install .", cwd=UCLCHEM_ROOT_DIR)
         assert result.returncode == 0, (
             f"pip install failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
         )
 
-    def test_import_uclchem(self, uclchem_root):
+    def test_import_uclchem(self):
         """Verify uclchem can be imported after install."""
         result = _run(
             f"{sys.executable} -c 'import uclchem; print(uclchem.__file__)'",
-            cwd=uclchem_root,
+            cwd=UCLCHEM_ROOT_DIR,
         )
         assert result.returncode == 0, (
             f"import uclchem failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
         )
 
-    def test_import_uclchemwrap(self, uclchem_root):
+    def test_import_uclchemwrap(self):
         """Verify the Fortran wrapper module can be imported."""
         result = _run(
             f"{sys.executable} -c 'import uclchemwrap; print(dir(uclchemwrap))'",
-            cwd=uclchem_root,
+            cwd=UCLCHEM_ROOT_DIR,
         )
         assert result.returncode == 0, (
             f"import uclchemwrap failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"

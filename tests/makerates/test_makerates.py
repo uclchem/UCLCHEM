@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
+from tests.constants import UCLCHEM_ROOT_DIR
 from uclchem.makerates.makerates import run_makerates
 
-UCLCHEM_ROOT_DIR = Path(__file__).parent.parent
 MAKERATES_DIR = UCLCHEM_ROOT_DIR / "Makerates"
 PYTHON_ROOT_DIR = UCLCHEM_ROOT_DIR / "src" / "uclchem"
 FORTRAN_ROOT_DIR = UCLCHEM_ROOT_DIR / "src" / "fortran_src"

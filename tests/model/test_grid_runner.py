@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 import uclchem
+from tests.constants import UCLCHEM_ROOT_DIR
 from uclchem.constants import SECONDS_PER_YEAR
 
 grid_runner_test_data = list(product(("", "prefix"), (False, True)))
@@ -121,9 +122,9 @@ NEATH_COLUMNS = [
 ]
 
 
-def test_grid_runner_postprocessing(uclchem_root, tmp_path):
+def test_grid_runner_postprocessing(tmp_path):
     df = pd.read_csv(
-        uclchem_root / "examples/fortran_cli/neath_small_data.out",
+        UCLCHEM_ROOT_DIR / "examples/fortran_cli/neath_small_data.out",
         sep=r"\s+",
         header=None,
         dtype=np.float64,

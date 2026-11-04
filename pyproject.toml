@@ -239,3 +239,7 @@ ignore = [
 line-too-long.ignore-comments = true
 preview = true
 use-statements.allow-bare-use = ['defaultparameters', 'physicscore']
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
