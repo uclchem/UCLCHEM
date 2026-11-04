@@ -219,7 +219,7 @@ contains
         real(dp) :: timeDelta
         timeDelta=(currentTime-currentTimeOld)
         if ((sum(abund(iceList,dstep)) > 1e-25_dp) .AND. (driftVel > 0)) then
-          call sputterIces(abund(:,dstep),driftVel,gasTemp(dstep),density(dstep),timeDelta)
+            call sputterIces(abund(:,dstep),driftVel,gasTemp(dstep),density(dstep),timeDelta)
         end if
         where(abund < 1.0e-50_dp) abund=0.0_dp
     end subroutine sublimation

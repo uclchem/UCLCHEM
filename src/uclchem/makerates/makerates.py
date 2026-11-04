@@ -134,9 +134,9 @@ def run_makerates(
             )
             raise ValueError(msg)
         try:
-            _coolants = io.read_coolants_file(coolants_path)
-            _logger.info(f"Loaded {len(_coolants)} coolants from {coolants_path}")
-            coolants_to_write = _coolants
+            coolants = io.read_coolants_file(coolants_path)
+            _logger.info(f"Loaded {len(coolants)} coolants from {coolants_path}")
+            coolants_to_write = coolants
         except Exception as exc:
             msg = f"Error reading coolants_file {coolants_path}: {exc}"
             raise ValueError(msg) from exc

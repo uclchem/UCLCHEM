@@ -61,7 +61,6 @@ class NetworkABC(ABC):
     @abstractmethod
     def get_species_list(self) -> list[Species]:
         """All species in the network."""
-        pass
 
     @abstractmethod
     def get_species_dict(self) -> dict[str, Species]:

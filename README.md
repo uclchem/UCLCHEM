@@ -57,8 +57,8 @@ import matplotlib.pyplot as plt
 if __name__ == "__main__":
     param_dict = {
         "initialDens": 1e5,  # Initial density of the cloud
-        "initialTemp": 10,   # Temperature
-        "finalTime": 1e6,    # Duration of the model in years
+        "initialTemp": 10,  # Temperature
+        "finalTime": 1e6,  # Duration of the model in years
     }
     model = uclchem.model.Cloud(param_dict)
     model.check_error()

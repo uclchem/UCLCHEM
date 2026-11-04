@@ -27,160 +27,160 @@ module collapse_mod
    real(dp) :: dt,drad
 contains
 
-    subroutine initializePhysics(successFlag)
-        !f2py integer, intent(aux) :: points
-        integer, intent(out) :: successFlag
+   subroutine initializePhysics(successFlag)
+      !f2py integer, intent(aux) :: points
+      integer, intent(out) :: successFlag
 
-        if (ALLOCATED(parcelRadius)) deallocate(parcelRadius,massInRadius)
-        allocate(parcelRadius(points),massInRadius(points))
+      if (ALLOCATED(parcelRadius)) deallocate(parcelRadius,massInRadius)
+      allocate(parcelRadius(points),massInRadius(points))
 
-         select case(collapse_mode)
-            case(1)
-                maxTime=1.175e6_dp
-                collapseFinalTime=1.173387e6_dp
-            case(2)
-                maxTime=1.855e5_dp
-                collapseFinalTime=1.84265e5_dp
-            case(3)
-                collapseFinalTime=1.393761e6_dp
-            case(4)
-                collapseFinalTime=1.6132984e7_dp
-            case default
-                write(*,*) "Invalid collapse mode", collapse_mode
-                write(*,*) "Valid options are: 1, 2, 3, 4"
-                successFlag=-1
-                return
-         end select
+      select case(collapse_mode)
+      case(1)
+         maxTime=1.175e6_dp
+         collapseFinalTime=1.173387e6_dp
+      case(2)
+         maxTime=1.855e5_dp
+         collapseFinalTime=1.84265e5_dp
+      case(3)
+         collapseFinalTime=1.393761e6_dp
+      case(4)
+         collapseFinalTime=1.6132984e7_dp
+      case default
+         write(*,*) "Invalid collapse mode", collapse_mode
+         write(*,*) "Valid options are: 1, 2, 3, 4"
+         successFlag=-1
+         return
+      end select
 
-         if (points == 1) then
-               parcelRadius(1)=rout
-               parcel_radius(1)=rout
-         else
-            do dstep=1,points
-                  parcelRadius(dstep)=rin*(rout/rin)**((float(dstep)-1.0_dp)/(float(points)-1.0_dp))
-                  parcel_radius(dstep)=parcelRadius(dstep)
-            end do
-         end if
+      if (points == 1) then
+         parcelRadius(1)=rout
+         parcel_radius(1)=rout
+      else
+         do dstep=1,points
+            parcelRadius(dstep)=rin*(rout/rin)**((float(dstep)-1.0_dp)/(float(points)-1.0_dp))
+            parcel_radius(dstep)=parcelRadius(dstep)
+         end do
+      end if
 
-         density=get_rhofit(parcelRadius(dstep),get_rho0fit(timeInYears),get_r0fit(timeInYears),&
-             get_afit(timeInYears, collapse_mode))
-         if (collapse_mode <= 2) call findmassInRadius
-    end subroutine initializePhysics
+      density=get_rhofit(parcelRadius(dstep),get_rho0fit(timeInYears),get_r0fit(timeInYears),&
+          get_afit(timeInYears, collapse_mode))
+      if (collapse_mode <= 2) call findmassInRadius
+   end subroutine initializePhysics
 
-    subroutine updateTargetTime
-        real(dp) :: remaining
-        remaining = collapseFinalTime - timeInYears
+   subroutine updateTargetTime
+      real(dp) :: remaining
+      remaining = collapseFinalTime - timeInYears
 
-        ! ===== REGIME 1: POST-COLLAPSE (timeInYears > collapseFinalTime) =====
-        ! After the collapse endpoint, density is frozen. Use coarse timesteps to advance to finalTime.
-        if (timeInYears > collapseFinalTime) then
-            if (timeInYears > 1.0e6_dp) then
-                targetTime=(timeInYears+1.0e5_dp)*SECONDS_PER_YEAR    ! 100 kyr steps beyond 1 Myr
-            else
-                targetTime=(timeInYears+2.5e4_dp)*SECONDS_PER_YEAR    ! 25 kyr steps below 1 Myr
-            end if
-            return
-        end if
-
-        ! ===== REGIME 2: ENDING (remaining time approaching collapseFinalTime) =====
-        ! Fine adaptive steps near the singularity to capture raPId density evolution.
-        ! The collapse accelerates strongly in the final approach to the singularity,
-        ! so step size is reduced as remaining time shrinks.
-        if (remaining > 0.0_dp .AND. remaining < 1.0e3_dp) then
-            targetTime=(timeInYears+1.0e2_dp)*SECONDS_PER_YEAR    ! 100 yr steps in final 1 kyr
-        else if (remaining > 0.0_dp .AND. remaining < 1.0e4_dp) then
-            targetTime=(timeInYears+1.0e3_dp)*SECONDS_PER_YEAR    ! 1 kyr steps in final 10 kyr
-        else if (remaining > 0.0_dp .AND. remaining < 1.0e5_dp) then
-            targetTime=(timeInYears+1.0e4_dp)*SECONDS_PER_YEAR    ! 10 kyr steps in final 100 kyr
-        ! ===== REGIME 3: STARTING (early times before ending phase) =====
-        else if (timeInYears > 1.0e6_dp) then
+      ! ===== REGIME 1: POST-COLLAPSE (timeInYears > collapseFinalTime) =====
+      ! After the collapse endpoint, density is frozen. Use coarse timesteps to advance to finalTime.
+      if (timeInYears > collapseFinalTime) then
+         if (timeInYears > 1.0e6_dp) then
             targetTime=(timeInYears+1.0e5_dp)*SECONDS_PER_YEAR    ! 100 kyr steps beyond 1 Myr
-        else if (timeInYears > 1.0e5_dp) then
-            targetTime=(timeInYears+1.0e4_dp)*SECONDS_PER_YEAR    ! 10 kyr steps beyond 100 kyr
-        else if (timeInYears > 10000) then
-            targetTime=(timeInYears+1000.0_dp)*SECONDS_PER_YEAR   ! 1 kyr steps beyond 10 kyr
-        else if (timeInYears > 1000) then
-            targetTime=(timeInYears+100.0_dp)*SECONDS_PER_YEAR    ! 100 yr steps beyond 1 kyr
-        else if (timeInYears > 0.0_dp) then
-            targetTime=(timeInYears*10)*SECONDS_PER_YEAR       ! *10 exponential early on
-        else
-            targetTime=3.16e7_dp*10.0e-8_dp
-        end if
+         else
+            targetTime=(timeInYears+2.5e4_dp)*SECONDS_PER_YEAR    ! 25 kyr steps below 1 Myr
+         end if
+         return
+      end if
 
-        ! Cap at collapseFinalTime to avoid overshooting the singularity during collapse phase.
-        if (remaining > 0.0_dp .AND. targetTime > collapseFinalTime*SECONDS_PER_YEAR) then
-          targetTime=collapseFinalTime*SECONDS_PER_YEAR
-        end if
-    end subroutine updateTargetTime
+      ! ===== REGIME 2: ENDING (remaining time approaching collapseFinalTime) =====
+      ! Fine adaptive steps near the singularity to capture raPId density evolution.
+      ! The collapse accelerates strongly in the final approach to the singularity,
+      ! so step size is reduced as remaining time shrinks.
+      if (remaining > 0.0_dp .AND. remaining < 1.0e3_dp) then
+         targetTime=(timeInYears+1.0e2_dp)*SECONDS_PER_YEAR    ! 100 yr steps in final 1 kyr
+      else if (remaining > 0.0_dp .AND. remaining < 1.0e4_dp) then
+         targetTime=(timeInYears+1.0e3_dp)*SECONDS_PER_YEAR    ! 1 kyr steps in final 10 kyr
+      else if (remaining > 0.0_dp .AND. remaining < 1.0e5_dp) then
+         targetTime=(timeInYears+1.0e4_dp)*SECONDS_PER_YEAR    ! 10 kyr steps in final 100 kyr
+         ! ===== REGIME 3: STARTING (early times before ending phase) =====
+      else if (timeInYears > 1.0e6_dp) then
+         targetTime=(timeInYears+1.0e5_dp)*SECONDS_PER_YEAR    ! 100 kyr steps beyond 1 Myr
+      else if (timeInYears > 1.0e5_dp) then
+         targetTime=(timeInYears+1.0e4_dp)*SECONDS_PER_YEAR    ! 10 kyr steps beyond 100 kyr
+      else if (timeInYears > 10000) then
+         targetTime=(timeInYears+1000.0_dp)*SECONDS_PER_YEAR   ! 1 kyr steps beyond 10 kyr
+      else if (timeInYears > 1000) then
+         targetTime=(timeInYears+100.0_dp)*SECONDS_PER_YEAR    ! 100 yr steps beyond 1 kyr
+      else if (timeInYears > 0.0_dp) then
+         targetTime=(timeInYears*10)*SECONDS_PER_YEAR       ! *10 exponential early on
+      else
+         targetTime=3.16e7_dp*10.0e-8_dp
+      end if
 
-    !This routine is formed for every parcel at every time step.
-    !update any physics here. For example, set density
-    subroutine updatePhysics
-         !f2py integer, intent(aux) :: points
-        real(dp) :: effectiveTime
-        !Freeze density and parcel radius at collapseFinalTime; chemistry continues beyond
-        effectiveTime = MIN(timeInYears, collapseFinalTime)
-        !calculate column density. Remember dstep counts from core to edge
-        !and coldens should be amount of gas from edge to parcel.
-        call findcoldens(coldens(dstep),rin,get_rho0fit(effectiveTime),get_r0fit(effectiveTime),&
-            get_afit(effectiveTime, collapse_mode),rout)
-        !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
-        av(dstep)= get_av(baseAv, coldens(dstep))
-        !If collapse is one of the parameterized modes, find new density and radius
+      ! Cap at collapseFinalTime to avoid overshooting the singularity during collapse phase.
+      if (remaining > 0.0_dp .AND. targetTime > collapseFinalTime*SECONDS_PER_YEAR) then
+         targetTime=collapseFinalTime*SECONDS_PER_YEAR
+      end if
+   end subroutine updateTargetTime
 
-        if ((collapse_mode <= 2)) then
-            !I changed rin to rout
-            call findNewRadius(massInRadius(dstep),rout,get_rho0fit(effectiveTime),&
-                &get_r0fit(effectiveTime),get_afit(effectiveTime, collapse_mode),parcelRadius(dstep))
-        else
-            dt = targetTime - currentTime
-            if (timeInYears < collapseFinalTime) then
-                drad = get_vrfit(parcelRadius(dstep),&
-                    get_rminfit(effectiveTime, collapse_mode),&
-                    get_vminfit(effectiveTime, collapse_mode),&
-                    get_avfit(effectiveTime, collapse_mode), collapse_mode)*dt/PC
-                parcelRadius(dstep) = parcelRadius(dstep) + drad
-            end if
-        end if
-        parcel_radius(dstep) = parcelRadius(dstep)
-        density(dstep)=get_rhofit(parcelRadius(dstep),get_rho0fit(effectiveTime),get_r0fit(effectiveTime),&
-            get_afit(effectiveTime, collapse_mode))
-        ! Apply hard density of n_H=1e8 limit to prevent unphysical behavior
-        density(dstep) = MIN(density(dstep), 1e8_dp)
-    end subroutine updatePhysics
+   !This routine is formed for every parcel at every time step.
+   !update any physics here. For example, set density
+   subroutine updatePhysics
+      !f2py integer, intent(aux) :: points
+      real(dp) :: effectiveTime
+      !Freeze density and parcel radius at collapseFinalTime; chemistry continues beyond
+      effectiveTime = MIN(timeInYears, collapseFinalTime)
+      !calculate column density. Remember dstep counts from core to edge
+      !and coldens should be amount of gas from edge to parcel.
+      call findcoldens(coldens(dstep),rin,get_rho0fit(effectiveTime),get_r0fit(effectiveTime),&
+          get_afit(effectiveTime, collapse_mode),rout)
+      !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
+      av(dstep)= get_av(baseAv, coldens(dstep))
+      !If collapse is one of the parameterized modes, find new density and radius
 
-    !This module is isothermal and as such, no sublimation occurs.
-    !This is a dummy subroutine.
-    subroutine sublimation(abund, lpoints)
+      if ((collapse_mode <= 2)) then
+         !I changed rin to rout
+         call findNewRadius(massInRadius(dstep),rout,get_rho0fit(effectiveTime),&
+             &get_r0fit(effectiveTime),get_afit(effectiveTime, collapse_mode),parcelRadius(dstep))
+      else
+         dt = targetTime - currentTime
+         if (timeInYears < collapseFinalTime) then
+            drad = get_vrfit(parcelRadius(dstep),&
+                get_rminfit(effectiveTime, collapse_mode),&
+                get_vminfit(effectiveTime, collapse_mode),&
+                get_avfit(effectiveTime, collapse_mode), collapse_mode)*dt/PC
+            parcelRadius(dstep) = parcelRadius(dstep) + drad
+         end if
+      end if
+      parcel_radius(dstep) = parcelRadius(dstep)
+      density(dstep)=get_rhofit(parcelRadius(dstep),get_rho0fit(effectiveTime),get_r0fit(effectiveTime),&
+          get_afit(effectiveTime, collapse_mode))
+      ! Apply hard density of n_H=1e8 limit to prevent unphysical behavior
+      density(dstep) = MIN(density(dstep), 1e8_dp)
+   end subroutine updatePhysics
+
+   !This module is isothermal and as such, no sublimation occurs.
+   !This is a dummy subroutine.
+   subroutine sublimation(abund, lpoints)
       integer, intent(in) :: lpoints
       real(dp), intent(inout) :: abund(nSpec+1,lpoints)
-    end subroutine sublimation
+   end subroutine sublimation
 
 
-    ! finds initial mass within starting radius, assuming spherical symmetry
-    subroutine findMassInRadius
+   ! finds initial mass within starting radius, assuming spherical symmetry
+   subroutine findMassInRadius
       !f2py integer, intent(aux) :: points
       real(dp) :: rho0,r0,a
-      integer :: i,np,dstep
+      integer :: i,np,point_idx
       real(dp) :: dr,drho
 
-        rho0=get_rho0fit(timeInYears)
-        r0=get_r0fit(timeInYears)
-        a=get_afit(timeInYears, collapse_mode)
-      do dstep=1,points
-        np = 1000
-        dr = parcelRadius(dstep)/np
-        massInRadius(dstep) = 0.0_dp
+      rho0=get_rho0fit(timeInYears)
+      r0=get_r0fit(timeInYears)
+      a=get_afit(timeInYears, collapse_mode)
+      do point_idx=1,points
+         np = 1000
+         dr = parcelRadius(point_idx)/np
+         massInRadius(point_idx) = 0.0_dp
 
-        do i=1,np
-           drho = 0.5_dp*(get_rhofit(i*dr,rho0,r0,a)+get_rhofit((i-1)*dr,rho0,r0,a))
-           massInRadius(dstep) = massInRadius(dstep) + drho*dr*(i*dr)**2
-        end do
+         do i=1,np
+            drho = 0.5_dp*(get_rhofit(i*dr,rho0,r0,a)+get_rhofit((i-1)*dr,rho0,r0,a))
+            massInRadius(point_idx) = massInRadius(point_idx) + drho*dr*(i*dr)**2
+         end do
       end do
-    end subroutine findMassInRadius
+   end subroutine findMassInRadius
 
-! finds radius enclosing a mass of massInRadius
-    subroutine findNewRadius(massInRadius,r,rho0,r0,a,newRadius)
+   ! finds radius enclosing a mass of massInRadius
+   subroutine findNewRadius(massInRadius,r,rho0,r0,a,newRadius)
       real(dp),intent(in) :: massInRadius,r,rho0,r0,a
       real(dp),intent(out) :: newRadius
       integer :: i
@@ -196,10 +196,10 @@ contains
          i=i+1
       end do
 
-    end subroutine findNewRadius
+   end subroutine findNewRadius
 
-! finds column density to edge of cloud based on density profile
-    subroutine findcoldens(coldens,rin,rho0,r0,a,rout)
+   ! finds column density to edge of cloud based on density profile
+   subroutine findcoldens(coldens,rin,rho0,r0,a,rout)
       real(dp),intent(in) :: rin,rout,rho0,r0,a
       real(dp),intent(out) :: coldens
       integer :: i,np
@@ -218,10 +218,10 @@ contains
          coldens = coldens + drho*dr*PC
       end do
 
-    end subroutine findcoldens
+   end subroutine findcoldens
 
-! fit to density profile of hydrodynamic simulations
-    function get_rhofit(r,rho0,r0,a) result(rhofit)
+   ! fit to density profile of hydrodynamic simulations
+   function get_rhofit(r,rho0,r0,a) result(rhofit)
       real(dp), intent(in) :: r,rho0,r0,a
       real(dp) :: rhofit
       real(dp) :: rau,unitrho,unitr,r75
@@ -245,10 +245,10 @@ contains
          write(*,*) "Valid options are: 1, 2, 3, 4"
       end if
 
-    end function get_rhofit
+   end function get_rhofit
 
-! fit to time evolution of central density
-    function get_rho0fit(t) result(rho0fit)
+   ! fit to time evolution of central density
+   function get_rho0fit(t) result(rho0fit)
       real(dp), intent(in) :: t
       real(dp) :: rho0fit
       real(dp) :: logrho0, unitt
@@ -275,10 +275,10 @@ contains
          write(*,*) "Valid options are: 1, 2, 3, 4"
       end if
 
-    end function get_rho0fit
+   end function get_rho0fit
 
-! fit to time evolution of radius parameter
-    function get_r0fit(t) result(r0fit)
+   ! fit to time evolution of radius parameter
+   function get_r0fit(t) result(r0fit)
       real(dp), intent(in) :: t
       real(dp) :: r0fit
       real(dp) :: logr0,unitt
@@ -302,10 +302,10 @@ contains
          write(*,*) "Valid options are: 1, 2, 3, 4"
       end if
 
-    end function get_r0fit
+   end function get_r0fit
 
-! fit to time evolution of density slope parameter
-    function get_afit(t, collapse_mode) result(afit)
+   ! fit to time evolution of density slope parameter
+   function get_afit(t, collapse_mode) result(afit)
       real(dp), intent(in) :: t
       integer, intent(in) :: collapse_mode
 
@@ -328,10 +328,10 @@ contains
          write(*,*) "Valid options are: 1, 2, 3, 4"
       end if
 
-    end function get_afit
+   end function get_afit
 
-! fit to radial velocity of hydrodynamical simulation
-    function get_vrfit(r,rmin,vmin,a, collapse_mode) result(vrfit)
+   ! fit to radial velocity of hydrodynamical simulation
+   function get_vrfit(r,rmin,vmin,a, collapse_mode) result(vrfit)
       real(dp), intent(in) :: r,rmin,vmin,a
       integer, intent(in) :: collapse_mode
 
@@ -365,10 +365,10 @@ contains
          write(*,*) "Valid options for get_vrfit are: 3, 4"
       end if
 
-    end function get_vrfit
+   end function get_vrfit
 
-! fit to time evolution of radius of minimum velocity
-    function get_rminfit(t, collapse_mode) result(rminfit)
+   ! fit to time evolution of radius of minimum velocity
+   function get_rminfit(t, collapse_mode) result(rminfit)
       real(dp), intent(in) :: t
       integer, intent(in) :: collapse_mode
 
@@ -404,10 +404,10 @@ contains
          write(*,*) "Valid options for get_rminfit are: 3, 4"
       end if
 
-    end function get_rminfit
+   end function get_rminfit
 
-! fit to time evolution of minimum velocity
-    function get_vminfit(t, collapse_mode) result(vminfit)
+   ! fit to time evolution of minimum velocity
+   function get_vminfit(t, collapse_mode) result(vminfit)
       real(dp), intent(in) :: t
       integer, intent(in) :: collapse_mode
 
@@ -437,10 +437,10 @@ contains
          write(*,*) "Valid options for get_vminfit are: 3, 4"
       end if
 
-    end function get_vminfit
+   end function get_vminfit
 
-! fit to time evolution of velocity a-parameter (collapse 4) or velocity at r=0.5 (collapse 5)
-    function get_avfit(t, collapse_mode) result(avfit)
+   ! fit to time evolution of velocity a-parameter (collapse 4) or velocity at r=0.5 (collapse 5)
+   function get_avfit(t, collapse_mode) result(avfit)
       real(dp), intent(in) :: t
       integer, intent(in) :: collapse_mode
 
@@ -474,7 +474,7 @@ contains
          write(*,*) "Valid options for get_avfit are: 3, 4"
       end if
 
-    end function get_avfit
+   end function get_avfit
 end module collapse_mod
 
 !REQUIRED PHYSICS ENDS HERE, ANY ADDITIONAL PHYSICS CAN BE ADDED BELOW.

@@ -365,226 +365,226 @@ contains
         end if
 
 
-    !Reactions on surface can be treated considering diffusion of reactants
-    !as in Langmuir-Hinshelwood mechanism
-    !See work of David Quenard 2017 Arxiv:1711.05184
-    !First calculate rate constants of the diffusion reaction
+        !Reactions on surface can be treated considering diffusion of reactants
+        !as in Langmuir-Hinshelwood mechanism
+        !See work of David Quenard 2017 Arxiv:1711.05184
+        !First calculate rate constants of the diffusion reaction
 
-    ! Calculate ice coverage in monolayers for chemical desorption
-    numMonolayers = getNumberMonolayers(safeMantle + safeBulk)
+        ! Calculate ice coverage in monolayers for chemical desorption
+        numMonolayers = getNumberMonolayers(safeMantle + safeBulk)
 
-    idx1=lhReacs(1)
-    idx2=lhReacs(2)
-    if (idx1 /= REAC_NOT_PRESENT) then
-        if ((dustTemp(dstep) < maxGrainTemp) .and. (safeMantle > MIN_SURFACE_ABUND)) then
-            do j=idx1,idx2
-                rate_constants(j)=getDiffusionReactionRateConstant(j,dustTemp(dstep))
-            end do
-
-            ! Save unsplit LH rate constants for dynamic re-split inside the F callback
-            rate_constants_lh_unsplit(lhReacs(1):lhReacs(2)) = rate_constants(lhReacs(1):lhReacs(2))
-
-            if ((desorb) .and. (chemdesorb)) then
-                !two routes for every diffusion reaction: products to gas or products remain on surface
-                !calculate fraction of reaction that goes down desorption route
-                idx1=lhdesReacs(1)
-                idx2=lhdesReacs(2)
-                k = 0
-                do i=idx1, idx2
-                    k = k + 1
-                    rate_constants(i)=getDesorptionFractionIncludingIce(i, numMonolayers)* &
-                        rate_constants(LHDEScorrespondingLHreacs(k))
-                    if (ANY(bulkList==re1(i))) rate_constants(i)=0.0  ! Bulk species are not able to chemically desorb
+        idx1=lhReacs(1)
+        idx2=lhReacs(2)
+        if (idx1 /= REAC_NOT_PRESENT) then
+            if ((dustTemp(dstep) < maxGrainTemp) .and. (safeMantle > MIN_SURFACE_ABUND)) then
+                do j=idx1,idx2
+                    rate_constants(j)=getDiffusionReactionRateConstant(j,dustTemp(dstep))
                 end do
 
-                !remove that fraction from total rate constants of the diffusion route
-                k = 0
-                do i = idx1, idx2
-                    k = k + 1
-                    rate_constants(LHDEScorrespondingLHreacs(k)) = rate_constants(LHDEScorrespondingLHreacs(k)) - &
-                        rate_constants(i)
-                end do
-            else
-                rate_constants(idx1:idx2)=0.0
-                rate_constants(lhdesReacs(1):lhdesReacs(2))=0.0
+                ! Save unsplit LH rate constants for dynamic re-split inside the F callback
+                rate_constants_lh_unsplit(lhReacs(1):lhReacs(2)) = rate_constants(lhReacs(1):lhReacs(2))
+
+                if ((desorb) .and. (chemdesorb)) then
+                    !two routes for every diffusion reaction: products to gas or products remain on surface
+                    !calculate fraction of reaction that goes down desorption route
+                    idx1=lhdesReacs(1)
+                    idx2=lhdesReacs(2)
+                    k = 0
+                    do i=idx1, idx2
+                        k = k + 1
+                        rate_constants(i)=getDesorptionFractionIncludingIce(i, numMonolayers)* &
+                            rate_constants(LHDEScorrespondingLHreacs(k))
+                        if (ANY(bulkList==re1(i))) rate_constants(i)=0.0  ! Bulk species are not able to chemically desorb
+                    end do
+
+                    !remove that fraction from total rate constants of the diffusion route
+                    k = 0
+                    do i = idx1, idx2
+                        k = k + 1
+                        rate_constants(LHDEScorrespondingLHreacs(k)) = rate_constants(LHDEScorrespondingLHreacs(k)) - &
+                            rate_constants(i)
+                    end do
+                else
+                    rate_constants(idx1:idx2)=0.0
+                    rate_constants(lhdesReacs(1):lhdesReacs(2))=0.0
+                end if
             end if
         end if
-    end if
 
-    !Account for Eley-Rideal reactions in a similar way.
-    !First calculate overall rate constants and then split between desorption and sticking
-    idx1=erReacs(1)
-    idx2=erReacs(2)
-    if (idx1 /= REAC_NOT_PRESENT) then
-        rate_constants(idx1:idx2)=getFreezeOutRateConstants(idx1,idx2) * exp(-gama(idx1:idx2) / dustTemp(dstep))
+        !Account for Eley-Rideal reactions in a similar way.
+        !First calculate overall rate constants and then split between desorption and sticking
+        idx1=erReacs(1)
+        idx2=erReacs(2)
+        if (idx1 /= REAC_NOT_PRESENT) then
+            rate_constants(idx1:idx2)=getFreezeOutRateConstants(idx1,idx2) * exp(-gama(idx1:idx2) / dustTemp(dstep))
 
-        ! Save unsplit ER rate constants for dynamic re-split inside the F callback
-        rate_constants_er_unsplit(erReacs(1):erReacs(2)) = rate_constants(erReacs(1):erReacs(2))
+            ! Save unsplit ER rate constants for dynamic re-split inside the F callback
+            rate_constants_er_unsplit(erReacs(1):erReacs(2)) = rate_constants(erReacs(1):erReacs(2))
 
-        if ((desorb) .and. (chemdesorb)) then
-            !calculate fraction of reaction that goes down desorption route
-            idx1 = erdesReacs(1)
-            idx2 = erdesReacs(2)
-            k = 0
+            if ((desorb) .and. (chemdesorb)) then
+                !calculate fraction of reaction that goes down desorption route
+                idx1 = erdesReacs(1)
+                idx2 = erdesReacs(2)
+                k = 0
                 do i=idx1, idx2
                     k = k + 1
                     rate_constants(i)=getDesorptionFractionIncludingIce(i, numMonolayers)* &
                         rate_constants(ERDEScorrespondingERreacs(k))
-                if (ANY(bulkList==re1(i))) rate_constants(i)=0.0  ! Bulk species are not able to chemically desorb
-            end do
+                    if (ANY(bulkList==re1(i))) rate_constants(i)=0.0  ! Bulk species are not able to chemically desorb
+                end do
 
-            !remove that fraction from total rate_constants of the diffusion route
-            k = 0
-            do i = idx1, idx2
-                k = k + 1
-                rate_constants(ERDEScorrespondingERreacs(k)) = rate_constants(ERDEScorrespondingERreacs(k)) - &
-                    rate_constants(i)
-            end do
-        else
-            rate_constants(idx1:idx2)=0.0
-            rate_constants(erdesReacs(1):erdesReacs(2))=0.0
+                !remove that fraction from total rate_constants of the diffusion route
+                k = 0
+                do i = idx1, idx2
+                    k = k + 1
+                    rate_constants(ERDEScorrespondingERreacs(k)) = rate_constants(ERDEScorrespondingERreacs(k)) - &
+                        rate_constants(i)
+                end do
+            else
+                rate_constants(idx1:idx2)=0.0
+                rate_constants(erdesReacs(1):erdesReacs(2))=0.0
+            end if
         end if
-    end if
 
-    select case (parameterizeH2Form)
-    case (0)  ! Always disable parameterized H2 formation
-        rate_constants(nR_H2Form_CT) = 0.0
-    case (1)  ! Always enable parameterized H2 formation
-        rate_constants(nR_H2Form_CT) = h2FormEfficiency(gasTemp(dstep), dustTemp(dstep))
-        rate_constants(nR_H2Form_ER) = 0.0
-        rate_constants(nR_H2Form_ERDes) = 0.0
-    case (2)  ! Temperature-dependent: explicit LH/ER below maxGrainTemp, parameterized above
-        if (dustTemp(dstep) >= maxGrainTemp) then
+        select case (parameterizeH2Form)
+        case (0)  ! Always disable parameterized H2 formation
+            rate_constants(nR_H2Form_CT) = 0.0
+        case (1)  ! Always enable parameterized H2 formation
             rate_constants(nR_H2Form_CT) = h2FormEfficiency(gasTemp(dstep), dustTemp(dstep))
             rate_constants(nR_H2Form_ER) = 0.0
             rate_constants(nR_H2Form_ERDes) = 0.0
-        else
-            rate_constants(nR_H2Form_CT) = 0.0
+        case (2)  ! Temperature-dependent: explicit LH/ER below maxGrainTemp, parameterized above
+            if (dustTemp(dstep) >= maxGrainTemp) then
+                rate_constants(nR_H2Form_CT) = h2FormEfficiency(gasTemp(dstep), dustTemp(dstep))
+                rate_constants(nR_H2Form_ER) = 0.0
+                rate_constants(nR_H2Form_ERDes) = 0.0
+            else
+                rate_constants(nR_H2Form_CT) = 0.0
+            end if
+        case default
+            write(*, *) "ERROR: UNSUPPORTED parameterizeH2Form VALUE: ", parameterizeH2Form
+            write(*, *) "SUPPORTED VALUES ARE: 0, 1, or 3"
+            stop 1
+        end select
+
+        call bulkSurfaceExchangeReactions(rate_constants, dustTemp(dstep))
+
+        !Basic gas phase reactions
+        !They only change if temperature has so we can save time with an if statement
+        idx1=twobodyReacs(1)
+        idx2=twobodyReacs(2)
+        if (.not. is_equal(lastTemp, gasTemp(dstep))) then
+            rate_constants(idx1:idx2) = calculateTwoBodyReacRateConstant(alpha(idx1:idx2), beta(idx1:idx2), &
+                gama(idx1:idx2), gasTemp(dstep))
         end if
-    case default
-        write(*, *) "ERROR: UNSUPPORTED parameterizeH2Form VALUE: ", parameterizeH2Form
-        write(*, *) "SUPPORTED VALUES ARE: 0, 1, or 3"
-        stop 1
-    end select
 
-    call bulkSurfaceExchangeReactions(rate_constants, dustTemp(dstep))
+        idx1=ionopol1Reacs(1)
+        idx2=ionopol1Reacs(2)
+        if (idx1 /= REAC_NOT_PRESENT) then
+            rate_constants(idx1:idx2) = calculateIonPol1ReacRateConstant(alpha(idx1:idx2), beta(idx1:idx2), &
+                gama(idx1:idx2), gasTemp(dstep))
+        end if
 
-    !Basic gas phase reactions
-    !They only change if temperature has so we can save time with an if statement
-    idx1=twobodyReacs(1)
-    idx2=twobodyReacs(2)
-    if (.not. is_equal(lastTemp, gasTemp(dstep))) then
-        rate_constants(idx1:idx2) = calculateTwoBodyReacRateConstant(alpha(idx1:idx2), beta(idx1:idx2), &
-            gama(idx1:idx2), gasTemp(dstep))
-    end if
+        idx1=ionopol2Reacs(1)
+        idx2=ionopol2Reacs(2)
+        if (idx1 /= REAC_NOT_PRESENT) then
+            rate_constants(idx1:idx2) = calculateIonPol2ReacRateConstant(alpha(idx1:idx2), beta(idx1:idx2), &
+                gama(idx1:idx2), gasTemp(dstep))
+        end if
+        lastTemp=gasTemp(dstep)
 
-    idx1=ionopol1Reacs(1)
-    idx2=ionopol1Reacs(2)
-    if (idx1 /= REAC_NOT_PRESENT) then
-        rate_constants(idx1:idx2) = calculateIonPol1ReacRateConstant(alpha(idx1:idx2), beta(idx1:idx2), &
-            gama(idx1:idx2), gasTemp(dstep))
-    end if
+        idx1=garReacs(1)
+        idx2=garReacs(2)
+        if ((idx1 /= REAC_NOT_PRESENT) .and. (useGrainActivatedRecombination)) then
+            phi_gar = calculatePhiGAR(radfield, av(dstep), gasTemp(dstep), abund(nspec+1, dstep), abund(nelec, dstep)) + &
+                calculatePhiGAR(radfield_internal(dstep), av_internal(dstep), gasTemp(dstep), abund(nspec+1, dstep), &
+                abund(nelec, dstep))
+            ! Ensure phi is within the 1e2 to 1e6 range from the paper:
+            phi_gar = min(max(phi_gar,1e2_dp), 1e6_dp)
+            rate_constants(idx1:idx2) = calculateGARRateConstants(alpha(idx1:idx2), phi_gar, gasTemp(dstep))
+        end if
 
-    idx1=ionopol2Reacs(1)
-    idx2=ionopol2Reacs(2)
-    if (idx1 /= REAC_NOT_PRESENT) then
-        rate_constants(idx1:idx2) = calculateIonPol2ReacRateConstant(alpha(idx1:idx2), beta(idx1:idx2), &
-            gama(idx1:idx2), gasTemp(dstep))
-    end if
-    lastTemp=gasTemp(dstep)
+        !turn off reactions outside their temperature range
+        where((.not. extrapolateRateConstants) .and. (gasTemp(dstep) < minTemps)) rate_constants=0.0
 
-    idx1=garReacs(1)
-    idx2=garReacs(2)
-    if ((idx1 /= REAC_NOT_PRESENT) .and. (useGrainActivatedRecombination)) then
-        phi_gar = calculatePhiGAR(radfield, av(dstep), gasTemp(dstep), abund(nspec+1, dstep), abund(nelec, dstep)) + &
-            calculatePhiGAR(radfield_internal(dstep), av_internal(dstep), gasTemp(dstep), abund(nspec+1, dstep), &
-            abund(nelec, dstep))
-        ! Ensure phi is within the 1e2 to 1e6 range from the paper:
-        phi_gar = min(max(phi_gar,1e2_dp), 1e6_dp)
-        rate_constants(idx1:idx2) = calculateGARRateConstants(alpha(idx1:idx2), phi_gar, gasTemp(dstep))
-    end if
+        where((.not. extrapolateRateConstants) .and. (gasTemp(dstep) > maxTemps)) rate_constants=0.0
 
-    !turn off reactions outside their temperature range
-    where((.not. extrapolateRateConstants) .and. (gasTemp(dstep) < minTemps)) rate_constants=0.0
+        !Overwrite reactions for which we have a more detailed photoreaction treatment
+        rate_constants(nR_H2_hv)=getH2PhotoDissRateConstant(h2Col,radField,av(dstep),turbVel) &
+                   + getH2PhotoDissRateConstant(h2Col,radfield_internal(dstep),av_internal(dstep),turbVel)  !H2 photodissociation
+        rate_constants(nR_CO_hv)=getCOPhotoDissRateConstant(h2Col,coCol,radField,av(dstep)) &
+                   + getCOPhotoDissRateConstant(h2Col,coCol,radfield_internal(dstep),av_internal(dstep))  !CO photodissociation
+        rate_constants(nR_C_hv)=getCarbonIonizationRateConstant(alpha(nR_C_hv),gama(nR_C_hv),gasTemp(dstep),ccol,h2col,av(dstep),&
+            radfield) + getCarbonIonizationRateConstant(alpha(nR_C_hv),gama(nR_C_hv),gasTemp(dstep),ccol,h2col, &
+                                    &av_internal(dstep),radfield_internal(dstep))  !C photoionization
 
-    where((.not. extrapolateRateConstants) .and. (gasTemp(dstep) > maxTemps)) rate_constants=0.0
+        ! Encounter Desorption mechanism (Hincelin et al. 2015)
+        ! Species diffuse onto H2-covered surfaces and can desorb upon encountering H2
+        if ((h2EncounterDesorption) .and. (safeMantle > MIN_SURFACE_ABUND)) then
+            rate_constants(nR_H2_ED)=getEncounterDesorptionRateConstant(nR_H2_ED, dustTemp(dstep))  !H2 Encounter Desorption
+        else
+            rate_constants(nR_H2_ED)=0.0_dp
+        end if
 
-    !Overwrite reactions for which we have a more detailed photoreaction treatment
-    rate_constants(nR_H2_hv)=getH2PhotoDissRateConstant(h2Col,radField,av(dstep),turbVel) &
-               + getH2PhotoDissRateConstant(h2Col,radfield_internal(dstep),av_internal(dstep),turbVel)  !H2 photodissociation
-    rate_constants(nR_CO_hv)=getCOPhotoDissRateConstant(h2Col,coCol,radField,av(dstep)) &
-               + getCOPhotoDissRateConstant(h2Col,coCol,radfield_internal(dstep),av_internal(dstep))  !CO photodissociation
-    rate_constants(nR_C_hv)=getCarbonIonizationRateConstant(alpha(nR_C_hv),gama(nR_C_hv),gasTemp(dstep),ccol,h2col,av(dstep),&
-        radfield) + getCarbonIonizationRateConstant(alpha(nR_C_hv),gama(nR_C_hv),gasTemp(dstep),ccol,h2col, &
-                                &av_internal(dstep),radfield_internal(dstep))  !C photoionization
+        if ((hEncounterDesorption) .and. (safeMantle > MIN_SURFACE_ABUND)) then
+            ! H atom encounter desorption on H2-covered surfaces
+            rate_constants(nR_H_ED)=getEncounterDesorptionRateConstant(nR_H_ED, dustTemp(dstep))  !H Encounter Desorption
+        else
+            rate_constants(nR_H_ED)=0.0_dp
+        end if
 
-    ! Encounter Desorption mechanism (Hincelin et al. 2015)
-    ! Species diffuse onto H2-covered surfaces and can desorb upon encountering H2
-    if ((h2EncounterDesorption) .and. (safeMantle > MIN_SURFACE_ABUND)) then
-        rate_constants(nR_H2_ED)=getEncounterDesorptionRateConstant(nR_H2_ED, dustTemp(dstep))  !H2 Encounter Desorption
-    else
-        rate_constants(nR_H2_ED)=0.0_dp
-    end if
-
-    if ((hEncounterDesorption) .and. (safeMantle > MIN_SURFACE_ABUND)) then
-        ! H atom encounter desorption on H2-covered surfaces
-        rate_constants(nR_H_ED)=getEncounterDesorptionRateConstant(nR_H_ED, dustTemp(dstep))  !H Encounter Desorption
-    else
-        rate_constants(nR_H_ED)=0.0_dp
-    end if
-
-    ! Min floor: zero desorption rate_constants constants k below numerical threshold to eliminate
-    ! near-zero Arrhenius terms (e.g. strongly-bound species at low T) that waste solver work.
-    ! if (min_desorption_rate_constant > 0.0_dp) then
-    !     if (thermReacs(1)  /= REAC_NOT_PRESENT) then
-    !       where(rate_constants(thermReacs(1):thermReacs(2)) > 0.0_dp .AND. &
-    !               rate_constants(thermReacs(1):thermReacs(2)) < min_desorption_rate_constant) &
-    !             rate_constants(thermReacs(1):thermReacs(2)) = 0.0_dp
-    !     end if
-    !     if (desoh2Reacs(1) /= REAC_NOT_PRESENT) then
-    !       where(rate_constants(desoh2Reacs(1):desoh2Reacs(2)) > 0.0_dp .AND. &
-    !               rate_constants(desoh2Reacs(1):desoh2Reacs(2)) < min_desorption_rate_constant) &
-    !             rate_constants(desoh2Reacs(1):desoh2Reacs(2)) = 0.0_dp
-    !     end if
-    !     if (descrReacs(1)  /= REAC_NOT_PRESENT) then
-    !       where(rate_constants(descrReacs(1):descrReacs(2)) > 0.0_dp .AND. &
-    !               rate_constants(descrReacs(1):descrReacs(2)) < min_desorption_rate_constant) &
-    !             rate_constants(descrReacs(1):descrReacs(2)) = 0.0_dp
-    !     end if
-    !     if (deuvcrReacs(1) /= REAC_NOT_PRESENT) then
-    !       where(rate_constants(deuvcrReacs(1):deuvcrReacs(2)) > 0.0_dp .AND. &
-    !               rate_constants(deuvcrReacs(1):deuvcrReacs(2)) < min_desorption_rate_constant) &
-    !             rate_constants(deuvcrReacs(1):deuvcrReacs(2)) = 0.0_dp
-    !     end if
-    !     if (lhdesReacs(1)  /= REAC_NOT_PRESENT) then
-    !       where(rate_constants(lhdesReacs(1):lhdesReacs(2)) > 0.0_dp .AND. &
-    !               rate_constants(lhdesReacs(1):lhdesReacs(2)) < min_desorption_rate_constant) &
-    !             rate_constants(lhdesReacs(1):lhdesReacs(2)) = 0.0_dp
-    !     end if
-    !     if (erdesReacs(1)  /= REAC_NOT_PRESENT) then
-    !       where(rate_constants(erdesReacs(1):erdesReacs(2)) > 0.0_dp .AND. &
-    !               rate_constants(erdesReacs(1):erdesReacs(2)) < min_desorption_rate_constant) &
-    !             rate_constants(erdesReacs(1):erdesReacs(2)) = 0.0_dp
-    !     end if
-    !     if (rate_constants(nR_H2_ED) > 0.0_dp .AND. rate_constants(nR_H2_ED) < min_desorption_rate_constant) then
-    !         rate_constants(nR_H2_ED) = 0.0_dp
-    !     end if
-    !     if (rate_constants(nR_H_ED)  > 0.0_dp .AND. rate_constants(nR_H_ED)  < min_desorption_rate_constant) then
-    !         rate_constants(nR_H_ED)  = 0.0_dp
-    !     end if
-    ! end if
+        ! Min floor: zero desorption rate_constants constants k below numerical threshold to eliminate
+        ! near-zero Arrhenius terms (e.g. strongly-bound species at low T) that waste solver work.
+        ! if (min_desorption_rate_constant > 0.0_dp) then
+        !     if (thermReacs(1)  /= REAC_NOT_PRESENT) then
+        !       where(rate_constants(thermReacs(1):thermReacs(2)) > 0.0_dp .AND. &
+        !               rate_constants(thermReacs(1):thermReacs(2)) < min_desorption_rate_constant) &
+        !             rate_constants(thermReacs(1):thermReacs(2)) = 0.0_dp
+        !     end if
+        !     if (desoh2Reacs(1) /= REAC_NOT_PRESENT) then
+        !       where(rate_constants(desoh2Reacs(1):desoh2Reacs(2)) > 0.0_dp .AND. &
+        !               rate_constants(desoh2Reacs(1):desoh2Reacs(2)) < min_desorption_rate_constant) &
+        !             rate_constants(desoh2Reacs(1):desoh2Reacs(2)) = 0.0_dp
+        !     end if
+        !     if (descrReacs(1)  /= REAC_NOT_PRESENT) then
+        !       where(rate_constants(descrReacs(1):descrReacs(2)) > 0.0_dp .AND. &
+        !               rate_constants(descrReacs(1):descrReacs(2)) < min_desorption_rate_constant) &
+        !             rate_constants(descrReacs(1):descrReacs(2)) = 0.0_dp
+        !     end if
+        !     if (deuvcrReacs(1) /= REAC_NOT_PRESENT) then
+        !       where(rate_constants(deuvcrReacs(1):deuvcrReacs(2)) > 0.0_dp .AND. &
+        !               rate_constants(deuvcrReacs(1):deuvcrReacs(2)) < min_desorption_rate_constant) &
+        !             rate_constants(deuvcrReacs(1):deuvcrReacs(2)) = 0.0_dp
+        !     end if
+        !     if (lhdesReacs(1)  /= REAC_NOT_PRESENT) then
+        !       where(rate_constants(lhdesReacs(1):lhdesReacs(2)) > 0.0_dp .AND. &
+        !               rate_constants(lhdesReacs(1):lhdesReacs(2)) < min_desorption_rate_constant) &
+        !             rate_constants(lhdesReacs(1):lhdesReacs(2)) = 0.0_dp
+        !     end if
+        !     if (erdesReacs(1)  /= REAC_NOT_PRESENT) then
+        !       where(rate_constants(erdesReacs(1):erdesReacs(2)) > 0.0_dp .AND. &
+        !               rate_constants(erdesReacs(1):erdesReacs(2)) < min_desorption_rate_constant) &
+        !             rate_constants(erdesReacs(1):erdesReacs(2)) = 0.0_dp
+        !     end if
+        !     if (rate_constants(nR_H2_ED) > 0.0_dp .AND. rate_constants(nR_H2_ED) < min_desorption_rate_constant) then
+        !         rate_constants(nR_H2_ED) = 0.0_dp
+        !     end if
+        !     if (rate_constants(nR_H_ED)  > 0.0_dp .AND. rate_constants(nR_H_ED)  < min_desorption_rate_constant) then
+        !         rate_constants(nR_H_ED)  = 0.0_dp
+        !     end if
+        ! end if
 
     end subroutine calculateReactionRateConstants
 
 
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!
-!Freeze out determined by rate constant of collisions with grain
-!No sticking coefficient is used because typical values are >0.95 below 150 K
-! eg Le Bourlot et al. 2013, Molpeceres et al. 2020
-!Above 150 K, thermal desorption will completely remove grain species
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !
+    !Freeze out determined by rate constant of collisions with grain
+    !No sticking coefficient is used because typical values are >0.95 below 150 K
+    ! eg Le Bourlot et al. 2013, Molpeceres et al. 2020
+    !Above 150 K, thermal desorption will completely remove grain species
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     pure function getFreezeOutRateConstants(idx1,idx2) result(freezeOutRateConstants)
         integer, intent(in) :: idx1, idx2
 

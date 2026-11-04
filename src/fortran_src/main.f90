@@ -3,11 +3,11 @@
 ! main.f90 just provides a simple fortran interface to the core code so that a binary can
 ! be built and used directly from the command line.
 program uclchem
-use constants, only: dp
-use f2py_constants, only: nSpec, N_PHYSICS_PARAMS
-use io, only: inputId
-use uclchemwrap, only: cloud, hot_core, cshock, postprocess
-implicit none
+    use constants, only: dp
+    use f2py_constants, only: nSpec, N_PHYSICS_PARAMS
+    use io, only: inputId
+    use uclchemwrap, only: cloud, hot_core, cshock, postprocess
+    implicit none
     character (LEN=100) :: modelType
     character (LEN=100) :: paramFile
     character (LEN=32) :: model_arg1, model_arg2, model_arg3
@@ -33,9 +33,9 @@ implicit none
     close(inputId)
 
     select case(modelType)
-        case("CLOUD")
-            call cloud(paramDict, .false., .false., .false., 500, 1, outSpeciesIn=DUMMY_STRING, &
-                abundance_out=abundances, specname_out=specname_out, successFlag=success)
+    case("CLOUD")
+        call cloud(paramDict, .false., .false., .false., 500, 1, outSpeciesIn=DUMMY_STRING, &
+            abundance_out=abundances, specname_out=specname_out, successFlag=success)
         ! case("HOTCORE")
         !     !call hot_core (temp_indx,maxTemp,....)
         !     ! Read the strings from the CLI, then convert them to int/float
@@ -59,12 +59,12 @@ implicit none
         !         &abundances,dissipationResult,success)
         ! case("POSTPROCESS")
         !    call postprocess(paramDict,DUMMY_STRING,.false.,.false.,abundances,success)
-        case default
-            write(*,*) "Model type not recognized"
-            write(*,*) "Supported models are directly from Fortran: CLOUD"
-            write(*,*) "HOTCORE, CSHOCK, JSHOCK, COLLAPSE, POSTPROCESS are not available yet from pure Fortran."
-            write(*,*) "Please make an issue on GitHub, or open a pull request if you do want this."
-            write(*,*) "https://github.com/uclchem/UCLCHEM"
-            stop
+    case default
+        write(*,*) "Model type not recognized"
+        write(*,*) "Supported models are directly from Fortran: CLOUD"
+        write(*,*) "HOTCORE, CSHOCK, JSHOCK, COLLAPSE, POSTPROCESS are not available yet from pure Fortran."
+        write(*,*) "Please make an issue on GitHub, or open a pull request if you do want this."
+        write(*,*) "https://github.com/uclchem/UCLCHEM"
+        stop
     end select
 end program uclchem

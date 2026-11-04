@@ -40,7 +40,7 @@ module heating
     ! 9 = Gas-Grain Collisional Heating/Cooling
     integer, parameter :: NHEATING = 9
     real(dp) :: heatingValues(NHEATING)
-    logical :: heating_modules(NHEATING)=(/ .true.,.false.,.true.,.true.,.true.,.true.,.true.,.true.,.true./)
+    logical :: heating_modules(NHEATING)=(/.true.,.false.,.true.,.true.,.true.,.true.,.true.,.true.,.true./)
     character(LEN=30), parameter :: heatingLabels(NHEATING) = (/ &
         "PhotoelectricBakes            ", &
         "PhotoelectricWeingartner      ", &
@@ -50,7 +50,7 @@ module heating
         "CarbonIonization              ", &
         "CosmicRay                     ", &
         "Turbulent                     ", &
-        "GasGrainCollisions            " /)
+        "GasGrainCollisions            "/)
 
     ! Cooling mechanisms:
     ! 1 = Atomic Line Cooling
@@ -60,13 +60,13 @@ module heating
     ! 5 = Molecular Line Cooling
     integer, parameter :: NCOOLING = 5
     real(dp) :: coolingValues(NCOOLING)
-    logical :: cooling_modules(NCOOLING)=(/ .true.,.true.,.true.,.true.,.true./)
+    logical :: cooling_modules(NCOOLING)=(/.true.,.true.,.true.,.true.,.true./)
     character(LEN=30), parameter :: coolingLabels(NCOOLING) = (/ &
         "AtomicLineEmission            ", &
         "H2CollisionallyInduced        ", &
         "Compton                       ", &
         "ContinuumEmission             ", &
-        "MolecularLine                 " /)
+        "MolecularLine                 "/)
 
     integer, parameter :: nHeatingTerms = 1 + NHEATING + NCOOLING + NCOOLANTS  !Total number of heating and cooling terms tracked including chemical heating.
 
@@ -93,7 +93,7 @@ module heating
     real(dp), dimension(MAX_COOLANTS) :: se_coolant_max_rel_change
     real(dp) :: se_cpu_start, se_cpu_end
 
- contains
+contains
 
     subroutine initializeHeating(gasDensity, columnDensity,cloudSize,successFlag)
         real(dp), intent(in) :: gasDensity,columnDensity,cloudSize
@@ -163,12 +163,12 @@ module heating
         if (enableChemicalHeating) then
             ! Here we need the "flux" in cm^-3 s^-1 to get the heating per reaction.
             ! Energy is in kcal so convert to eV per reaction by multiplying by 1.6022e-12
-            chemheating= sum(reactionrate(:nReac) * exothermicities(:))
+            chemheating= sum(reactionrate(:nReac) * exothermicities)
         end if
 
         tempDot=heating+chemheating-cooling
         !write(*,*) "Temp Dot",getTempDot
-         !and convert to dT/dt
+        !and convert to dT/dt
         tempDot=((adiabaticIdx-1.0_dp)*tempDot)/(K_BOLTZ*gasDensity)
     end function getTempDot
 
@@ -270,7 +270,7 @@ module heating
         se_coolant_max_rel_change(1:NCOOLANTS) = 0.0_dp
         call CPU_TIME(se_cpu_start)
 
-         tries: do I=1,500  !while not converged and less than 100 tries:
+        tries: do I=1,500  !while not converged and less than 100 tries:
             coolant_scf: do N=1,NCOOLANTS
                 if (.NOT. coolant_active(N)) cycle coolant_scf
                 if (coolants(N)%CONVERGED) then
@@ -314,9 +314,9 @@ module heating
             end if
 
             if(coolants(N)%NAME=="H") then
-               coolants(N)%EMISSIVITY(2,1) = 7.3e-19_dp*(abundances(nelec)*gasDensity) &
-                                                          & *(abundances(nH)*gasDensity) &
-                                                          & *exp(-118400.0_dp/gasTemperature)
+                coolants(N)%EMISSIVITY(2,1) = 7.3e-19_dp*(abundances(nelec)*gasDensity) &
+                                                           & *(abundances(nH)*gasDensity) &
+                                                           & *exp(-118400.0_dp/gasTemperature)
             end if
         end do coolant
 
@@ -363,16 +363,16 @@ module heating
 
         !collisional excitation and ionization
         atomicCooling=(7.5e-19_dp*collTFactor*exp(-118348.0_dp*invT)*elecDens*hDens) &
-            &+(5.54e-17_dp*(gasT**-0.397_dp)*collTFactor*exp(-473638.0_dp*invT)*elecDens*hexDens)&
+            &+(5.54e-17_dp*(gasT**(-0.397_dp))*collTFactor*exp(-473638.0_dp*invT)*elecDens*hexDens)&
             &+(1.27e-21_dp*rootT*exp(-157809.1_dp*invT)*elecDens*hDens*collTFactor)&
             &+(9.38e-22_dp*rootT*exp(-285335.4_dp*invT)*elecDens*heDens*collTFactor)&
             &+(4.95e-22_dp*rootT*exp(-631515.0_dp*invT)*elecDens*hexDens*collTFactor)&
             !dielectric
-            &+(1.24e-13_dp*(gasT**-1.5_dp)*exp(-470000.0_dp*invT)*(1.0_dp+0.3_dp*exp(-94000.0_dp*invT))*elecDens*hexDens)
+            &+(1.24e-13_dp*(gasT**(-1.5_dp))*exp(-470000.0_dp*invT)*(1.0_dp+0.3_dp*exp(-94000.0_dp*invT))*elecDens*hexDens)
         if (gasT > 1.0e5_dp) then
-        !recombination
+            !recombination
             atomicCooling=atomicCooling&
-            &+(8.7e-27_dp*rootT*((1.0e-3_dp*gasT)**-0.2_dp)*elecDens*hxDens/(1.0_dp+((0.1_dp*t5)**0.7_dp)))&
+            &+(8.7e-27_dp*rootT*((1.0e-3_dp*gasT)**(-0.2_dp))*elecDens*hxDens/(1.0_dp+((0.1_dp*t5)**0.7_dp)))&
             &+(1.55e-26_dp*(gasT**0.3647_dp)*elecDens*hexDens)&
             !&+(3.48e-26_dp*rootT*((0.001*gasT)**-0.2)*nelec*nhexI/(1+(0.1*t5)**0.7))&
             !Free-free emission
@@ -400,11 +400,11 @@ module heating
 
         tau=(gasDensity*h2Abund/7.0e15_dp)**2.8_dp
         !if (tau.lt.0.2) THEN
-            !avoid numerical problems, tau tends to 1 for low tau but fortran can't do it
-            !Taylor series is fine for tau<0.2 and that's well above the area we get an issue
-         !   tau=1.0-(0.5*tau)+((tau**2.0)/6.0)-((tau**3.0)/24.0)+((tau**4)/120.0)
+        !avoid numerical problems, tau tends to 1 for low tau but fortran can't do it
+        !Taylor series is fine for tau<0.2 and that's well above the area we get an issue
+        !   tau=1.0-(0.5*tau)+((tau**2.0)/6.0)-((tau**3.0)/24.0)+((tau**4)/120.0)
         !ELSE
-            tau=(1.0_dp-exp(-tau))/tau
+        tau=(1.0_dp-exp(-tau))/tau
         !END IF
         tau=min(1.0_dp,tau)
 
@@ -416,7 +416,7 @@ module heating
             collisionallyInducedEmission=(c*logT)-d
         else if (gasTemperature >= 891.0_dp) then
             collisionallyInducedEmission = evaluate_polynomial(bConsts, logT)
-        !technically fit below is ok down to 100 K but bad fit seems better than no cooling at 70 K
+            !technically fit below is ok down to 100 K but bad fit seems better than no cooling at 70 K
         else if (gasTemperature >= 100.0_dp) then
             collisionallyInducedEmission = evaluate_polynomial(aConsts, logT)
         end if
@@ -473,7 +473,7 @@ module heating
         real(dp), intent(in) :: gasTemperature,gasDensity,habingField,electronAbund,metallicity
         real(dp) :: photoelectricHeatingBakes
         real(dp), parameter :: PHI_PAH=0.4_dp,ALPHA=0.944_dp
-        real(dp) :: beta,delta,epsilon,nElec,PAH_HEATING_RATE,PAH_COOLING_RATE
+        real(dp) :: beta,delta,epsilon,electron_number_density,PAH_HEATING_RATE,PAH_COOLING_RATE
 
         !Bakes & Tielens 1994 with updates from Wolfire 2008
         !  Adopt the PAH rate scaling factor of Wolfire et al. (2008, ApJ, 680, 384)
@@ -482,14 +482,15 @@ module heating
         !Skip photoelectric heating for now if electron abundance is zero because cooling is infinite
         !The only way to have no E- is bad initial conditions so this will resolve itself within a time step
         if (electronAbund > 1.0e-20_dp) then
-            nElec=electronAbund*gasDensity
+            electron_number_density=electronAbund*gasDensity
             BETA=0.735_dp/gasTemperature**0.068_dp
-            DELTA=habingField*sqrt(gasTemperature)/(nElec*PHI_PAH)
+            DELTA=habingField*sqrt(gasTemperature)/(electron_number_density*PHI_PAH)
             EPSILON=4.87e-2_dp/(1.0_dp+4.0e-3_dp*DELTA**0.73_dp) + &
                 3.65e-2_dp*(gasTemperature/1.0e4_dp)**0.7_dp/(1.0_dp+2.0e-4_dp*DELTA)
 
             PAH_HEATING_RATE=1.30e-24_dp*EPSILON*habingField*gasDensity
-            PAH_COOLING_RATE=4.65e-30_dp*gasTemperature**ALPHA*(DELTA**BETA)*nElec*PHI_PAH*gasDensity
+            PAH_COOLING_RATE=4.65e-30_dp*gasTemperature**ALPHA*(DELTA**BETA)*&
+                electron_number_density*PHI_PAH*gasDensity
             photoelectricHeatingBakes=PAH_HEATING_RATE-PAH_COOLING_RATE
 
             !Assume the PE heating rate scales linearly with PAH abundance
@@ -649,13 +650,13 @@ module heating
 
 
 
-! !-----------------------------------------------------------------------
-! !  Carbon photoionization heating
-! !
-! !  On average, 1 eV of kinetic energy released per carbon ionization
-! !  Use the carbon photoionization rate determined by the subroutine
-! !  CALCULATE_REACTION_RATES and stored as REACTION_RATE(nRCI) (s^-1)
-! !-----------------------------------------------------------------------
+    ! !-----------------------------------------------------------------------
+    ! !  Carbon photoionization heating
+    ! !
+    ! !  On average, 1 eV of kinetic energy released per carbon ionization
+    ! !  Use the carbon photoionization rate determined by the subroutine
+    ! !  CALCULATE_REACTION_RATES and stored as REACTION_RATE(nRCI) (s^-1)
+    ! !-----------------------------------------------------------------------
 
     pure function getCarbonIonizationHeating(cIonizationRate,carbonAbund,gasDensity) &
             result(carbonIonizationHeating)
@@ -664,24 +665,24 @@ module heating
         carbonIonizationHeating=(1.0_dp*eV)*cIonizationRate*carbonAbund*gasDensity
     end function getCarbonIonizationHeating
 
-! !-----------------------------------------------------------------------
-! !  Exothermic chemical reaction heating
-! !
-! !  See:
-! !  Clavel et al. (1978, A&A,  65, 435)
-! !  Meijerink & Spaans (2005, A&A, 436, 397)
-! !  Glassgold & Langer (1973, ApJ, 179, L147)
-! !
-! !  Recombination reactions:
-! !     H2+ (10.9 eV); H3+ (9.23+4.76 eV); H3O+ (1.16+5.63+6.27 eV); HCO+ (7.51 eV)
-! !
-! !  Ion-neutral reactions:
-! !     H2+ + H (0.94 eV); He+ + H2 (6.51 eV); He+ + CO (2.22 eV)
-! !
-! !  For each reaction, the heating rate is given by: n(1) * n(2) * K * E
-! !  where n(1) and n(2) are the number densities, K the rate coefficient
-! !  (cm^3 s^-1), and E the energy released (erg).
-! !-----------------------------------------------------------------------
+    ! !-----------------------------------------------------------------------
+    ! !  Exothermic chemical reaction heating
+    ! !
+    ! !  See:
+    ! !  Clavel et al. (1978, A&A,  65, 435)
+    ! !  Meijerink & Spaans (2005, A&A, 436, 397)
+    ! !  Glassgold & Langer (1973, ApJ, 179, L147)
+    ! !
+    ! !  Recombination reactions:
+    ! !     H2+ (10.9 eV); H3+ (9.23+4.76 eV); H3O+ (1.16+5.63+6.27 eV); HCO+ (7.51 eV)
+    ! !
+    ! !  Ion-neutral reactions:
+    ! !     H2+ + H (0.94 eV); He+ + H2 (6.51 eV); He+ + CO (2.22 eV)
+    ! !
+    ! !  For each reaction, the heating rate is given by: n(1) * n(2) * K * E
+    ! !  where n(1) and n(2) are the number densities, K the rate coefficient
+    ! !  (cm^3 s^-1), and E the energy released (erg).
+    ! !-----------------------------------------------------------------------
 
     pure function getChemicalHeatingRate(gasDensity,exoReactants1,exoReactants2,exoRates,exothermicities) &
             result(chemicalHeatingRate)
@@ -692,21 +693,21 @@ module heating
         chemicalHeatingRate=SUM(exoReactants1*exoReactants2*exoRates*exothermicities)
         chemicalHeatingRate=chemicalHeatingRate*gasDensity*gasDensity*eV  !each abundance should be a number density to multiply through
     end function getChemicalHeatingRate
-! !-----------------------------------------------------------------------
-! !  Gas-grain collisional heating
-! !
-! !  Use the treatment of Burke & Hollenbach (1983, ApJ, 265, 223)
-! !
-! !  Other relevant references:
-! !  Hollenbach & McKee (1979, ApJS, 41, 555)
-! !  Tielens & Hollenbach (1985, ApJ, 291, 722)
-! !  Goldsmith (2001, ApJ, 557, 736)
-! !  Young et al. (2004, ApJ, 614, 252)
-! !
-! !  This process is insignificant for the energy balance of the dust,
-! !  but can influence the gas temperature. If the dust temperature is
-! !  lower than the gas temperature, this becomes a cooling mechanism.
-! !-----------------------------------------------------------------------
+    ! !-----------------------------------------------------------------------
+    ! !  Gas-grain collisional heating
+    ! !
+    ! !  Use the treatment of Burke & Hollenbach (1983, ApJ, 265, 223)
+    ! !
+    ! !  Other relevant references:
+    ! !  Hollenbach & McKee (1979, ApJS, 41, 555)
+    ! !  Tielens & Hollenbach (1985, ApJ, 291, 722)
+    ! !  Goldsmith (2001, ApJ, 557, 736)
+    ! !  Young et al. (2004, ApJ, 614, 252)
+    ! !
+    ! !  This process is insignificant for the energy balance of the dust,
+    ! !  but can influence the gas temperature. If the dust temperature is
+    ! !  lower than the gas temperature, this becomes a cooling mechanism.
+    ! !-----------------------------------------------------------------------
 
     pure function getGasGrainCollisionsHeatingRate(gasTemperature,gasDensity,dustAbundance,dustRadius,dustTemp) &
             result(gasGrainCollisionsHeatingRate)
@@ -751,192 +752,192 @@ module heating
         end select
     end function calculateDustTemp
 
-!=======================================================================
-!
-!  Calculate the dust temperature for each particle using the treatment
-!  of Hollenbach, Takahashi & Tielens (1991, ApJ, 377, 192, eqns 5 & 6)
-!  for the heating due to the incident FUV photons and the treatment of
-!  Meijerink & Spaans (2005, A&A, 436, 397, eqn B.6) for heating due to
-!  the incident flux of X-ray photons.
-!
-!  Among other things, the dust temperature can influence:
-!
-!     1) Cooling budget by emitting FIR photons that
-!        interact with the line radiative transfer;
-!     2) Gas-grain collisional heating or cooling rate;
-!     3) H2 formation by changing the sticking probability;
-!     4) Evaporation and condensation of molecules on grains.
-!
-!  The formula derived by Hollenbach, Takahashi & Tielens (1991) has
-!  been modified to include the attenuation of the IR radiation. The
-!  incident FUV radiation is absorbed and re-emitted in the infrared
-!  by dust at the surface of the cloud (up to Av ~ 1mag). In the HTT
-!  derivation, this IR radiation then serves as a second heat source
-!  for dust deeper into the cloud. However, in their treatment, this
-!  second re-radiated component is not attenuated with distance into
-!  the cloud so it is *undiluted* with depth, leading to higher dust
-!  temperatures deep within the cloud which in turn heat the gas via
-!  collisions to unrealistically high temperatures. Models with high
-!  gas densities and high incident FUV fluxes (e.g. n_H = 10^5 cm-3,
-!  X_0 = 10^8 Draine) can produce T_gas ~ 100 K at Av ~ 50 mag!
-!
-!  Attenuation of the FIR radiation has therefore been introduced by
-!  using an approximation for the infrared-only dust temperature from
-!  Rowan-Robinson (1980, eqn 30b):
-!
-!  T_dust = T_0*(r/r_0)^(-0.4)
-!
-!  where r_0 is the cloud depth at which T_dust = T_0, corresponding
-!  to an A_V of ~ 1 mag, the assumed size of the outer region of the
-!  cloud that processes the incident FUV radiation and then re-emits
-!  it in the FIR (see the original HTT 1991 paper for details). This
-!  should prevent the dust temperature from dropping off too rapidly
-!  with distance and maintain a larger warm dust region (~50-100 K).
-!
-!-----------------------------------------------------------------------
+    !=======================================================================
+    !
+    !  Calculate the dust temperature for each particle using the treatment
+    !  of Hollenbach, Takahashi & Tielens (1991, ApJ, 377, 192, eqns 5 & 6)
+    !  for the heating due to the incident FUV photons and the treatment of
+    !  Meijerink & Spaans (2005, A&A, 436, 397, eqn B.6) for heating due to
+    !  the incident flux of X-ray photons.
+    !
+    !  Among other things, the dust temperature can influence:
+    !
+    !     1) Cooling budget by emitting FIR photons that
+    !        interact with the line radiative transfer;
+    !     2) Gas-grain collisional heating or cooling rate;
+    !     3) H2 formation by changing the sticking probability;
+    !     4) Evaporation and condensation of molecules on grains.
+    !
+    !  The formula derived by Hollenbach, Takahashi & Tielens (1991) has
+    !  been modified to include the attenuation of the IR radiation. The
+    !  incident FUV radiation is absorbed and re-emitted in the infrared
+    !  by dust at the surface of the cloud (up to Av ~ 1mag). In the HTT
+    !  derivation, this IR radiation then serves as a second heat source
+    !  for dust deeper into the cloud. However, in their treatment, this
+    !  second re-radiated component is not attenuated with distance into
+    !  the cloud so it is *undiluted* with depth, leading to higher dust
+    !  temperatures deep within the cloud which in turn heat the gas via
+    !  collisions to unrealistically high temperatures. Models with high
+    !  gas densities and high incident FUV fluxes (e.g. n_H = 10^5 cm-3,
+    !  X_0 = 10^8 Draine) can produce T_gas ~ 100 K at Av ~ 50 mag!
+    !
+    !  Attenuation of the FIR radiation has therefore been introduced by
+    !  using an approximation for the infrared-only dust temperature from
+    !  Rowan-Robinson (1980, eqn 30b):
+    !
+    !  T_dust = T_0*(r/r_0)^(-0.4)
+    !
+    !  where r_0 is the cloud depth at which T_dust = T_0, corresponding
+    !  to an A_V of ~ 1 mag, the assumed size of the outer region of the
+    !  cloud that processes the incident FUV radiation and then re-emits
+    !  it in the FIR (see the original HTT 1991 paper for details). This
+    !  should prevent the dust temperature from dropping off too rapidly
+    !  with distance and maintain a larger warm dust region (~50-100 K).
+    !
+    !-----------------------------------------------------------------------
 
-function calculateDustTempHollenbach(localField,surfaceField) result(dustTemperature)
-    !UV field in Habing at this depth and at surface required for this calculation
-    !Both in Habing as required for this treatment
-    real(dp), intent(in) :: localField,surfaceField
-    real(dp) :: dustTemperature
+    function calculateDustTempHollenbach(localField,surfaceField) result(dustTemperature)
+        !UV field in Habing at this depth and at surface required for this calculation
+        !Both in Habing as required for this treatment
+        real(dp), intent(in) :: localField,surfaceField
+        real(dp) :: dustTemperature
 
-    real(KIND=DP) :: NU_0,R_0,T_0,TAU_100
+        real(KIND=DP) :: NU_0,R_0,T_0,TAU_100
 
-    !Parameters used in the HHT equations (see their paper for details)
-    NU_0=2.65e15_dp
-    TAU_100=1.0e-3_dp
-    R_0=1.0_dp/1.6e-21_dp  !avFactor
+        !Parameters used in the HHT equations (see their paper for details)
+        NU_0=2.65e15_dp
+        TAU_100=1.0e-3_dp
+        R_0=1.0_dp/1.6e-21_dp  !avFactor
 
-    !Calculate the contribution to the dust temperature from the local FUV flux and the CMB background
-    !UCLPDR had afactor of 1.7 which I assume was Habing conversion so removed
-    dustTemperature=8.9e-11_dp*NU_0*localField+T_CMB**5
-
-
-    !The minimum dust temperature is related to the incident FUV flux along each ray
-    T_0=12.2_dp*surfaceField**0.2_dp
-
-    !!Attenuate the FIR radiation produced in the surface layer
-    !!JH why is this commented?
-    !IF(PARTICLE(P)%TOTAL_COLUMN(J).GT.R_0) THEN
-    !     T_0=T_0*(PARTICLE(P)%TOTAL_COLUMN(J)/R_0)**(-0.4)
-    !END IF
-
-    !        Add the contribution to the dust temperature from the FUV flux incident along this ray
-    if(T_0>0) dustTemperature=dustTemperature &
-          & + (0.42_dp-log(3.45e-2_dp*TAU_100*T_0))*(3.45e-2_dp*TAU_100*T_0)*T_0**5
-
-    !Convert from total dust emission intensity to dust temperature
-    dustTemperature=dustTemperature**0.2_dp
-
-    !Calculate the contribution to the dust temperature from the local X-ray flux (assuming a fixed grain abundance of 1.6E-8)
-    !JH We have no xrays sthis
-    !dustTemperature=dustTemperature+1.5e4_dp*(XRAY_ENERGY_DEPOSITION_RATE/1.6e-8_dp)**0.2
-
-    !Impose a lower limit on the dust temperature, since values below 10 K can dramatically
-    !limit the rate of H2 formation on grains (the molecule cannot desorb from the surface)
-    if(dustTemperature<lower_limit_dusttemp) then
-        dustTemperature=lower_limit_dusttemp
-    end if
-
-    !     Check that the dust temperature is physical
-    if(dustTemperature>upper_limit_dusttemp) then
-        write(*,*) localField, surfaceField  !WRITE(6,*) 'ERROR! Calculated dust temperature exceeds upper limit'
-        dustTemperature=upper_limit_dusttemp
-    end if
-end function calculateDustTempHollenbach
-
-! Using the new parametric formulation for dust temperature in Hocuk et al. 2017
-! See equation 8 in DOI: 10.1051/0004-6361/201629944
-function calculateDustTempHocuk(surfaceField,Av) result(dustTemperature)
-    real(dp), intent(in) :: surfaceField, Av
-    real(dp) :: tanh_term
-    real(dp) :: dustTemperature
-    tanh_term = 0.61_dp - log10(Av)
-    dustTemperature = (11.0_dp + 5.7_dp*tanh(tanh_term)) * (1.7_dp*surfaceField)**(1.0_dp/5.9_dp)
-
-    !Impose a lower limit on the dust temperature, since values below 10 K can dramatically
-    !limit the rate of H2 formation on grains (the molecule cannot desorb from the surface)
-    if(dustTemperature<lower_limit_dusttemp) then
-        dustTemperature=lower_limit_dusttemp
-    end if
-
-    !     Check that the dust temperature is physical
-    if(dustTemperature>upper_limit_dusttemp) then
-        write(*,*) Av, surfaceField  !WRITE(6,*) 'ERROR! Calculated dust temperature exceeds upper limit'
-        dustTemperature=upper_limit_dusttemp
-    end if
-end function calculateDustTempHocuk
-
-! Ivlev et al. 2019 cosmic-ray dust heating correction
-! Equation 30: T_d,eff = T_dp * [1 + 0.202 * (zeta_ion/1e-16)*(T_dp/6)^(-6)]^(1/6)
-! where T_dp is the base dust temperature (e.g. from Hocuk 2017)
-! and zeta_ion is the cosmic ray ionization rate in s^-1 (= ZETA_0 * zeta)
-pure function calculateDustTempIvlev(T_dp, zeta) result(dustTemperature)
-    real(dp), intent(in) :: T_dp   ! Base dust temperature from Hocuk
-    real(dp), intent(in) :: zeta  ! Dimensionless CR ionization rate scaling factor
-    real(dp) :: dustTemperature
-    real(dp) :: zeta_ion  ! CR ionization rate in s^-1
-
-    zeta_ion = ZETA_0 * zeta
-    dustTemperature = T_dp * (1.0_dp + 0.202_dp * (zeta_ion / 1.0e-16_dp) * (T_dp / 6.0_dp)**(-6))**(1.0_dp/6.0_dp)
-
-    ! Apply dust temperature limits
-    if (dustTemperature<lower_limit_dusttemp) then
-        dustTemperature = lower_limit_dusttemp
-    end if
-    if (dustTemperature>upper_limit_dusttemp) then
-        dustTemperature = upper_limit_dusttemp
-    end if
-end function calculateDustTempIvlev
-!=======================================================================
+        !Calculate the contribution to the dust temperature from the local FUV flux and the CMB background
+        !UCLPDR had afactor of 1.7 which I assume was Habing conversion so removed
+        dustTemperature=8.9e-11_dp*NU_0*localField+T_CMB**5
 
 
+        !The minimum dust temperature is related to the incident FUV flux along each ray
+        T_0=12.2_dp*surfaceField**0.2_dp
 
-! !-----------------------------------------------------------------------
-! !  Coulomb heating
-! !
-! !  Use the treatment of Meijerink & Spaans (2005, A&A, 436, 397)
-! !
-! !  Other relevant references:
-! !  Dalgarno et al. (1999, ApJS, 125, 237)
-! !
-! !  This is an X-ray heating mechanism. When X-rays are absorbed, fast
-! !  electrons are produced. These fast electrons lose part of their
-! !  energy through Coulomb interactions with thermal electrons.
-! !-----------------------------------------------------------------------
+        !!Attenuate the FIR radiation produced in the surface layer
+        !!JH why is this commented?
+        !IF(PARTICLE(P)%TOTAL_COLUMN(J).GT.R_0) THEN
+        !     T_0=T_0*(PARTICLE(P)%TOTAL_COLUMN(J)/R_0)**(-0.4)
+        !END IF
 
-!    R=DENSITY(nH2)/DENSITY(nH) ! n(H2)/n(H) ratio
-!    X_PRIME=1.83_dp*ABUNDANCE(nelect)/(1.0_dp+0.83_dp*ABUNDANCE(nelect)) ! Correction to the electron abundance for a pure H2-He mixture
+        !        Add the contribution to the dust temperature from the FUV flux incident along this ray
+        if(T_0>0) dustTemperature=dustTemperature &
+              & + (0.42_dp-log(3.45e-2_dp*TAU_100*T_0))*(3.45e-2_dp*TAU_100*T_0)*T_0**5
 
-!    ETA_H2_He=1.0_dp+(0.055_dp-1.0_dp)/(1.0_dp+2.17_dp*X_PRIME**0.366) ! Heating efficiency for a pure H2-He mixture
-!    ETA_H_He =1.0_dp+(0.117_dp-1.0_dp)/(1.0_dp+7.95_dp*ABUNDANCE(nelect)**0.678) ! Heating efficiency for a pure H-He mixture
-!    ETA=(10.0_dp*R*ETA_H2_He+ETA_H_He)/(10.0_dp*R+1.0_dp) ! Total heating efficiency for mixed atomic and molecular gas
-!    H_X=XRAY_ENERGY_DEPOSITION_RATE ! X-ray energy deposition rate per hydrogen nucleus (erg s^-1)
+        !Convert from total dust emission intensity to dust temperature
+        dustTemperature=dustTemperature**0.2_dp
 
-!    COULOMB_HEATING_RATE=ETA*GAS_DENSITY*H_X
+        !Calculate the contribution to the dust temperature from the local X-ray flux (assuming a fixed grain abundance of 1.6E-8)
+        !JH We have no xrays sthis
+        !dustTemperature=dustTemperature+1.5e4_dp*(XRAY_ENERGY_DEPOSITION_RATE/1.6e-8_dp)**0.2
+
+        !Impose a lower limit on the dust temperature, since values below 10 K can dramatically
+        !limit the rate of H2 formation on grains (the molecule cannot desorb from the surface)
+        if(dustTemperature<lower_limit_dusttemp) then
+            dustTemperature=lower_limit_dusttemp
+        end if
+
+        !     Check that the dust temperature is physical
+        if(dustTemperature>upper_limit_dusttemp) then
+            write(*,*) localField, surfaceField  !WRITE(6,*) 'ERROR! Calculated dust temperature exceeds upper limit'
+            dustTemperature=upper_limit_dusttemp
+        end if
+    end function calculateDustTempHollenbach
+
+    ! Using the new parametric formulation for dust temperature in Hocuk et al. 2017
+    ! See equation 8 in DOI: 10.1051/0004-6361/201629944
+    function calculateDustTempHocuk(surfaceField,Av) result(dustTemperature)
+        real(dp), intent(in) :: surfaceField, Av
+        real(dp) :: tanh_term
+        real(dp) :: dustTemperature
+        tanh_term = 0.61_dp - log10(Av)
+        dustTemperature = (11.0_dp + 5.7_dp*tanh(tanh_term)) * (1.7_dp*surfaceField)**(1.0_dp/5.9_dp)
+
+        !Impose a lower limit on the dust temperature, since values below 10 K can dramatically
+        !limit the rate of H2 formation on grains (the molecule cannot desorb from the surface)
+        if(dustTemperature<lower_limit_dusttemp) then
+            dustTemperature=lower_limit_dusttemp
+        end if
+
+        !     Check that the dust temperature is physical
+        if(dustTemperature>upper_limit_dusttemp) then
+            write(*,*) Av, surfaceField  !WRITE(6,*) 'ERROR! Calculated dust temperature exceeds upper limit'
+            dustTemperature=upper_limit_dusttemp
+        end if
+    end function calculateDustTempHocuk
+
+    ! Ivlev et al. 2019 cosmic-ray dust heating correction
+    ! Equation 30: T_d,eff = T_dp * [1 + 0.202 * (zeta_ion/1e-16)*(T_dp/6)^(-6)]^(1/6)
+    ! where T_dp is the base dust temperature (e.g. from Hocuk 2017)
+    ! and zeta_ion is the cosmic ray ionization rate in s^-1 (= ZETA_0 * zeta)
+    pure function calculateDustTempIvlev(T_dp, zeta) result(dustTemperature)
+        real(dp), intent(in) :: T_dp   ! Base dust temperature from Hocuk
+        real(dp), intent(in) :: zeta  ! Dimensionless CR ionization rate scaling factor
+        real(dp) :: dustTemperature
+        real(dp) :: zeta_ion  ! CR ionization rate in s^-1
+
+        zeta_ion = ZETA_0 * zeta
+        dustTemperature = T_dp * (1.0_dp + 0.202_dp * (zeta_ion / 1.0e-16_dp) * (T_dp / 6.0_dp)**(-6))**(1.0_dp/6.0_dp)
+
+        ! Apply dust temperature limits
+        if (dustTemperature<lower_limit_dusttemp) then
+            dustTemperature = lower_limit_dusttemp
+        end if
+        if (dustTemperature>upper_limit_dusttemp) then
+            dustTemperature = upper_limit_dusttemp
+        end if
+    end function calculateDustTempIvlev
+    !=======================================================================
 
 
 
-! !-----------------------------------------------------------------------
-! !  Supersonic turbulent decay heating
-! !
-! !  Most relevant for the inner parsecs of galaxies (Black)
-! !  Black, in Interstellar Processes, 1987, p731
-! !  See also: Rodriguez-Fernandez et al., 2001, A&A, 365, 174
-! !
-! !  V_TURB = turbulent velocity (km/s); Galactic center ~ 15 km/s
-! !  L_TURB = turbulent scale length (pc); typically 5 pc
-! !-----------------------------------------------------------------------
-pure function getTurbulentHeatingRate(gasDensity,V_TURB) result(turbulentHeatingRate)
-    real(dp), intent(in) :: gasDensity,V_TURB
-    real(dp) :: turbulentHeatingRate
-    real(dp) :: L_TURB
+    ! !-----------------------------------------------------------------------
+    ! !  Coulomb heating
+    ! !
+    ! !  Use the treatment of Meijerink & Spaans (2005, A&A, 436, 397)
+    ! !
+    ! !  Other relevant references:
+    ! !  Dalgarno et al. (1999, ApJS, 125, 237)
+    ! !
+    ! !  This is an X-ray heating mechanism. When X-rays are absorbed, fast
+    ! !  electrons are produced. These fast electrons lose part of their
+    ! !  energy through Coulomb interactions with thermal electrons.
+    ! !-----------------------------------------------------------------------
 
-   L_TURB=5.0_dp
-   turbulentHeatingRate=3.5e-28_dp*((V_TURB/1.0e5_dp)**3)*(1.0_dp/L_TURB)*gasDensity
+    !    R=DENSITY(nH2)/DENSITY(nH) ! n(H2)/n(H) ratio
+    !    X_PRIME=1.83_dp*ABUNDANCE(nelect)/(1.0_dp+0.83_dp*ABUNDANCE(nelect)) ! Correction to the electron abundance for a pure H2-He mixture
 
-end function getTurbulentHeatingRate
+    !    ETA_H2_He=1.0_dp+(0.055_dp-1.0_dp)/(1.0_dp+2.17_dp*X_PRIME**0.366) ! Heating efficiency for a pure H2-He mixture
+    !    ETA_H_He =1.0_dp+(0.117_dp-1.0_dp)/(1.0_dp+7.95_dp*ABUNDANCE(nelect)**0.678) ! Heating efficiency for a pure H-He mixture
+    !    ETA=(10.0_dp*R*ETA_H2_He+ETA_H_He)/(10.0_dp*R+1.0_dp) ! Total heating efficiency for mixed atomic and molecular gas
+    !    H_X=XRAY_ENERGY_DEPOSITION_RATE ! X-ray energy deposition rate per hydrogen nucleus (erg s^-1)
+
+    !    COULOMB_HEATING_RATE=ETA*GAS_DENSITY*H_X
+
+
+
+    ! !-----------------------------------------------------------------------
+    ! !  Supersonic turbulent decay heating
+    ! !
+    ! !  Most relevant for the inner parsecs of galaxies (Black)
+    ! !  Black, in Interstellar Processes, 1987, p731
+    ! !  See also: Rodriguez-Fernandez et al., 2001, A&A, 365, 174
+    ! !
+    ! !  V_TURB = turbulent velocity (km/s); Galactic center ~ 15 km/s
+    ! !  L_TURB = turbulent scale length (pc); typically 5 pc
+    ! !-----------------------------------------------------------------------
+    pure function getTurbulentHeatingRate(gasDensity,V_TURB) result(turbulentHeatingRate)
+        real(dp), intent(in) :: gasDensity,V_TURB
+        real(dp) :: turbulentHeatingRate
+        real(dp) :: L_TURB
+
+        L_TURB=5.0_dp
+        turbulentHeatingRate=3.5e-28_dp*((V_TURB/1.0e5_dp)**3)*(1.0_dp/L_TURB)*gasDensity
+
+    end function getTurbulentHeatingRate
 
 end module heating
 
@@ -1077,130 +1078,130 @@ end module heating
 ! !  Assume the PE heating rate scales linearly with metallicity
 !    BT94_PHOTOELECTRIC_HEATING_RATE=BT94_PHOTOELECTRIC_HEATING_RATE*METALLICITY
 
- ! REAL(dp) FUNCTION getEquilibriumTemp(gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate,dustAbundance&
- !                                &,exoReactants1,exoReactants2,exoRates,exothermicities,writeFlag,dustTemp,turbVel,fixedCooling,coolingFlag&
- !                                ,fixedHeating,heatingFixFlag)
- !        !Habing field is radfield diminished by Av
- !        REAL(dp), INTENT(in) :: gasTemperature,gasDensity,habingField,h2dis,h2form,zeta,cIonRate,dustAbundance,dustTemp,turbVel,fixedCooling,fixedHeating
- !        REAL(dp), INTENT(in) :: abundances(:),exoReactants1(:),exoReactants2(:),exoRates(:),exothermicities(:)
- !        LOGICAL, INTENT(IN) :: writeFlag,coolingFlag,heatingFixFlag
- !        REAL(dp) :: previousTemp,previousDifference,thigh,tlow
- !        LOGICAL :: binaryChopSearch,BRACKET_expANDED,TEMPERATURE_CONVERGED
- !        REAL(dp) :: heating,cooling,temperatureDiff,difference,outTemp,relative_difference
- !        REAL(dp),parameter :: TDIFF=0.01, FCRIT=0.1,TMIN=10.0, TMAX=1.0e5_dp
- !        INTEGER :: tempLoops = 0.0
+! REAL(dp) FUNCTION getEquilibriumTemp(gasTemperature,gasDensity,habingField,abundances,h2dis,h2form,zeta,cIonRate,dustAbundance&
+!                                &,exoReactants1,exoReactants2,exoRates,exothermicities,writeFlag,dustTemp,turbVel,fixedCooling,coolingFlag&
+!                                ,fixedHeating,heatingFixFlag)
+!        !Habing field is radfield diminished by Av
+!        REAL(dp), INTENT(in) :: gasTemperature,gasDensity,habingField,h2dis,h2form,zeta,cIonRate,dustAbundance,dustTemp,turbVel,fixedCooling,fixedHeating
+!        REAL(dp), INTENT(in) :: abundances(:),exoReactants1(:),exoReactants2(:),exoRates(:),exothermicities(:)
+!        LOGICAL, INTENT(IN) :: writeFlag,coolingFlag,heatingFixFlag
+!        REAL(dp) :: previousTemp,previousDifference,thigh,tlow
+!        LOGICAL :: binaryChopSearch,BRACKET_expANDED,TEMPERATURE_CONVERGED
+!        REAL(dp) :: heating,cooling,temperatureDiff,difference,outTemp,relative_difference
+!        REAL(dp),parameter :: TDIFF=0.01, FCRIT=0.1,TMIN=10.0, TMAX=1.0e5_dp
+!        INTEGER :: tempLoops = 0.0
 
- !        previousTemp=0.0
- !        previousDifference=0.0
- !        thigh=TMAX
- !        tlow=TMIN
+!        previousTemp=0.0
+!        previousDifference=0.0
+!        thigh=TMAX
+!        tlow=TMIN
 
- !        binaryChopSearch=.False.
- !        BRACKET_expANDED=.False.
- !        TEMPERATURE_CONVERGED=.False.
- !        tempLoops=0
- !        getEquilibriumTemp=gasTemperature
- !        DO WHILE (.NOT. TEMPERATURE_CONVERGED .AND. tempLoops .lt. 100)
- !            tempLoops=tempLoops+1
+!        binaryChopSearch=.False.
+!        BRACKET_expANDED=.False.
+!        TEMPERATURE_CONVERGED=.False.
+!        tempLoops=0
+!        getEquilibriumTemp=gasTemperature
+!        DO WHILE (.NOT. TEMPERATURE_CONVERGED .AND. tempLoops .lt. 100)
+!            tempLoops=tempLoops+1
 
- !            !absolute difference between current temperature and previous
- !            temperatureDiff=ABS(getEquilibriumTemp-previousTemp)
+!            !absolute difference between current temperature and previous
+!            temperatureDiff=ABS(getEquilibriumTemp-previousTemp)
 
- !            !then calculate overall heating/cooling rate
- !            heating=fixedHeating
- !            if (heatingFixFlag) heating=getHeatingRate(getEquilibriumTemp,gasDensity,habingField,abundances,h2dis,h2form,zeta,&
- !              &cIonRate,dustAbundance,exoReactants1,exoReactants2,exoRates,exothermicities,dustTemp,turbVel)
- !            !write(*,*) "Total Heating", heating
+!            !then calculate overall heating/cooling rate
+!            heating=fixedHeating
+!            if (heatingFixFlag) heating=getHeatingRate(getEquilibriumTemp,gasDensity,habingField,abundances,h2dis,h2form,zeta,&
+!              &cIonRate,dustAbundance,exoReactants1,exoReactants2,exoRates,exothermicities,dustTemp,turbVel)
+!            !write(*,*) "Total Heating", heating
 
- !            !set cooling rate to fixed cooling rate then overwrite if we want real cooling
- !            cooling=fixedCooling
- !            if (coolingFlag) cooling=getCoolingRate(getEquilibriumTemp,gasDensity,dustTemp,abundances,turbVel,writeFlag)
+!            !set cooling rate to fixed cooling rate then overwrite if we want real cooling
+!            cooling=fixedCooling
+!            if (coolingFlag) cooling=getCoolingRate(getEquilibriumTemp,gasDensity,dustTemp,abundances,turbVel,writeFlag)
 
- !            !Calculate the difference between the total heating and total cooling rates
- !            !and the absolute value of the relative difference between the two rates
- !            difference=heating-cooling
- !            relative_difference=2.0_dp*ABS(difference)/ABS(heating+cooling)
+!            !Calculate the difference between the total heating and total cooling rates
+!            !and the absolute value of the relative difference between the two rates
+!            difference=heating-cooling
+!            relative_difference=2.0_dp*ABS(difference)/ABS(heating+cooling)
 
- !            ! !Quick fix to get fixed T whilst calculating cooling
- !            ! TEMPERATURE_CONVERGED=.TRUE.
- !            ! EXIT
- !            !Check if we've converged heating/cooling balanace
- !            IF (relative_difference .lt. FCRIT) THEN
- !                previousTemp=getEquilibriumTemp
- !                TEMPERATURE_CONVERGED=.True.
- !                CYCLE
- !            END IF
-
-
- !        !  Determine the temperature bracket to begin searching within by first increasing
- !        !  or decreasing the temperature by 30% according to the heating-cooling imbalance
- !            IF(.NOT. binaryChopSearch) THEN
- !                !If the heating continues to outweigh the cooling, increase the temperature by 30%
- !                IF(DIFFERENCE.GT.0 .AND. previousDifference.GE.0) THEN
- !                    TLOW=getEquilibriumTemp ! Update the value of T_low
- !                    getEquilibriumTemp=1.3_dp*getEquilibriumTemp
- !                    previousDifference=difference
- !                    THIGH=getEquilibriumTemp ! Update the value of T_high
- !        !     If the cooling continues to outweigh the heating, decrease the temperature by 30%
- !              ELSE IF(DIFFERENCE.LT.0 .AND. previousDifference.LE.0) THEN
- !                 THIGH=getEquilibriumTemp ! Update the value of T_high
- !                 getEquilibriumTemp=0.7_dp*getEquilibriumTemp
- !                 previousDifference=DIFFERENCE
- !                 TLOW=getEquilibriumTemp ! Update the value of T_low
+!            ! !Quick fix to get fixed T whilst calculating cooling
+!            ! TEMPERATURE_CONVERGED=.TRUE.
+!            ! EXIT
+!            !Check if we've converged heating/cooling balanace
+!            IF (relative_difference .lt. FCRIT) THEN
+!                previousTemp=getEquilibriumTemp
+!                TEMPERATURE_CONVERGED=.True.
+!                CYCLE
+!            END IF
 
 
- !        !     If the heating-cooling balance has reversed (either from net heating to net cooling or
- !        !     vice-versa) then switch to the binary chop search method to determine the temperature
- !              ELSE
- !                 getEquilibriumTemp=(THIGH+TLOW)/2.0_dp
- !                 previousDifference=DIFFERENCE
- !                 binaryChopSearch=.TRUE. ! From now on
- !              END IF
+!        !  Determine the temperature bracket to begin searching within by first increasing
+!        !  or decreasing the temperature by 30% according to the heating-cooling imbalance
+!            IF(.NOT. binaryChopSearch) THEN
+!                !If the heating continues to outweigh the cooling, increase the temperature by 30%
+!                IF(DIFFERENCE.GT.0 .AND. previousDifference.GE.0) THEN
+!                    TLOW=getEquilibriumTemp ! Update the value of T_low
+!                    getEquilibriumTemp=1.3_dp*getEquilibriumTemp
+!                    previousDifference=difference
+!                    THIGH=getEquilibriumTemp ! Update the value of T_high
+!        !     If the cooling continues to outweigh the heating, decrease the temperature by 30%
+!              ELSE IF(DIFFERENCE.LT.0 .AND. previousDifference.LE.0) THEN
+!                 THIGH=getEquilibriumTemp ! Update the value of T_high
+!                 getEquilibriumTemp=0.7_dp*getEquilibriumTemp
+!                 previousDifference=DIFFERENCE
+!                 TLOW=getEquilibriumTemp ! Update the value of T_low
 
- !        !  Perform a binary chop search (the min-max range was found by the 30% increase/decrease method)
- !           ELSE
 
- !              IF(DIFFERENCE.GT.0) THEN
- !                TLOW=getEquilibriumTemp ! Update the value of T_low
- !                 getEquilibriumTemp=(getEquilibriumTemp+THIGH)/2.0_dp
- !                 previousDifference=DIFFERENCE
+!        !     If the heating-cooling balance has reversed (either from net heating to net cooling or
+!        !     vice-versa) then switch to the binary chop search method to determine the temperature
+!              ELSE
+!                 getEquilibriumTemp=(THIGH+TLOW)/2.0_dp
+!                 previousDifference=DIFFERENCE
+!                 binaryChopSearch=.TRUE. ! From now on
+!              END IF
 
- !              END IF
- !              IF(DIFFERENCE.LT.0) THEN
- !                 THIGH=getEquilibriumTemp !Update the value of T_high
- !                 getEquilibriumTemp=(getEquilibriumTemp+TLOW)/2.0_dp
- !                 previousDifference=DIFFERENCE
- !              END IF
+!        !  Perform a binary chop search (the min-max range was found by the 30% increase/decrease method)
+!           ELSE
 
- !           END IF
+!              IF(DIFFERENCE.GT.0) THEN
+!                TLOW=getEquilibriumTemp ! Update the value of T_low
+!                 getEquilibriumTemp=(getEquilibriumTemp+THIGH)/2.0_dp
+!                 previousDifference=DIFFERENCE
 
- !        !  If the search routine is unable to converge on a temperature that satisfies the thermal balance
- !        !  criterion, expand the min-max search bracket asymmetrically and begin to narrow the search again
- !        !  If the repeated search fails to converge once more, force convergence at the current temperature
- !           IF(temperatureDiff.LE.TDIFF) THEN
- !              IF(.NOT.BRACKET_expANDED) THEN
- !                 THIGH=THIGH+sqrt(PI)
- !                 TLOW=TLOW-sqrt(2.0)
- !                 BRACKET_expANDED=.TRUE.
- !              ELSE
- !                 previousTemp=getEquilibriumTemp
- !                 TEMPERATURE_CONVERGED=.TRUE.
- !                 CYCLE
- !              END IF
- !           END IF
+!              END IF
+!              IF(DIFFERENCE.LT.0) THEN
+!                 THIGH=getEquilibriumTemp !Update the value of T_high
+!                 getEquilibriumTemp=(getEquilibriumTemp+TLOW)/2.0_dp
+!                 previousDifference=DIFFERENCE
+!              END IF
 
- !        !  Check if the temperature falls outside of the allowed limits and force convergence if so
- !           IF(getEquilibriumTemp.LE.TMIN .AND. DIFFERENCE.LT.0) THEN
- !              getEquilibriumTemp=TMIN
- !              TEMPERATURE_CONVERGED=.TRUE.
- !           END IF
- !           IF(getEquilibriumTemp.GE.TMAX .AND. DIFFERENCE.GT.0) THEN
- !              getEquilibriumTemp=TMAX
- !              TEMPERATURE_CONVERGED=.TRUE.
- !           END IF
+!           END IF
 
- !        !  Replace the previous temperature with the current value
- !           previousTemp=getEquilibriumTemp
- !        END DO
+!        !  If the search routine is unable to converge on a temperature that satisfies the thermal balance
+!        !  criterion, expand the min-max search bracket asymmetrically and begin to narrow the search again
+!        !  If the repeated search fails to converge once more, force convergence at the current temperature
+!           IF(temperatureDiff.LE.TDIFF) THEN
+!              IF(.NOT.BRACKET_expANDED) THEN
+!                 THIGH=THIGH+sqrt(PI)
+!                 TLOW=TLOW-sqrt(2.0)
+!                 BRACKET_expANDED=.TRUE.
+!              ELSE
+!                 previousTemp=getEquilibriumTemp
+!                 TEMPERATURE_CONVERGED=.TRUE.
+!                 CYCLE
+!              END IF
+!           END IF
 
- !    END FUNCTION getEquilibriumTemp
+!        !  Check if the temperature falls outside of the allowed limits and force convergence if so
+!           IF(getEquilibriumTemp.LE.TMIN .AND. DIFFERENCE.LT.0) THEN
+!              getEquilibriumTemp=TMIN
+!              TEMPERATURE_CONVERGED=.TRUE.
+!           END IF
+!           IF(getEquilibriumTemp.GE.TMAX .AND. DIFFERENCE.GT.0) THEN
+!              getEquilibriumTemp=TMAX
+!              TEMPERATURE_CONVERGED=.TRUE.
+!           END IF
+
+!        !  Replace the previous temperature with the current value
+!           previousTemp=getEquilibriumTemp
+!        END DO
+
+!    END FUNCTION getEquilibriumTemp

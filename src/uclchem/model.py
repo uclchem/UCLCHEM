@@ -83,9 +83,9 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
-from types import MappingProxyType
 import operator
 from functools import cache
+from types import MappingProxyType
 
 _logger = logging.getLogger(__name__)
 
@@ -102,8 +102,7 @@ from datetime import datetime
 from multiprocessing import pool as mp_pool
 from multiprocessing import shared_memory
 from pathlib import Path
-from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypeVar
 
 import h5py
 import numpy as np
@@ -121,7 +120,6 @@ from uclchem.constants import (
     DEFAULT_ELEMENTS_TO_CHECK,
     DEFAULT_PARAMETER_DICTIONARY,
     DVODE_STAT_NAMES,
-    ELEMENTS_TO_CHECK,
     N_DVODE_STATS,
     N_PHYSICAL_PARAMETERS,
     N_SE_STATS_PER_COOLANT,
@@ -139,8 +137,8 @@ from uclchem.utils import (
     PrestellarCoreMass,
     SuccessFlag,
     get_collapse_mode,
-    get_fuzzy_unknown_keys,
     get_dtype,
+    get_fuzzy_unknown_keys,
     get_lowercase_copy,
     get_reaction_table,
     get_species,
@@ -411,7 +409,7 @@ def _worker_entry(
         with capture_fortran_output(
             label="last_model", log_file="./last_model_fortran.log"
         ):
-            output = model.run_fortran()
+            output = model._run_fortran()
     except BaseException as exc:
         # The coordinator blocks on result_queue.get(); if a Python exception is
         # raised here and never queued, the coordinator hangs forever waiting
@@ -613,7 +611,7 @@ class AbstractModel(ABC):
 
         Parameters
         ----------
-        param_dict : dict | None
+        param_dict : Mapping[str, Any] | None
             Dictionary containing the parameters to use for the UCLCHEM model.
             Uses UCLCHEM default values if not provided.
         starting_chemistry : np.ndarray | None
@@ -2788,7 +2786,7 @@ class AbstractModel(ABC):
         """
         if param_dict is None:
             # avoid mutating the shared default dictionary
-            self._param_dict = DEFAULT_PARAMETER_DICTIONARY.copy()
+            self._param_dict = get_lowercase_copy(DEFAULT_PARAMETER_DICTIONARY.copy())
         else:
             # Lower case (and conveniently copy so we don't edit) the user's dictionary
             # This is key to UCLCHEM's "case insensitivity"
@@ -2802,7 +2800,10 @@ class AbstractModel(ABC):
             # Handle deprecated endAtFinalDensity parameter (after lowercasing)
             param_dict = _convert_legacy_stopping_param(param_dict)
 
-            self._param_dict = {**DEFAULT_PARAMETER_DICTIONARY, **param_dict}
+            self._param_dict = {
+                **get_lowercase_copy(DEFAULT_PARAMETER_DICTIONARY),
+                **param_dict,
+            }
 
         self._param_dict = remove_keys_with_none(self._param_dict)
 
@@ -3469,11 +3470,11 @@ class PrestellarCore(AbstractModel):
 
         Parameters
         ----------
-        temp_indx : int | PrestellarCoreMass | None
+        temp_indx : int | PrestellarCoreMass
             Index of the temperature column in the physics array to use for hot-core heating,
             which corresponds to different masses of the hot core.
             Defaults to :data:`PrestellarCoreMass.M_SUN_1`.
-        max_temperature : float | None
+        max_temperature : float
             Maximum temperature (K) the hot core reaches. Defaults to 300.0.
         param_dict : Mapping[str, Any] | None
             Dictionary of UCLCHEM parameters. Uses defaults from ``defaultparameters.f90`` for
@@ -3755,7 +3756,7 @@ class JShock(AbstractModel):
 
         Parameters
         ----------
-        shock_vel : float | None
+        shock_vel : float
             Shock velocity in km/s. Defaults to 10.0.
         param_dict : Mapping[str, Any] | None
             Dictionary of UCLCHEM parameters. Uses defaults from ``defaultparameters.f90`` for
@@ -3997,8 +3998,8 @@ class Postprocess(AbstractModel):
         )
 
         def make_json_serializable(
-            value: None | float | list[float] | np.ndarray,
-        ) -> None | float | list[float]:
+            value: float | list[float] | np.ndarray | None,
+        ) -> float | list[float] | None:
             if isinstance(value, np.ndarray):
                 return value.tolist()
             return value
@@ -4030,13 +4031,8 @@ class Postprocess(AbstractModel):
                         msg = "All arrays must be the same length"
                         raise ValueError(msg)
 
-                    # Pad to self.timepoints so Fortran gets
-                    # correctly sized arrays.
-                    padded = np.zeros(
-                        self.timepoints,
-                        dtype=np.float64,
-                    )
-                    padded[:n_input] = array
+                    # Pad to self.timepoints so Fortran gets correctly sized arrays.
+                    padded = pad_to_length(array, self.timepoints)
                     setattr(self, key, make_json_serializable(array))
                     self.postprocess_arrays[key] = np.asfortranarray(padded)
             self.time_array = time_array
@@ -4339,7 +4335,7 @@ class SequentialRunner:  # type: ignore[type-var] # SequentialRunner is a compos
 
         Raises
         ------
-        AssertionError
+        ValueError
             If one of the models in `sequenced_model_parameters` is a SequentialRunner
             itself.
         NotImplementedError
@@ -4509,7 +4505,10 @@ class SequentialRunner:  # type: ignore[type-var] # SequentialRunner is a compos
             file_obj.close()
 
     def check_conservation(
-        self, element_list: Sequence[str] = ELEMENTS_TO_CHECK, *, percent: bool = True
+        self,
+        element_list: Sequence[str] = DEFAULT_ELEMENTS_TO_CHECK,
+        *,
+        percent: bool = True,
     ) -> None:
         """Check conservation of the chemical abundances.
 
@@ -4517,7 +4516,7 @@ class SequentialRunner:  # type: ignore[type-var] # SequentialRunner is a compos
         ----------
         element_list : Sequence[str]
             List of elements to check conservation for.
-            Default = :data:`uclchem.constants.ELEMENTS_TO_CHECK`.
+            Default = :data:`uclchem.constants.DEFAULT_ELEMENTS_TO_CHECK`.
         percent : bool
             Flag on if percentage values should be used. Defaults to True.
 
@@ -4711,17 +4710,18 @@ class GridRunner:
             the param_dict argument that would be passed to any other model, with the addition
             of extra keys for the none param_dict variables of a model. Any variables that are
             turned into lists or arrays, will automatically be assumed to be used for the gridding.
-        max_workers : int | None
+        max_workers : int
             Maximum number of workers to use in parallel for the grid run.
-            If None, use ``os.cpu_count()-1``. Default = None.
-        grid_file : str
+            If None, use ``os.cpu_count()-1``. Default = -1.
+        grid_file : str | Path | None
             Name and path of the output file to which the models should be saved.
+            If None, run the grid while keeping all the models in memory (might get large).
             Defaults to "./default_grid_out.h5".
         model_name_prefix : str
             Name prefix convention to use. The fifth model in the grid
             would have the name "<model_name_prefix>5>" assigned to it. Defaults to "",
             which would make the fifth model have the name "5", for example.
-        log_dir : str | None
+        log_dir : str | Path | None
             Where to write logs. If None, do not write logs. Default = None.
         model_ids : list | None
             Optional subset of model indices (0-based column in flat_grids)
@@ -4743,8 +4743,8 @@ class GridRunner:
         TypeError
             If `model_type` is not ``"SequentialRunner"``, but `full_parameters` is
             not a dictionary.
-        AssertionError
-            If `create_grid` is False, but not all arrays have the same length.
+        ValueError
+            If `model_type` is ``"Postprocess"``, but `create_grid` is True.
 
         """
         self.model_type = verify_model_type(model_type)
@@ -4830,7 +4830,7 @@ class GridRunner:
                     for i in range(array_lengths[0])
                 ]
             ).T
-        if self.model_type == "Postprocess" and len(self.flat_grids.shape) == 3:  # noqa: PLR2004
+        if self.model_type == "Postprocess" and len(self.flat_grids.shape) == 3:  # ruff: ignore[magic-value-comparison]
             self.flat_grids = np.moveaxis(self.flat_grids, [0, 1, 2], [2, 0, 1])
 
         # Optional subset of model indices (0-based column in flat_grids) to run.
@@ -4845,12 +4845,7 @@ class GridRunner:
 
     def _define_grid(self, key: str, value: Any, model_count: int | None = None) -> None:
         prefix: str = "" if model_count is None else f"{model_count}_"
-<<<<<<< HEAD
-        if isinstance(value, list) and key not in NoGridParameters:
-=======
         if isinstance(value, list) and key not in NO_GRID_PARAMETERS:
-            self.parameters_to_grid[prefix + key] = value
->>>>>>> 4d10c78 (Remove outspecies passing and setting in model.py)
             self.parameters_to_grid[prefix + key] = np.array(value, dtype=object)
         elif (
             isinstance(value, (np.ndarray, np.generic)) and key not in NO_GRID_PARAMETERS
@@ -5023,6 +5018,11 @@ class GridRunner:
         resulting in an additional required loop to take into account the
         additional nesting.
 
+        Raises
+        ------
+        RuntimeError
+            If any of the models ``_data`` attribute is None.
+
         """
         # The following loops perform the same actions, but for the different model types
         if self.model_type == "SequentialRunner":
@@ -5034,6 +5034,9 @@ class GridRunner:
                         model = self._get_model(
                             name=f"{self.models[model_id]['Model']}_{model_count}_{mt_k}"
                         )
+                        if model._data is None:
+                            msg = f"Model {model_id} (type {model.model_type}) has _data None."
+                            raise RuntimeError(msg)
 
                         self.models[model_id][f"{model_count}_{mt_k}"] = {
                             **{
@@ -5046,7 +5049,7 @@ class GridRunner:
                                 in model._param_dict
                             },
                             **{
-                                k.replace(f"{model_count}_", ""): model.__getattr__(  # noqa: PLC2801 bypass
+                                k.replace(f"{model_count}_", ""): model.__getattr__(  # ruff: ignore[unnecessary-dunder-call] bypass
                                     k.replace(f"{model_count}_", "")
                                 )
                                 for k in list(self.parameters_to_grid.keys())
@@ -5092,11 +5095,13 @@ class GridRunner:
                 if model_dict["Model"] == name:
                     return model_dict["object"]
             raise ValueError
-        else:
-            return load_model(file=self.grid_file, name=name)
+        return load_model(file=self.grid_file, name=name)
 
     def check_conservation(
-        self, element_list: Sequence[str] = ELEMENTS_TO_CHECK, *, percent: bool = True
+        self,
+        element_list: Sequence[str] = DEFAULT_ELEMENTS_TO_CHECK,
+        *,
+        percent: bool = True,
     ) -> None:
         """Check conservation of the chemical abundances.
 
@@ -5104,7 +5109,7 @@ class GridRunner:
         ----------
         element_list : Sequence[str]
             List of elements to check conservation for.
-            Default = :data:`uclchem.constants.ELEMENTS_TO_CHECK`.
+            Default = :data:`uclchem.constants.DEFAULT_ELEMENTS_TO_CHECK`.
         percent : bool
             Flag on if percentage values should be used.
             Defaults to True.

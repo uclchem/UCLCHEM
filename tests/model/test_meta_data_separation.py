@@ -74,7 +74,7 @@ def test_meta_survives_dataset_replace(basic_cloud_copy):
     # public scalar attributes (not PHYSICAL_PARAMETERS or specname which are global)
     run_type_to_store = "local"
     custom_flag_to_store = 42
-    m.run_type = run_type_to_store  # ty: ignore[invalid-assignment]
+    m.run_type = run_type_to_store
     m.custom_flag = custom_flag_to_store
 
     # Simulate dataset replacement (as happens on load/pickle)

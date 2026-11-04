@@ -29,8 +29,6 @@ from uclchem.advanced.constants import (
 )
 from uclchem.advanced.runtime_network import RuntimeNetwork
 
-from .constants import FILE_PATH_PARAMETERS, FORTRAN_PARAMETERS, INTERNAL_PARAMETERS
-
 _logger = logging.getLogger(__name__)
 
 # Module names mirroring GeneralSettings._discover_modules()

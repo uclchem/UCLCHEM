@@ -29,13 +29,13 @@ contains
     subroutine fileSetup
         inquire(unit=columnId, OPENED=columnOutput)
         if (columnOutput) write(columnId,333) specName(outIndx)
-        333 format("Time,Density,gasTemp,dustTemp,av,radfield,zeta,",(999(A,:,",")))
+333     format("Time,Density,gasTemp,dustTemp,av,radfield,zeta,",(999(A,:,",")))
 
         inquire(unit=outputId, OPENED=fullOutput)
         if (fullOutput) then
             write(outputId,335) specName
         end if
-        335 format("Time,Density,gasTemp,dustTemp,Av,radfield,zeta,point,",(999(A,:,",")))
+335     format("Time,Density,gasTemp,dustTemp,Av,radfield,zeta,point,",(999(A,:,",")))
 
         inquire(unit=rateConstantId, OPENED=rateConstantsOutput)
         inquire(unit=ratesId, OPENED=fluxOutput)
@@ -96,7 +96,7 @@ contains
                 do dstep=points,1,-1
                     ! WRITE(abundSaveID,*) fhe,fc,fo,fn,fs,fmg
                     write(abundSaveID,8010) abund(:nspec+2,dstep)
-                8010  format((999(1pe15.5,:,",")))
+8010                format((999(1pe15.5,:,",")))
                 end do
             else
                 do dstep=1,points
@@ -155,8 +155,8 @@ contains
         else if (fullOutput .AND. .NOT. returnArray) then
             write(outputId,8020) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),&
                 & av(dstep),radfield,zeta,dstep,abund(1:nspec,dstep)
-            8020 format(1pe11.3,",",1pe11.4,",",0pf8.2,",",0pf8.2,",",1pe11.4,",",1pe11.4,&
-                ",",1pe11.4,",",I4,",",(999(1pe15.5,:,",")))
+8020        format(1pe11.3,",",1pe11.4,",",0pf8.2,",",0pf8.2,",",1pe11.4,",",1pe11.4,&
+           ",",1pe11.4,",",I4,",",(999(1pe15.5,:,",")))
         end if
         if (writerates) then
             if (returnArray) then
@@ -165,12 +165,12 @@ contains
                 rateConstantsArray(dtime, dstep, :) = rate_constants(:nreac)
                 ! Only populate the heating array if it is present, properly sized, AND heating is enabled
                 if (SIZE(heatarray, 1) >= timePoints .AND. heatingFlag) then
-                    heatarray(dtime, dstep, 1:(NCOOLING)) = coolingValues(:)
+                    heatarray(dtime, dstep, 1:(NCOOLING)) = coolingValues
                     ! Write all NCOOLANTS line cooling terms
                     heatarray(dtime, dstep, (1+NCOOLING):(NCOOLING+NCOOLANTS)) = lineCoolingArray(median_line_index, :NCOOLANTS)
 
                     ! Heating terms (NHEATING values)
-                    heatarray(dtime, dstep, (1+NCOOLING+NCOOLANTS):(NCOOLING+NCOOLANTS+NHEATING)) = heatingValues(:)
+                    heatarray(dtime, dstep, (1+NCOOLING+NCOOLANTS):(NCOOLING+NCOOLANTS+NHEATING)) = heatingValues
                     ! Chemical heating (1 value)
                     heatarray(dtime, dstep, 1+NCOOLING+NCOOLANTS+NHEATING) = chemheating
                 end if
@@ -179,21 +179,21 @@ contains
                 if (rateConstantsOutput) then
                     write(rateConstantId,8021) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep), &
                         & av(dstep),radfield,zeta,dstep,rate_constants
-                    8021 format(1pe11.3,",",1pe11.4,",",0pf8.2,",",0pf8.2,",",1pe11.4,",",1pe11.4,",",1pe11.4,",", &
-                        & I4,",",(9999(1pe15.5e3,:,",")))
+8021                format(1pe11.3,",",1pe11.4,",",0pf8.2,",",0pf8.2,",",1pe11.4,",",1pe11.4,",",1pe11.4,",", &
+                   & I4,",",(9999(1pe15.5e3,:,",")))
                 end if
                 if (fluxOutput) then
                     write(ratesId,8022) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep), &
                         & av(dstep),radfield,zeta,dstep,REACTIONRATE
-                    8022 format(1pe11.3,",",1pe11.4,",",0pf8.2,",",0pf8.2,",",1pe11.4,",",1pe11.4,&
-                        & ",",1pe11.4,",",I4,",",(9999(1pe15.5e3,:,",")))
+8022                format(1pe11.3,",",1pe11.4,",",0pf8.2,",",0pf8.2,",",1pe11.4,",",1pe11.4,&
+                   & ",",1pe11.4,",",I4,",",(9999(1pe15.5e3,:,",")))
                 end if
                 if (heatingOutput) then
                     ! Write: time, cooling values (4), line cooling array (NCOOLANTS), heating values (8), chem heating
-                    write(heatingId,8023) timeInYears, coolingValues(:), &
+                    write(heatingId,8023) timeInYears, coolingValues, &
                         lineCoolingArray(median_line_index, :NCOOLANTS), &
-                        heatingValues(:), chemheating
-                    8023 format(1PE16.6E3,:,(999(",",1PE16.6E3)))
+                        heatingValues, chemheating
+8023                format(1PE16.6E3,:,(999(",",1PE16.6E3)))
                 end if
             end if
         end if
@@ -205,8 +205,8 @@ contains
                 writeCounter=1
                 write(columnId,8030) timeInYears,density(dstep),gasTemp(dstep),dustTemp(dstep),&
                 &av(dstep),radfield,zeta,abund(outIndx,dstep)
-                8030  format(1pe11.3,",",1pe11.4,",",0pf8.2,",",0pf8.2,",",1pe11.4,",",1pe11.4,&
-                &",",1pe11.4,",",(999(1pe15.5,:,",")))
+8030            format(1pe11.3,",",1pe11.4,",",0pf8.2,",",0pf8.2,",",1pe11.4,",",1pe11.4,&
+          &",",1pe11.4,",",(999(1pe15.5,:,",")))
             else
                 writeCounter=writeCounter+1
             end if
@@ -237,9 +237,9 @@ contains
     end subroutine debugout
 
     subroutine simpleDebug(message)
-    !A very simply subroutine for debugging, just write a bunch of variables to screen
-    !so we can check they're all as expected.
-    !Argument message is a string to print before the variables
+        !A very simply subroutine for debugging, just write a bunch of variables to screen
+        !so we can check they're all as expected.
+        !Argument message is a string to print before the variables
         character(LEN=*), intent(in) :: message
         write(*,*) message
         write(*,*)"freefall",freefall

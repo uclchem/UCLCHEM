@@ -59,6 +59,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Self
 
 import rapidfuzz
+
 from uclchem.constants import SOLAR_LUMINOSITY
 
 if TYPE_CHECKING:
@@ -763,8 +764,8 @@ def remove_keys_with_none(dct: dict[str, Any]) -> dict[str, Any]:
 
     Parameters
     ----------
-    dct : dict[str, Any | None]
-        Dictionary, modified in-place
+    dct : dict[str, Any]
+        Dictionary
 
     Returns
     -------
@@ -782,7 +783,7 @@ def remove_keys_with_none(dct: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in dct.items() if v is not None}
 
 
-def get_lowercase_copy(dct: dict[str, Any]) -> dict[str, Any]:
+def get_lowercase_copy(dct: Mapping[str, Any]) -> dict[str, Any]:
     """Get a copy of a dictionary where the keys have been replaced by lowercase keys.
 
     Parameters

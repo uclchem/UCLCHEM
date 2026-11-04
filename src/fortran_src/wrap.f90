@@ -4,7 +4,8 @@
 module uclchemwrap
     ! allow(use-all)
     use chemistry
-    use constants, only: dp, PARAMETER_READ_ERROR, PHYSICS_INIT_ERROR, PHYSICS_UPDATE_ERROR
+    use constants, only: dp, PARAMETER_READ_ERROR, PHYSICS_INIT_ERROR, PHYSICS_UPDATE_ERROR, &
+        MISSING_START_ABUNDANCE_ERROR
     use coolant_module, only: coolant_error_flag, coolant_error_message, &
         coolant_levpop_force_recompute, GET_COOLANT_RESTART_MODE, SET_COOLANT_RESTART_MODE
     use f2py_constants, only: nSpec, nReac, NCOOLANTS, N_DVODE_STATS, N_PHYSICS_PARAMS, &
@@ -32,7 +33,9 @@ module uclchemwrap
         end subroutine updateTargetTimeProcedure
 
         subroutine sublimationProcedure(abund, npoints)
+            ! allow(shadowed-variable)
             use constants, only: dp
+            ! allow(shadowed-variable)
             use f2py_constants, only: nSpec
             implicit none
             integer, intent(in) :: npoints
@@ -601,7 +604,6 @@ contains
         !returns the rate of all reactions that include that species plus some extra variables
         !to allow for the calculation of the rate of bulk/surface ice transfer.
         use cloud_mod, only: initializePhysics
-        use f2py_constants, only: nSpec, nReac
         !f2py integer, intent(aux) :: nSpec, nReac
         character(LEN=*), intent(inout) :: dictionary
         real(dp), intent(in) :: abundancesIn(nSpec)
@@ -672,7 +674,6 @@ contains
         !Obtain the ODE values for some given parameters and abundances.
         !Essentially runs one time step of solveAbundances  then calls the ODE subroutine (F)
         use cloud_mod, only: initializePhysics
-        use f2py_constants, only: nSpec
         !f2py integer, intent(aux) :: nSpec
         character(LEN=*), intent(inout) :: dictionary
         real(dp), intent(in) :: abundancesIn(nSpec)
@@ -765,8 +766,8 @@ contains
         interface
             ! allow(function-missing-result)
             integer(C_INT) function c_fflush(stream) bind(C, name="fflush")
+                ! allow(shadowed-variable)
                 use, intrinsic :: iso_c_binding, only: C_INT, C_PTR
-
                 implicit none
 
                 type(C_PTR), value :: stream
@@ -825,33 +826,33 @@ contains
         end if
 
         ! Initialize the chemistry
-        CALL initializeChemistry(readAbunds, successFlag)
-        IF (successFlag .lt. 0) RETURN
+        call initializeChemistry(readAbunds, successFlag)
+        if (successFlag < 0) return
         ! givestartabund promises one row of starting abundances per point. If the
         ! array is absent, too short, or a row is all zeros (f2py passes zeros for
         ! an omitted optional array), every species would start at the abundance
         ! floor and the model would silently integrate an empty gas. Fail instead.
-        IF (givestartabund) THEN
-            IF (.NOT. PRESENT(abundanceStart)) THEN
+        if (givestartabund) then
+            if (.NOT. PRESENT(abundanceStart)) then
                 successFlag=MISSING_START_ABUNDANCE_ERROR
-                WRITE(*,*) 'Error: givestartabund is set but no starting abundances were passed'
-                RETURN
-            END IF
-            IF (SIZE(abundanceStart, 1) .lt. points) THEN
+                write(*,*) "Error: givestartabund is set but no starting abundances were passed"
+                return
+            end if
+            if (SIZE(abundanceStart, 1) < points) then
                 successFlag=MISSING_START_ABUNDANCE_ERROR
-                WRITE(*,*) 'Error: starting abundances given for', SIZE(abundanceStart, 1), &
-                    &'points, but the model has', points
-                RETURN
-            END IF
-            DO l=1,points
-                IF (ALL(abundanceStart(l, :nspec) .eq. 0.0D0)) THEN
+                write(*,*) "Error: starting abundances given for", SIZE(abundanceStart, 1), &
+                    &"points, but the model has", points
+                return
+            end if
+            do l=1,points
+                if (ALL(abundanceStart(l, :nspec) == 0.0_dp)) then
                     successFlag=MISSING_START_ABUNDANCE_ERROR
-                    WRITE(*,*) 'Error: starting abundances for point', l, 'are all zero'
-                    RETURN
-                END IF
-            END DO
-        END IF
-        IF (returnArray .AND. givestartabund) THEN
+                    write(*,*) "Error: starting abundances for point", l, "are all zero"
+                    return
+                end if
+            end do
+        end if
+        if (returnArray .AND. givestartabund) then
             ! In case we have custom abundances, set them here
             if (enable_radiative_transfer .AND. points>1) then
                 do l=points,1,-1
@@ -920,13 +921,13 @@ contains
                 ! bookkeeping below only ever wrote post-update values at each step;
                 ! this has not been validated against the 1D radiative-transfer tests
                 ! and may need a second look from whoever owns that code.
-                IF (returnArray) THEN
-                    CALL output(returnArray, returnRateConstants, successflag, physicsarray, &
+                if (returnArray) then
+                    call output(returnArray, returnRateConstants, successflag, physicsarray, &
                         chemicalabunarray, rateConstantsArray, heatarray, statsarray, &
                         levelpopulationsarray, sestatsarray, dtime_local, timepoints)
-                ELSE
-                    CALL output(returnArray, returnRateConstants, successflag)
-                END IF
+                else
+                    call output(returnArray, returnRateConstants, successflag)
+                end if
 
                 ! -- time integration for this parcel --------------------------------
                 time_loop: do while ((successFlag == 0) .AND. (timeInYears < finalTime) .AND. (.NOT. parcelDone))
@@ -950,28 +951,28 @@ contains
                     ! Freefall stopping logic
                     if (freefall .AND. density(dstep) >= density_max(dstep)) then
                         select case (parcelStoppingMode)
-                            case (0)
-                                density(dstep) = density_max(dstep)
-                            case (1)
-                                if (dstep == points) then
-                                    outermost_stop_time = currentTime
-                                    outermost_stopped   = .true.
-                                end if
-                                density(dstep) = density_max(dstep)
-                            case (2)
-                                if (dstep == points) then
-                                    outermost_stop_time = currentTime
-                                    outermost_stopped   = .true.
-                                    parcelDone = .true.    ! outermost exits at its own freefall time
-                                else
-                                    density(dstep) = density_max(dstep)  ! inner: cap density, keep running
-                                end if
-                            case default
-                                if (dstep == points) then
-                                    outermost_stop_time = currentTime
-                                    outermost_stopped   = .true.
-                                end if
-                                density(dstep) = density_max(dstep)
+                        case (0)
+                            density(dstep) = density_max(dstep)
+                        case (1)
+                            if (dstep == points) then
+                                outermost_stop_time = currentTime
+                                outermost_stopped   = .true.
+                            end if
+                            density(dstep) = density_max(dstep)
+                        case (2)
+                            if (dstep == points) then
+                                outermost_stop_time = currentTime
+                                outermost_stopped   = .true.
+                                parcelDone = .true.    ! outermost exits at its own freefall time
+                            else
+                                density(dstep) = density_max(dstep)  ! inner: cap density, keep running
+                            end if
+                        case default
+                            if (dstep == points) then
+                                outermost_stop_time = currentTime
+                                outermost_stopped   = .true.
+                            end if
+                            density(dstep) = density_max(dstep)
                         end select
                     end if
 
@@ -992,7 +993,7 @@ contains
                     if (.NOT. parcelDone) then
                         ! Load outer neighbor's coldens at this timestep for the AV accumulation
                         if (dstep < points) then
-                          outer_coldens_for_current_step = coldens_history(dtime_local)
+                            outer_coldens_for_current_step = coldens_history(dtime_local)
                         end if
 
                         call updateChemistry(successFlag, statsarray, timePoints+1, dtime_local)
@@ -1044,14 +1045,15 @@ contains
             ! every point, so that chained models (previous_model=/starting_chemistry=)
             ! can be verified against the handed-off state.
             dtime = 1
-            DO dstep = 1, points
-                IF (returnArray) THEN
-                    CALL output(returnArray, returnRateConstants, successFlag, physicsarray, chemicalabunarray, rateConstantsArray,&
-                    &heatarray, statsarray, levelpopulationsarray, sestatsarray, dtime, timepoints)
-                ELSE
-                    CALL output(returnArray, returnRateConstants, successFlag)
-                END IF
-            END DO
+            do dstep = 1, points
+                if (returnArray) then
+                    call output(returnArray, returnRateConstants, successFlag, physicsarray, chemicalabunarray, &
+                        rateConstantsArray, heatarray, statsarray, levelpopulationsarray, sestatsarray, &
+                        dtime, timepoints)
+                else
+                    call output(returnArray, returnRateConstants, successFlag)
+                end if
+            end do
 
             time_loop_non_rt: do while ((successFlag == 0) .and. (timeInYears < finalTime))
                 dtime = dtime + 1
@@ -1162,353 +1164,353 @@ contains
             inputValue = dictionary(posStart+1:posEnd-1)
 
             select case (inputParameter)
-                case("alpha")
-                    !To provide alphas, set keyword alpha in inputdictionary with a dictionary value
-                    !that dictionary should be index:value pairs for the alpha array
-                    posStart=scan(dictionary,"{")
-                    posEnd=scan(dictionary,"}")
-                    call coefficientParser(dictionary(posStart+1:posEnd),alpha)
-                case("beta")
-                    !To provide alphas, set keyword alpha in inputdictionary with a dictionary value
-                    !that dictionary should be index:value pairs for the alpha array
-                    posStart=scan(dictionary,"{")
-                    posEnd=scan(dictionary,"}")
-                    call coefficientParser(dictionary(posStart+1:posEnd),beta)
-                case("gamma")
-                    !To provide alphas, set keyword alpha in inputdictionary with a dictionary value
-                    !that dictionary should be index:value pairs for the alpha array    
-                    posStart=scan(dictionary,'{')
-                    posEnd=scan(dictionary,'}')
-                    CALL coefficientParser(dictionary(posStart+1:posEnd),gama)
-                CASE('initialtemp')
-                    READ(inputValue,*,iostat=successFlag) initialTemp
-                CASE('initialdens')
-                    READ(inputValue,*,iostat=successFlag) initialDens
-                CASE('finaldens')
-                    READ(inputValue,*,iostat=successFlag) finalDens
-                CASE('currenttime')
-                    READ(inputValue,*,iostat=successFlag) currentTime
-                CASE('finaltime')
-                    READ(inputValue,*,iostat=successFlag) finalTime
-                CASE('enable_radiative_transfer')
-                    READ(inputValue,*,iostat=successFlag) enable_radiative_transfer
-                CASE('radfield')
-                    READ(inputValue,*,iostat=successFlag) radfield
-                CASE('zeta')
-                    READ(inputValue,*,iostat=successFlag) zeta
-                CASE('freezefactor')
-                    READ(inputValue,*,iostat=successFlag) freezeFactor
-                CASE('rout')
-                    READ(inputValue,*,iostat=successFlag) rout
-                CASE('rin')
-                    READ(inputValue,*,iostat=successFlag) rin
-                CASE('baseav')
-                    READ(inputValue,*,iostat=successFlag) baseAv
-                CASE('points')
-                    READ(inputValue,*,iostat=successFlag) points
-                CASE('bm0')
-                    READ(inputValue,*,iostat=successFlag) bm0
-                CASE('gas_dust_mass_ratio')
-                    READ(inputValue,*,iostat=successFlag) gas_dust_mass_ratio
-                CASE('density_scale_radius')
-                    READ(inputValue,*,iostat=successFlag) density_scale_radius
-                CASE('density_power_index')
-                    READ(inputValue,*,iostat=successFlag) density_power_index
-                CASE('lum_star')
-                    READ(inputValue,*,iostat=successFlag) lum_star
-                CASE('temp_star')
-                    READ(inputValue,*,iostat=successFlag) temp_star
-                CASE('parcelstoppingmode')
-                    READ(inputValue,*,iostat=successFlag) parcelStoppingMode
-                CASE('endatfinaldensity')
-                    Read(inputValue,*,iostat=successFlag) endAtFinalDensity
-                CASE('freefall')
-                    READ(inputValue,*,iostat=successFlag) freefall
-                CASE('freefallfactor')
-                    READ(inputValue,*,iostat=successFlag) freefallFactor
-                CASE('desorb')
-                    READ(inputValue,*,iostat=successFlag) desorb
-                CASE('h2desorb')
-                    READ(inputValue,*,iostat=successFlag) h2desorb
-                CASE('crdesorb')
-                    READ(inputValue,*,iostat=successFlag) crdesorb
-                CASE('uvdesorb')
-                    READ(inputValue,*,iostat=successFlag) uvdesorb
-                CASE('chemdesorb')
-                    READ(inputValue,*,iostat=successFlag) chemdesorb
-                CASE('thermdesorb')
-                    READ(inputValue,*,iostat=successFlag) thermdesorb
-                CASE('instantsublimation')
-                    READ(inputValue,*,iostat=successFlag) instantSublimation
-                CASE('cosmicrayattenuation')
-                    READ(inputValue,*,iostat=successFlag) cosmicRayAttenuation
-                CASE('ionmodel')
-                    READ(inputValue,*,iostat=successFlag) ionModel
-                CASE('improvedh2crpdissociation')
-                    READ(inputValue,*,iostat=successFlag) improvedH2CRPDissociation
-                CASE('ion')
-                    READ(inputValue,*,iostat=successFlag) ion
-                CASE('fhe')
-                    READ(inputValue,*,iostat=successFlag) fhe
-                CASE('fc')
-                    READ(inputValue,*,iostat=successFlag) fc
-                CASE('fo')
-                    READ(inputValue,*,iostat=successFlag) fo
-                CASE('fn')
-                    READ(inputValue,*,iostat=successFlag) fn
-                CASE('fs')
-                    READ(inputValue,*,iostat=successFlag) fs
-                CASE('fmg')
-                    READ(inputValue,*,iostat=successFlag) fmg
-                CASE('fsi')
-                    READ(inputValue,*,iostat=successFlag) fsi
-                CASE('fcl')
-                    READ(inputValue,*,iostat=successFlag) fcl
-                CASE('fp')
-                    READ(inputValue,*,iostat=successFlag) fp
-                CASE('ffe')
-                    READ(inputValue,*,iostat=successFlag) ffe
-                CASE('ff')
-                    READ(inputValue,*,iostat=successFlag) ff
-                CASE('fd')
-                    READ(inputValue,*,iostat=successFlag) fd
-                CASE('fli')
-                    READ(inputValue,*,iostat=successFlag) fli
-                CASE('fna')
-                    READ(inputValue,*,iostat=successFlag) fna
-                CASE('fpah')
-                    READ(inputValue,*,iostat=successFlag) fpah
-                CASE('f15n')
-                    READ(inputValue,*,iostat=successFlag) f15n
-                CASE('f13c')
-                    READ(inputValue,*,iostat=successFlag) f13c
-                CASE('f18o')
-                    READ(inputValue,*,iostat=successFlag) f18o
-                CASE('outspecies')
-                    READ(inputValue,*,iostat=successFlag) nout
-                    ALLOCATE(outIndx(nout))
-                    ALLOCATE(outSpecies(nout))
-                    IF (outSpeciesIn .eq. "") THEN
-                        write(*,*) "Outspecies parameter set but no outspecies string given"
-                        write(*,*) "general(parameter_dict,outSpeciesIn) requires a delimited string of species names"
-                        write(*,*) "if outSpecies or columnFlag is set in the parameter dictionary"
-                        successFlag=-1
-                        return
-                    end if
-
-                                            read(outSpeciesIn,*, END=22) outSpecies
-                                            if (outSpeciesIn == "") then
-                    22                              write(*,*) "mismatch between outSpeciesIn and number given in dictionary"
-                                                write(*,*) "Number:",nout
-                                                write(*,*) "Species list:",outSpeciesIn
-                                                successFlag=-1
-                                                return
-                                            end if
-                    !assign array indices for important species to the integers used to store them.
-                    do i=1,nSpec
-                        do j=1,nout
-                            if (specname(i)==outSpecies(j)) outIndx(j)=i
-                        end do
-                    end do
-                case("writestep")
-                    read(inputValue,*,iostat=successFlag) writeStep
-                case("writetimestepinfo","writetimestep")
-                    read(inputValue,*,iostat=successFlag) writeTimestepInfo
-                case("heatingFlag", "heatingflag")
-                    read(inputValue,*,iostat=successFlag) heatingFlag
-                case("ebmaxh2")
-                    read(inputValue,*,iostat=successFlag) ebmaxh2
-                case("epsilon")
-                    read(inputValue,*,iostat=successFlag) epsilon
-                case("uvcreff")
-                    read(inputValue,*,iostat=successFlag) uvcreff
-                case("ebmaxcr")
-                    read(inputValue,*,iostat=successFlag) ebmaxcr
-                case("phi")
-                    read(inputValue,*,iostat=successFlag) phi
-                case("ebmaxuvcr")
-                    read(inputValue,*,iostat=successFlag) ebmaxuvcr
-                case("uv_yield")
-                    read(inputValue,*,iostat=successFlag) uv_yield
-                case("metallicity")
-                    read(inputValue,*,iostat=successFlag) metallicity
-                case("omega")
-                    read(inputValue,*,iostat=successFlag) omega
-                case("difftobindratio")
-                    read(inputValue,*,iostat=successFlag) diffToBindRatio
-                case("min_desorption_rate_constant")
-                    read(inputValue,*,iostat=successFlag) min_desorption_rate_constant
-                case("enforcechargeconservation")
-                    read(inputValue,*,iostat=successFlag) enforceChargeConservation
-                case("reltol")
-                    read(inputValue,*,iostat=successFlag) reltol
-                case("abstol_factor")
-                    read(inputValue,*,iostat=successFlag) abstol_factor
-                case("abstol_min")
-                    read(inputValue,*,iostat=successFlag) abstol_min
-                case("abstol_ice_factor")
-                    read(inputValue,*,iostat=successFlag) abstol_ice_factor
-                case("abstol_ice_min")
-                    read(inputValue,*,iostat=successFlag) abstol_ice_min
-                case("negative_abundance_tol")
-                    read(inputValue,*,iostat=successFlag) negative_abundance_tol
-                case("runtime_conservation_tolerance")
-                    read(inputValue,*,iostat=successFlag) runtime_conservation_tolerance
-                case("reltol_phys")
-                    read(inputValue,*,iostat=successFlag) reltol_phys
-                case("abstol_phys_factor")
-                    read(inputValue,*,iostat=successFlag) abstol_phys_factor
-                case("abstol_t_min")
-                    read(inputValue,*,iostat=successFlag) abstol_T_min
-                case("abstol_nh_min")
-                    read(inputValue,*,iostat=successFlag) abstol_nH_min
-                ! CASE('jacobian')
-                !     READ(inputValue,*) jacobian
-                case("abundsavefile")
-                    read(inputValue,*,iostat=successFlag) abundSaveFile
-                    abundSaveFile = TRIM(abundSaveFile)
-                    if (LEN(abundSaveFile) > 0) then
-                        open(abundSaveID,file=abundSaveFile,status="unknown", action="write")
-                    end if
-                case("abundloadfile")
-                    read(inputValue,*,iostat=successFlag) abundLoadFile
-                    abundLoadFile = TRIM(abundLoadFile)
-                    if (LEN(abundLoadFile) > 0) then
-                        open(abundLoadID,file=abundLoadFile,status="old", action="read")
-                    end if
-                case("outputfile")
-                    read(inputValue,*,iostat=successFlag) outputFile
-                    outputFile = trim(outputFile)
-                    fullOutput=.true.
-                    if (LEN(outputFile) > 0) then
-                        open(outputId,file=outputFile,status="unknown",iostat=successFlag, action="write")
-                    end if
-
-                    if (successFlag /= 0) then
-                        write(*,*) "An error occurred when opening the output file!"//&
-                                        & NEW_LINE("A")//&
-                                    &" The failed file was ",outputFile&
-                                    &, NEW_LINE("A")//"A common error is that the directory doesn't exist"&
-                                    &//NEW_LINE("A")//"************************"
-                        successFlag=-1
-                        return
-                    end if
-                case("rateConstantFile")
-                    read(inputValue,*,iostat=successFlag) rateConstantFile
-                    rateConstantFile = trim(rateConstantFile)
-                    if ((LEN(ratesFile) > 0) .and. (.not. storeRatesComputation))then
-                        write(*,*) "Error: a ratesFile was specified as output, but fortran was"//&
-                        & NEW_LINE("A")//&
-                        &"compiled without the rate storage option, please enable `enable_rates_storage` "//&
-                        & NEW_LINE("A")//"in the Makerates compilation process."
-                    end if
-                    open(rateConstantId,file=rateConstantFile,status="unknown",iostat=successFlag, action="write")
-                    if (successFlag /= 0) then
-                        write(*,*) "An error occurred when opening the rate file!"//&
-                                        & NEW_LINE("A")//&
-                                    &" The failed file was ",rateConstantFile&
-                                    &, NEW_LINE("A")//"A common error is that the directory doesn't exist"&
-                                    &//NEW_LINE("A")//"************************"
-                        successFlag=-1
-                        return
-                    end if
-                case("ratesFile")
-                    read(inputValue,*,iostat=successFlag) ratesFile
-                    ratesFile = trim(ratesFile)
-                    if ((LEN(ratesFile) > 0) .and. (.not. storeRatesComputation))then
-                        write(*,*) "Error: a ratesFile was specified as output, but fortran was"//&
-                        & NEW_LINE("A")//&
-                        &"compiled without the rate storage option, please enable `enable_rates_storage` "//&
-                        & NEW_LINE("A")//"in the Makerates compilation process."
-                    end if
-                    open(ratesId,file=ratesFile,status="unknown",iostat=successFlag, action="write")
-                    if (successFlag /= 0) then
-                        write(*,*) "An error occurred when opening the rate file!"//&
-                                        & NEW_LINE("A")//&
-                                    &" The failed file was ",ratesFile&
-                                    &, NEW_LINE("A")//"A common error is that the directory doesn't exist"&
-                                    &//NEW_LINE("A")//"************************"
-                        successFlag=-1
-                        return
-                    end if
-                case("heatingfile")
-                    read(inputValue,*,iostat=successFlag) heatingFile
-                    heatingFile = trim(heatingFile)
-                    open(heatingId,file=heatingFile,status="unknown",iostat=successFlag, action="read")
-                    if (successFlag /= 0) then
-                        write(*,*) "An error occurred when opening the heating rate file!"//&
-                                        & NEW_LINE("A")//&
-                                    &" The failed file was ",heatingFile&
-                                    &, NEW_LINE("A")//"A common error is that the directory doesn't exist"&
-                                    &//NEW_LINE("A")//"************************"
-                        successFlag=-1
-                        return
-                    end if
-                case("columnfile")
-                    if (trim(outSpeciesIn) /= "") then
-                        columnOutput=.true.
-
-                        read(inputValue,*,iostat=successFlag) columnFile
-                        columnFile = trim(columnFile)
-                        if (LEN(columnFile) > 0) then
-                            open(columnId,file=columnFile,status="unknown", action="write")
-                        end if
-                    else
-                        write(*,*) "Error in output species. No species were given but a column file was given."
-                        write(*,*) "columnated output requires output species to be chosen."
-                        successFlag=-1
-                        return
-                     end if
-                ! Additional parameters for postprocessing mode
-                case("fh")
-                   read(inputValue,*,iostat=successFlag) fh
-                case("mxstep")
-                   read(inputValue,*,iostat=successFlag) MXSTEP
-                case("h2encounterdesorption")
-                   read(inputValue,*,iostat=successFlag) h2EncounterDesorption
-                case("hencounterdesorption")
-                   read(inputValue,*,iostat=successFlag) hEncounterDesorption
-                case("edendothermicityfactor")
-                   read(inputValue,*,iostat=successFlag) EDEndothermicityFactor
-                case("h2stickingcoeffbyh2coverage")
-                   read(inputValue,*,iostat=successFlag) h2StickingCoeffByh2Coverage
-                case("hstickingcoeffbyh2coverage")
-                   read(inputValue,*,iostat=successFlag) hStickingCoeffByh2Coverage
-                case("hdiffusionbarrier")
-                   read(inputValue,*,iostat=successFlag) HdiffusionBarrier
-                case("usecustomdiffusionbarriers")
-                   read(inputValue,*,iostat=successFlag) useCustomDiffusionBarriers
-                case("separatediffanddesorbprefactor")
-                   read(inputValue,*,iostat=successFlag) separateDiffAndDesorbPrefactor
-                case("usetstprefactors")
-                   read(inputValue,*,iostat=successFlag) useTSTprefactors
-                case("usecustomprefactors")
-                   read(inputValue,*,iostat=successFlag) useCustomPrefactors
-                case("useminissaleicechemdesefficiency")
-                   read(inputValue,*,iostat=successFlag) useMinissaleIceChemdesEfficiency
-                case("freq_rel_tol")
-                   read(inputValue,*,iostat=successFlag) freq_rel_tol
-                case("pop_rel_tol")
-                   read(inputValue,*,iostat=successFlag) pop_rel_tol
-                case("maxgraintemp")
-                   read(inputValue,*,iostat=successFlag) maxGrainTemp
-                case("parameterizeh2form")
-                   read(inputValue,*,iostat=successFlag) parameterizeH2Form
-                case("heating_temp_abstol")
-                   read(inputValue,*,iostat=successFlag) heating_temp_abstol
-                case("heating_temp_reltol")
-                   read(inputValue,*,iostat=successFlag) heating_temp_reltol
-                case("solver_mode")
-                   read(inputValue,*,iostat=successFlag) solverMode
-                case("log_change_threshold")
-                   read(inputValue,*,iostat=successFlag) logChangeThreshold
-                ! CASE('trajecfile')
-                !    READ(inputValue,*,iostat=successFlag) trajecfile
-                case default
-                    write(*,*) "Problem with given parameter: '", trim(inputParameter), "'."
-                    write(*,*) "This is either not supported yet, or invalid."
+            case("alpha")
+                !To provide alphas, set keyword alpha in inputdictionary with a dictionary value
+                !that dictionary should be index:value pairs for the alpha array
+                posStart=scan(dictionary,"{")
+                posEnd=scan(dictionary,"}")
+                call coefficientParser(dictionary(posStart+1:posEnd),alpha)
+            case("beta")
+                !To provide alphas, set keyword alpha in inputdictionary with a dictionary value
+                !that dictionary should be index:value pairs for the alpha array
+                posStart=scan(dictionary,"{")
+                posEnd=scan(dictionary,"}")
+                call coefficientParser(dictionary(posStart+1:posEnd),beta)
+            case("gamma")
+                !To provide alphas, set keyword alpha in inputdictionary with a dictionary value
+                !that dictionary should be index:value pairs for the alpha array
+                posStart=scan(dictionary,"{")
+                posEnd=scan(dictionary,"}")
+                call coefficientParser(dictionary(posStart+1:posEnd),gama)
+            case("initialtemp")
+                read(inputValue,*,iostat=successFlag) initialTemp
+            case("initialdens")
+                read(inputValue,*,iostat=successFlag) initialDens
+            case("finaldens")
+                read(inputValue,*,iostat=successFlag) finalDens
+            case("currenttime")
+                read(inputValue,*,iostat=successFlag) currentTime
+            case("finaltime")
+                read(inputValue,*,iostat=successFlag) finalTime
+            case("enable_radiative_transfer")
+                read(inputValue,*,iostat=successFlag) enable_radiative_transfer
+            case("radfield")
+                read(inputValue,*,iostat=successFlag) radfield
+            case("zeta")
+                read(inputValue,*,iostat=successFlag) zeta
+            case("freezefactor")
+                read(inputValue,*,iostat=successFlag) freezeFactor
+            case("rout")
+                read(inputValue,*,iostat=successFlag) rout
+            case("rin")
+                read(inputValue,*,iostat=successFlag) rin
+            case("baseav")
+                read(inputValue,*,iostat=successFlag) baseAv
+            case("points")
+                read(inputValue,*,iostat=successFlag) points
+            case("bm0")
+                read(inputValue,*,iostat=successFlag) bm0
+            case("gas_dust_mass_ratio")
+                read(inputValue,*,iostat=successFlag) gas_dust_mass_ratio
+            case("density_scale_radius")
+                read(inputValue,*,iostat=successFlag) density_scale_radius
+            case("density_power_index")
+                read(inputValue,*,iostat=successFlag) density_power_index
+            case("lum_star")
+                read(inputValue,*,iostat=successFlag) lum_star
+            case("temp_star")
+                read(inputValue,*,iostat=successFlag) temp_star
+            case("parcelstoppingmode")
+                read(inputValue,*,iostat=successFlag) parcelStoppingMode
+            case("endatfinaldensity")
+                read(inputValue,*,iostat=successFlag) endAtFinalDensity
+            case("freefall")
+                read(inputValue,*,iostat=successFlag) freefall
+            case("freefallfactor")
+                read(inputValue,*,iostat=successFlag) freefallFactor
+            case("desorb")
+                read(inputValue,*,iostat=successFlag) desorb
+            case("h2desorb")
+                read(inputValue,*,iostat=successFlag) h2desorb
+            case("crdesorb")
+                read(inputValue,*,iostat=successFlag) crdesorb
+            case("uvdesorb")
+                read(inputValue,*,iostat=successFlag) uvdesorb
+            case("chemdesorb")
+                read(inputValue,*,iostat=successFlag) chemdesorb
+            case("thermdesorb")
+                read(inputValue,*,iostat=successFlag) thermdesorb
+            case("instantsublimation")
+                read(inputValue,*,iostat=successFlag) instantSublimation
+            case("cosmicrayattenuation")
+                read(inputValue,*,iostat=successFlag) cosmicRayAttenuation
+            case("ionmodel")
+                read(inputValue,*,iostat=successFlag) ionModel
+            case("improvedh2crpdissociation")
+                read(inputValue,*,iostat=successFlag) improvedH2CRPDissociation
+            case("ion")
+                read(inputValue,*,iostat=successFlag) ion
+            case("fhe")
+                read(inputValue,*,iostat=successFlag) fhe
+            case("fc")
+                read(inputValue,*,iostat=successFlag) fc
+            case("fo")
+                read(inputValue,*,iostat=successFlag) fo
+            case("fn")
+                read(inputValue,*,iostat=successFlag) fn
+            case("fs")
+                read(inputValue,*,iostat=successFlag) fs
+            case("fmg")
+                read(inputValue,*,iostat=successFlag) fmg
+            case("fsi")
+                read(inputValue,*,iostat=successFlag) fsi
+            case("fcl")
+                read(inputValue,*,iostat=successFlag) fcl
+            case("fp")
+                read(inputValue,*,iostat=successFlag) fp
+            case("ffe")
+                read(inputValue,*,iostat=successFlag) ffe
+            case("ff")
+                read(inputValue,*,iostat=successFlag) ff
+            case("fd")
+                read(inputValue,*,iostat=successFlag) fd
+            case("fli")
+                read(inputValue,*,iostat=successFlag) fli
+            case("fna")
+                read(inputValue,*,iostat=successFlag) fna
+            case("fpah")
+                read(inputValue,*,iostat=successFlag) fpah
+            case("f15n")
+                read(inputValue,*,iostat=successFlag) f15n
+            case("f13c")
+                read(inputValue,*,iostat=successFlag) f13c
+            case("f18o")
+                read(inputValue,*,iostat=successFlag) f18o
+            case("outspecies")
+                read(inputValue,*,iostat=successFlag) nout
+                allocate(outIndx(nout))
+                allocate(outSpecies(nout))
+                if (outSpeciesIn == "") then
+                    write(*,*) "Outspecies parameter set but no outspecies string given"
+                    write(*,*) "general(parameter_dict,outSpeciesIn) requires a delimited string of species names"
+                    write(*,*) "if outSpecies or columnFlag is set in the parameter dictionary"
                     successFlag=-1
                     return
+                end if
+
+                read(outSpeciesIn,*, END=22) outSpecies
+                if (outSpeciesIn == "") then
+22                  write(*,*) "mismatch between outSpeciesIn and number given in dictionary"
+                    write(*,*) "Number:",nout
+                    write(*,*) "Species list:",outSpeciesIn
+                    successFlag=-1
+                    return
+                end if
+                !assign array indices for important species to the integers used to store them.
+                do i=1,nSpec
+                    do j=1,nout
+                        if (specname(i)==outSpecies(j)) outIndx(j)=i
+                    end do
+                end do
+            case("writestep")
+                read(inputValue,*,iostat=successFlag) writeStep
+            case("writetimestepinfo","writetimestep")
+                read(inputValue,*,iostat=successFlag) writeTimestepInfo
+            case("heatingFlag", "heatingflag")
+                read(inputValue,*,iostat=successFlag) heatingFlag
+            case("ebmaxh2")
+                read(inputValue,*,iostat=successFlag) ebmaxh2
+            case("epsilon")
+                read(inputValue,*,iostat=successFlag) epsilon
+            case("uvcreff")
+                read(inputValue,*,iostat=successFlag) uvcreff
+            case("ebmaxcr")
+                read(inputValue,*,iostat=successFlag) ebmaxcr
+            case("phi")
+                read(inputValue,*,iostat=successFlag) phi
+            case("ebmaxuvcr")
+                read(inputValue,*,iostat=successFlag) ebmaxuvcr
+            case("uv_yield")
+                read(inputValue,*,iostat=successFlag) uv_yield
+            case("metallicity")
+                read(inputValue,*,iostat=successFlag) metallicity
+            case("omega")
+                read(inputValue,*,iostat=successFlag) omega
+            case("difftobindratio")
+                read(inputValue,*,iostat=successFlag) diffToBindRatio
+            case("min_desorption_rate_constant")
+                read(inputValue,*,iostat=successFlag) min_desorption_rate_constant
+            case("enforcechargeconservation")
+                read(inputValue,*,iostat=successFlag) enforceChargeConservation
+            case("reltol")
+                read(inputValue,*,iostat=successFlag) reltol
+            case("abstol_factor")
+                read(inputValue,*,iostat=successFlag) abstol_factor
+            case("abstol_min")
+                read(inputValue,*,iostat=successFlag) abstol_min
+            case("abstol_ice_factor")
+                read(inputValue,*,iostat=successFlag) abstol_ice_factor
+            case("abstol_ice_min")
+                read(inputValue,*,iostat=successFlag) abstol_ice_min
+            case("negative_abundance_tol")
+                read(inputValue,*,iostat=successFlag) negative_abundance_tol
+            case("runtime_conservation_tolerance")
+                read(inputValue,*,iostat=successFlag) runtime_conservation_tolerance
+            case("reltol_phys")
+                read(inputValue,*,iostat=successFlag) reltol_phys
+            case("abstol_phys_factor")
+                read(inputValue,*,iostat=successFlag) abstol_phys_factor
+            case("abstol_t_min")
+                read(inputValue,*,iostat=successFlag) abstol_T_min
+            case("abstol_nh_min")
+                read(inputValue,*,iostat=successFlag) abstol_nH_min
+                ! CASE('jacobian')
+                !     READ(inputValue,*) jacobian
+            case("abundsavefile")
+                read(inputValue,*,iostat=successFlag) abundSaveFile
+                abundSaveFile = TRIM(abundSaveFile)
+                if (LEN(abundSaveFile) > 0) then
+                    open(abundSaveID,file=abundSaveFile,status="unknown", action="write")
+                end if
+            case("abundloadfile")
+                read(inputValue,*,iostat=successFlag) abundLoadFile
+                abundLoadFile = TRIM(abundLoadFile)
+                if (LEN(abundLoadFile) > 0) then
+                    open(abundLoadID,file=abundLoadFile,status="old", action="read")
+                end if
+            case("outputfile")
+                read(inputValue,*,iostat=successFlag) outputFile
+                outputFile = trim(outputFile)
+                fullOutput=.true.
+                if (LEN(outputFile) > 0) then
+                    open(outputId,file=outputFile,status="unknown",iostat=successFlag, action="write")
+                end if
+
+                if (successFlag /= 0) then
+                    write(*,*) "An error occurred when opening the output file!"//&
+                                    & NEW_LINE("A")//&
+                                &" The failed file was ",outputFile&
+                                &, NEW_LINE("A")//"A common error is that the directory doesn't exist"&
+                                &//NEW_LINE("A")//"************************"
+                    successFlag=-1
+                    return
+                end if
+            case("rateConstantFile")
+                read(inputValue,*,iostat=successFlag) rateConstantFile
+                rateConstantFile = trim(rateConstantFile)
+                if ((LEN(ratesFile) > 0) .and. (.not. storeRatesComputation))then
+                    write(*,*) "Error: a ratesFile was specified as output, but fortran was"//&
+                    & NEW_LINE("A")//&
+                    &"compiled without the rate storage option, please enable `enable_rates_storage` "//&
+                    & NEW_LINE("A")//"in the Makerates compilation process."
+                end if
+                open(rateConstantId,file=rateConstantFile,status="unknown",iostat=successFlag, action="write")
+                if (successFlag /= 0) then
+                    write(*,*) "An error occurred when opening the rate file!"//&
+                                    & NEW_LINE("A")//&
+                                &" The failed file was ",rateConstantFile&
+                                &, NEW_LINE("A")//"A common error is that the directory doesn't exist"&
+                                &//NEW_LINE("A")//"************************"
+                    successFlag=-1
+                    return
+                end if
+            case("ratesFile")
+                read(inputValue,*,iostat=successFlag) ratesFile
+                ratesFile = trim(ratesFile)
+                if ((LEN(ratesFile) > 0) .and. (.not. storeRatesComputation))then
+                    write(*,*) "Error: a ratesFile was specified as output, but fortran was"//&
+                    & NEW_LINE("A")//&
+                    &"compiled without the rate storage option, please enable `enable_rates_storage` "//&
+                    & NEW_LINE("A")//"in the Makerates compilation process."
+                end if
+                open(ratesId,file=ratesFile,status="unknown",iostat=successFlag, action="write")
+                if (successFlag /= 0) then
+                    write(*,*) "An error occurred when opening the rate file!"//&
+                                    & NEW_LINE("A")//&
+                                &" The failed file was ",ratesFile&
+                                &, NEW_LINE("A")//"A common error is that the directory doesn't exist"&
+                                &//NEW_LINE("A")//"************************"
+                    successFlag=-1
+                    return
+                end if
+            case("heatingfile")
+                read(inputValue,*,iostat=successFlag) heatingFile
+                heatingFile = trim(heatingFile)
+                open(heatingId,file=heatingFile,status="unknown",iostat=successFlag, action="read")
+                if (successFlag /= 0) then
+                    write(*,*) "An error occurred when opening the heating rate file!"//&
+                                    & NEW_LINE("A")//&
+                                &" The failed file was ",heatingFile&
+                                &, NEW_LINE("A")//"A common error is that the directory doesn't exist"&
+                                &//NEW_LINE("A")//"************************"
+                    successFlag=-1
+                    return
+                end if
+            case("columnfile")
+                if (trim(outSpeciesIn) /= "") then
+                    columnOutput=.true.
+
+                    read(inputValue,*,iostat=successFlag) columnFile
+                    columnFile = trim(columnFile)
+                    if (LEN(columnFile) > 0) then
+                        open(columnId,file=columnFile,status="unknown", action="write")
+                    end if
+                else
+                    write(*,*) "Error in output species. No species were given but a column file was given."
+                    write(*,*) "columnated output requires output species to be chosen."
+                    successFlag=-1
+                    return
+                end if
+                ! Additional parameters for postprocessing mode
+            case("fh")
+                read(inputValue,*,iostat=successFlag) fh
+            case("mxstep")
+                read(inputValue,*,iostat=successFlag) MXSTEP
+            case("h2encounterdesorption")
+                read(inputValue,*,iostat=successFlag) h2EncounterDesorption
+            case("hencounterdesorption")
+                read(inputValue,*,iostat=successFlag) hEncounterDesorption
+            case("edendothermicityfactor")
+                read(inputValue,*,iostat=successFlag) EDEndothermicityFactor
+            case("h2stickingcoeffbyh2coverage")
+                read(inputValue,*,iostat=successFlag) h2StickingCoeffByh2Coverage
+            case("hstickingcoeffbyh2coverage")
+                read(inputValue,*,iostat=successFlag) hStickingCoeffByh2Coverage
+            case("hdiffusionbarrier")
+                read(inputValue,*,iostat=successFlag) HdiffusionBarrier
+            case("usecustomdiffusionbarriers")
+                read(inputValue,*,iostat=successFlag) useCustomDiffusionBarriers
+            case("separatediffanddesorbprefactor")
+                read(inputValue,*,iostat=successFlag) separateDiffAndDesorbPrefactor
+            case("usetstprefactors")
+                read(inputValue,*,iostat=successFlag) useTSTprefactors
+            case("usecustomprefactors")
+                read(inputValue,*,iostat=successFlag) useCustomPrefactors
+            case("useminissaleicechemdesefficiency")
+                read(inputValue,*,iostat=successFlag) useMinissaleIceChemdesEfficiency
+            case("freq_rel_tol")
+                read(inputValue,*,iostat=successFlag) freq_rel_tol
+            case("pop_rel_tol")
+                read(inputValue,*,iostat=successFlag) pop_rel_tol
+            case("maxgraintemp")
+                read(inputValue,*,iostat=successFlag) maxGrainTemp
+            case("parameterizeh2form")
+                read(inputValue,*,iostat=successFlag) parameterizeH2Form
+            case("heating_temp_abstol")
+                read(inputValue,*,iostat=successFlag) heating_temp_abstol
+            case("heating_temp_reltol")
+                read(inputValue,*,iostat=successFlag) heating_temp_reltol
+            case("solver_mode")
+                read(inputValue,*,iostat=successFlag) solverMode
+            case("log_change_threshold")
+                read(inputValue,*,iostat=successFlag) logChangeThreshold
+                ! CASE('trajecfile')
+                !    READ(inputValue,*,iostat=successFlag) trajecfile
+            case default
+                write(*,*) "Problem with given parameter: '", trim(inputParameter), "'."
+                write(*,*) "This is either not supported yet, or invalid."
+                successFlag=-1
+                return
             end select
             dictionary = dictionary(posEnd:)
             if (SCAN(dictionary,",") == 0) whileInteger=1

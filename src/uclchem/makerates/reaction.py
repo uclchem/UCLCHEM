@@ -382,7 +382,7 @@ class Reaction:
         self._reactants = reactants
         reaction_type = _infer_reaction_type(reactants)
         if hasattr(self, "_reaction_type") and reaction_type != self._reaction_type:
-            logger.info(
+            _logger.info(
                 f"Reaction type {reaction_type} for reaction '{self}' changed, was '{self._reaction_type}'."
             )
         self._reaction_type = reaction_type
@@ -763,7 +763,7 @@ class Reaction:
             whether extrapolation is applied. Default=True.
 
         """
-        logger.info(f"Setting for {self} extrapolation to {enabled}")
+        _logger.info(f"Setting for {self} extrapolation to {enabled}")
         self.extrapolate = enabled
 
     def get_extrapolation(self) -> bool:

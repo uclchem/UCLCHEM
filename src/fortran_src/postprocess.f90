@@ -30,102 +30,102 @@ contains
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     subroutine initializePhysics(successFlag, timegrid, densgrid, radgrid, zetagrid, gtempgrid,&
         &dtempgrid, useav, avgrid, usecoldens, timepoints, nhgrid, nh2grid, ncogrid, ncgrid)
-      integer, intent(out) :: successFlag
-      integer, intent(in) :: timepoints
-      real(dp), intent(in), dimension(timePoints) :: timegrid
-      real(dp), intent(in), dimension(timePoints) :: densgrid
-      real(dp), intent(in), dimension(timePoints) :: radgrid
-      real(dp), intent(in), dimension(timePoints) :: zetagrid
-      real(dp), intent(in), dimension(timePoints) :: gtempgrid
-      real(dp), intent(in), dimension(timePoints) :: dtempgrid
-      logical, intent(in) :: useav
-      real(dp), intent(in), dimension(timePoints), optional :: avgrid
-      logical, intent(in) :: usecoldens
-      real(dp), intent(in), optional, dimension(timePoints) :: nhgrid
-      real(dp), intent(in), optional, dimension(timePoints) :: nh2grid
-      real(dp), intent(in), optional, dimension(timePoints) :: ncogrid
-      real(dp), intent(in), optional, dimension(timePoints) :: ncgrid
+        integer, intent(out) :: successFlag
+        integer, intent(in) :: timepoints
+        real(dp), intent(in), dimension(timePoints) :: timegrid
+        real(dp), intent(in), dimension(timePoints) :: densgrid
+        real(dp), intent(in), dimension(timePoints) :: radgrid
+        real(dp), intent(in), dimension(timePoints) :: zetagrid
+        real(dp), intent(in), dimension(timePoints) :: gtempgrid
+        real(dp), intent(in), dimension(timePoints) :: dtempgrid
+        logical, intent(in) :: useav
+        real(dp), intent(in), dimension(timePoints), optional :: avgrid
+        logical, intent(in) :: usecoldens
+        real(dp), intent(in), optional, dimension(timePoints) :: nhgrid
+        real(dp), intent(in), optional, dimension(timePoints) :: nh2grid
+        real(dp), intent(in), optional, dimension(timePoints) :: ncogrid
+        real(dp), intent(in), optional, dimension(timePoints) :: ncgrid
 
 
-      successFlag=0
-      postprocess_error = 0
-      ! Create a local variable that can be recycled in updatePhysics
-      lusecoldens = usecoldens
-      luseav = useav
-      ! Check if NHgrid is present, if so, we need to use the custom column densities
-      if (lusecoldens) then
-        cloudSize=0.0  ! Shielding column densities supplied separately
-      end if
-      freefall = .false.  ! Won't work with freefall on
-
-      if (.not. allocated(ltime)) then
-        allocate (ltime(timepoints), ldens(timepoints), lradfield(timepoints), lzeta(timepoints),&
-       &lgtemp(timepoints), ldtemp(timepoints))
-      end if
-      ! Store the parameter grids into a local module contexts
-      ltime(:) = timegrid
-      ldens(:) = densgrid
-      lradfield(:) = radgrid
-      lzeta(:) = zetagrid
-      lgtemp(:) = gtempgrid
-      ldtemp(:) = dtempgrid
-
-      ! Find last non-zero timestep (arrays may be zero-padded)
-      max_tstep = timepoints
-      do while (max_tstep > 1 .and. is_equal(ltime(max_tstep), 0.0_dp))
-        max_tstep = max_tstep - 1
-      end do
-
-      if (useav) then
-        if (.not. allocated(lav)) then
-          allocate (lav(timepoints))
+        successFlag=0
+        postprocess_error = 0
+        ! Create a local variable that can be recycled in updatePhysics
+        lusecoldens = usecoldens
+        luseav = useav
+        ! Check if NHgrid is present, if so, we need to use the custom column densities
+        if (lusecoldens) then
+            cloudSize=0.0  ! Shielding column densities supplied separately
         end if
-        lav(:) = avgrid
-      end if
-      ! If we have custom column densities, allocate and store them
-      if (lusecoldens) then
-      ! Only allocate the column densities if we need them:
-        if (.not. allocated(lnh)) then
-          allocate (lnh(timepoints), lnh2(timepoints), lnco(timepoints), lnc(timepoints))
+        freefall = .false.  ! Won't work with freefall on
+
+        if (.not. allocated(ltime)) then
+            allocate (ltime(timepoints), ldens(timepoints), lradfield(timepoints), lzeta(timepoints),&
+           &lgtemp(timepoints), ldtemp(timepoints))
         end if
-        lnh(:) = nhgrid
-        lnh2(:) = nh2grid
-        lnco(:) = ncogrid
-        lnc(:) = ncgrid
-      end if
+        ! Store the parameter grids into a local module contexts
+        ltime(:) = timegrid
+        ldens(:) = densgrid
+        lradfield(:) = radgrid
+        lzeta(:) = zetagrid
+        lgtemp(:) = gtempgrid
+        ldtemp(:) = dtempgrid
 
-      ! Initialize values to t=1 and overwrite them.
-      tstep = 1
-      targettime = ltime(tstep) * SECONDS_PER_YEAR
+        ! Find last non-zero timestep (arrays may be zero-padded)
+        max_tstep = timepoints
+        do while (max_tstep > 1 .and. is_equal(ltime(max_tstep), 0.0_dp))
+            max_tstep = max_tstep - 1
+        end do
 
-      ! Use the first profile values as the starting physics for ALL depth points
-      ! so that the initial output (time=0) reflects the provided tracer grids.
-      density(:) = ldens(tstep)
-      gastemp(:) = lgtemp(tstep)
-      dusttemp(:) = ldtemp(tstep)
-      radfield = lradfield(tstep)
-      zeta = lzeta(tstep)
-      if (luseav) then
-        av(:) = lav(tstep)
-      else if (lusecoldens) then
-        coldens(:) = lnh(tstep)
-        av(:) = 5.348e-22_dp * coldens(:)
-      end if
+        if (useav) then
+            if (.not. allocated(lav)) then
+                allocate (lav(timepoints))
+            end if
+            lav(:) = avgrid
+        end if
+        ! If we have custom column densities, allocate and store them
+        if (lusecoldens) then
+            ! Only allocate the column densities if we need them:
+            if (.not. allocated(lnh)) then
+                allocate (lnh(timepoints), lnh2(timepoints), lnco(timepoints), lnc(timepoints))
+            end if
+            lnh(:) = nhgrid
+            lnh2(:) = nh2grid
+            lnco(:) = ncogrid
+            lnc(:) = ncgrid
+        end if
 
-      ! Also ensure the current depth step has consistent values (dstep may not be 1)
-      density(dstep) = ldens(tstep)
-      gastemp(dstep) = lgtemp(tstep)
-      dusttemp(dstep) = ldtemp(tstep)
-      radfield = lradfield(tstep)
-      zeta = lzeta(tstep)
-      if (luseav) then
-        av(dstep) = lav(tstep)
-      else if (lusecoldens) then
-        coldens(dstep) = lnh(tstep)
-        av(dstep) = 5.348e-22_dp * coldens(dstep)
-      end if
-      ! Set final time to end of tracer histories (use last non-zero timestep)
-      finaltime = timegrid(max_tstep)
+        ! Initialize values to t=1 and overwrite them.
+        tstep = 1
+        targettime = ltime(tstep) * SECONDS_PER_YEAR
+
+        ! Use the first profile values as the starting physics for ALL depth points
+        ! so that the initial output (time=0) reflects the provided tracer grids.
+        density(:) = ldens(tstep)
+        gastemp(:) = lgtemp(tstep)
+        dusttemp(:) = ldtemp(tstep)
+        radfield = lradfield(tstep)
+        zeta = lzeta(tstep)
+        if (luseav) then
+            av(:) = lav(tstep)
+        else if (lusecoldens) then
+            coldens(:) = lnh(tstep)
+            av(:) = 5.348e-22_dp * coldens
+        end if
+
+        ! Also ensure the current depth step has consistent values (dstep may not be 1)
+        density(dstep) = ldens(tstep)
+        gastemp(dstep) = lgtemp(tstep)
+        dusttemp(dstep) = ldtemp(tstep)
+        radfield = lradfield(tstep)
+        zeta = lzeta(tstep)
+        if (luseav) then
+            av(dstep) = lav(tstep)
+        else if (lusecoldens) then
+            coldens(dstep) = lnh(tstep)
+            av(dstep) = 5.348e-22_dp * coldens(dstep)
+        end if
+        ! Set final time to end of tracer histories (use last non-zero timestep)
+        finaltime = timegrid(max_tstep)
     end subroutine initializePhysics
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -135,14 +135,14 @@ contains
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     subroutine updateTargetTime
-      ! Set target time from postprocessing data (use exact dump time)
-      ! Note: ltime is in years, but targettime must be in seconds
-      targettime = ltime(tstep) * SECONDS_PER_YEAR
+        ! Set target time from postprocessing data (use exact dump time)
+        ! Note: ltime is in years, but targettime must be in seconds
+        targettime = ltime(tstep) * SECONDS_PER_YEAR
 
-      ! If we've reached the final timestep, force end of simulation by setting finalTime to current time
-      if (tstep >= max_tstep) then
-        finaltime = ltime(max_tstep)
-      end if
+        ! If we've reached the final timestep, force end of simulation by setting finalTime to current time
+        if (tstep >= max_tstep) then
+            finaltime = ltime(max_tstep)
+        end if
 
     end subroutine updateTargetTime
 
@@ -152,40 +152,40 @@ contains
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     subroutine updatePhysics
 
-      ! Update physical properties to values at tstep (== targettime)
-      targettime = ltime(tstep)
-      density(dstep) = ldens(tstep)
+        ! Update physical properties to values at tstep (== targettime)
+        targettime = ltime(tstep)
+        density(dstep) = ldens(tstep)
 
 
 
-      ! All checks passed - assign values to multi point arrays
-      gastemp(dstep) = lgtemp(tstep)
-      dusttemp(dstep) = ldtemp(tstep)
-      density(dstep) = ldens(tstep)
-      ! And single values:
-      radfield = lradfield(tstep)
-      zeta = lzeta(tstep)
+        ! All checks passed - assign values to multi point arrays
+        gastemp(dstep) = lgtemp(tstep)
+        dusttemp(dstep) = ldtemp(tstep)
+        density(dstep) = ldens(tstep)
+        ! And single values:
+        radfield = lradfield(tstep)
+        zeta = lzeta(tstep)
 
-      if (luseav) then
-        av(dstep) = lav(tstep)
-      else if (lusecoldens) then
-        coldens(dstep) = lnh(tstep)
-        av(dstep) = 5.348e-22_dp * coldens(dstep)
-      end if
+        if (luseav) then
+            av(dstep) = lav(tstep)
+        else if (lusecoldens) then
+            coldens(dstep) = lnh(tstep)
+            av(dstep) = 5.348e-22_dp * coldens(dstep)
+        end if
 
-      if ((.not. is_equal(density(dstep), density(dstep))) .OR. (density(dstep) <= 0.0_dp) .OR. &
-          (.not. is_equal(gasTemp(dstep), gasTemp(dstep))) .OR. (gastemp(dstep) < 1.0_dp) .OR. &
-          (.not. is_equal(dustTemp(dstep), dustTemp(dstep))) .OR. (dusttemp(dstep) < 1.0_dp)) then
-        write(*,*) "POSTPROCESS_updatePhysics: FATAL invalid physics at tstep=", tstep, &
-                  " ldens=", ldens(tstep), " lgtemp=", lgtemp(tstep), " ldtemp=", ldtemp(tstep)
-        postprocess_error = PHYSICS_UPDATE_ERROR
-        return
-      end if
+        if ((.not. is_equal(density(dstep), density(dstep))) .OR. (density(dstep) <= 0.0_dp) .OR. &
+            (.not. is_equal(gasTemp(dstep), gasTemp(dstep))) .OR. (gastemp(dstep) < 1.0_dp) .OR. &
+            (.not. is_equal(dustTemp(dstep), dustTemp(dstep))) .OR. (dusttemp(dstep) < 1.0_dp)) then
+            write(*,*) "POSTPROCESS_updatePhysics: FATAL invalid physics at tstep=", tstep, &
+                      " ldens=", ldens(tstep), " lgtemp=", lgtemp(tstep), " ldtemp=", ldtemp(tstep)
+            postprocess_error = PHYSICS_UPDATE_ERROR
+            return
+        end if
 
-      ! Increment tstep only if we haven't reached the final valid timestep
-      if (tstep < max_tstep) then
-        tstep = tstep + 1
-      end if
+        ! Increment tstep only if we haven't reached the final valid timestep
+        if (tstep < max_tstep) then
+            tstep = tstep + 1
+        end if
 
 
     end subroutine updatePhysics

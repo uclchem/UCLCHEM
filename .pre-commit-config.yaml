@@ -37,7 +37,7 @@ repos:
 
   - repo: https://github.com/PlasmaFAIR/fortitude-pre-commit
     # Fortitude version.
-    rev: v0.9.2
+    rev: v0.10.1
     hooks:
       - id: fortitude
         name: "[correctness] Fortitude linter"
@@ -46,7 +46,7 @@ repos:
 
   # Ruff: Code style, docstrings, etc
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.17.1
+    rev: v0.17.3
     hooks:
       - id: ruff
         name: "[correctness] Ruff linter"
@@ -54,7 +54,7 @@ repos:
         args: [--fix]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.4.0
+    rev: v2.4.1
     hooks:
       - id: mypy
         name: "[correctness] Mypy type checking"
@@ -66,21 +66,19 @@ repos:
 
   - repo: https://github.com/astral-sh/ty-pre-commit
     # ty version.
-    rev: v0.0.90
+    rev: v0.0.96
     hooks:
       - id: ty
         name: "[correctness] ty type checking"
         description: "Check for type errors"
         args: [--all-extras]
 
->>>>>>> db68225 (Add ty precommit hook. It's not quite completely correct yet.)
-
   # ============================================================================
   # TIER 2: STYLE (Auto-fixable formatting and imports)
   # Purpose: Enforce consistent code style
   # ============================================================================
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.17.1
+    rev: v0.17.3
     hooks:
       - id: ruff-format
         name: "[style] Ruff formatter"

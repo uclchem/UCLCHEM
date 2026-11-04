@@ -13,15 +13,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-<<<<<<< HEAD:tests/install/test_heating_cooling_install.py
-=======
 from uclchem import advanced
 
 # Root of the UCLCHEM repo (tests/ is one level down)
 UCLCHEM_ROOT = Path(__file__).resolve().parent.parent
 
 
->>>>>>> 327bba7 (Many more linting rules.):tests/test_heating_cooling_install.py
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

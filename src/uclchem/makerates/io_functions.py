@@ -1,7 +1,6 @@
 ##########################################################################################
 """Functions to read in the species and reaction files and write output files."""
 
-import re
 import csv
 import fileinput
 import functools
@@ -2055,83 +2054,3 @@ def copy_coolant_files(source_dir: str | Path | None = None) -> None:
         _logger.debug(f"  Copied {dat_file.name}")
 
     _logger.info("Successfully copied coolant data files for package installation")
-
-
-def separate_common_terms(string: str, term_to_separate: str) -> str:
-    """Separate out common terms in a string of an equation.
-
-    Parameters
-    ----------
-    string : str
-        String to clean up.
-    term_to_separate : str
-        Term to separate out of the parentheses.
-
-    Returns
-    -------
-    string : str
-        The string that evaluates to the same value, but with the common
-        term taken out.
-
-    Raises
-    ------
-    ValueError
-        If a term `string` does not contain ``f"*{term_to_separate}"``.
-
-    Notes
-    -----
-    Currently only supports multiplications, meaning that
-    only strings of the form ``"A*X + B*X*Y - ..."`` are supported.
-    Common terms, but with divisions are not supported.
-
-    Examples
-    --------
-    >>> separate_common_terms("A*B + C*B", "B")
-    '(A + C)*B'
-    >>> separate_common_terms("A*B + C*B*D", "B")
-    '(A + C*D)*B'
-
-    >>> # Only takes the first instance of `term_to_separate`
-    >>> separate_common_terms("A*B*B + C*B", "B")
-    '(A*B + C)*B'
-    >>> # Even if there are multiple that COULD be seperated (potential enhancement)
-    >>> separate_common_terms("A*B*B - C*B*B", "B")
-    '(A*B - C*B)*B'
-
-    >>> # Does not care about whitespace
-    >>> separate_common_terms("A *    B", "B")
-    '(A)*B'
-    >>> # And keeps whitespace that was between the terms
-    >>> separate_common_terms("A*B   +  C*B", "B")
-    '(A   +  C)*B'
-
-    """
-    if "+" in string or "-" in string:
-        split_string = re.split(r"(\s*[-+]\s*)", string)
-        plus_and_minus = split_string[1::2]
-        split_terms = split_string[::2]
-    else:
-        # If it is just a single term
-        plus_and_minus = []
-        split_terms = [string]
-
-    mult_regexp = re.compile(r"\s*\*\s*" + re.escape(term_to_separate))
-    div_regexp = re.compile(r"\s*/\s*" + re.escape(term_to_separate))
-
-    for term_idx, term in enumerate(split_terms):
-        mult_m = mult_regexp.search(term)
-        div_m = div_regexp.search(term)
-        if mult_m is None:
-            msg = f"Multiplication by '{term_to_separate}' was not found in term '{term}'"
-            raise ValueError(msg)
-        if div_m is not None:
-            msg = f"Division by '{term_to_separate}' found in term '{term}'"
-            raise ValueError(msg)
-        split_terms[term_idx] = re.sub(mult_regexp, "", term, count=1)
-
-    string = (
-        "("
-        + "".join(x + y for x, y in zip(split_terms[:-1], plus_and_minus, strict=True))
-        + f"{split_terms[-1]})*{term_to_separate}"
-    )
-    return string

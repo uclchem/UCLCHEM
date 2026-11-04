@@ -234,7 +234,7 @@ target-std = "f95"
 ignore = [
     "MOD011", # Does not work with crackfortran (needed by f2py)
     "S002", "S901", "S902", 
-    "C132", "C181", "C183",
+    "C132", "C181", "C183", "C202",
 ] 
 line-too-long.ignore-comments = true
 preview = true

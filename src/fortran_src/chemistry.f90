@@ -91,10 +91,10 @@ contains
 
         nion = 0
         do i=1,nSpec
-           if (index(specname(i),"+") /= 0) then
-              nion = nion + 1
-              ionlist(nion) = i
-           end if
+            if (index(specname(i),"+") /= 0) then
+                nion = nion + 1
+                ionlist(nion) = i
+            end if
         end do
     end subroutine get_ion_indices
 
@@ -134,19 +134,19 @@ contains
 
             !Decide how much carbon is initially ionized
             select case (ion)
-                case(0)
-                    abund(nc,:)=fc
-                    abund(ncx,:)=1.0e-10_dp
-                case(1)
-                    abund(nc,:)=fc*0.5_dp
-                    abund(ncx,:)=fc*0.5_dp
-                case(2)
-                    abund(nc,:)=1.0e-10_dp
-                    abund(ncx,:)=fc
-                case default
-                    write(*, *) "ERROR: Invalid value for 'ion':", ion
-                    write(*, *) "Valid values are: 0, 1, or 2."
-                    stop 1
+            case(0)
+                abund(nc,:)=fc
+                abund(ncx,:)=1.0e-10_dp
+            case(1)
+                abund(nc,:)=fc*0.5_dp
+                abund(ncx,:)=fc*0.5_dp
+            case(2)
+                abund(nc,:)=1.0e-10_dp
+                abund(ncx,:)=fc
+            case default
+                write(*, *) "ERROR: Invalid value for 'ion':", ion
+                write(*, *) "Valid values are: 0, 1, or 2."
+                stop 1
             end select
 
             !isotopes
@@ -248,14 +248,14 @@ contains
     end subroutine resetDVODEForNewPoint
 
     subroutine updateChemistry(successFlag, statsarray, statsarray_size, dtime)
-    !Updates the abundances for the next time step, first updating chemical variables and reaction rate constants,
-    !then by solving the ODE system to obtain new abundances.
-    !Solving ODEs is complex so we have two checks to try to automatically overcome difficulties and end stalled models
-    !Firstly, the integration subroutine is called up to maxLoops times whilst adjusting variables to help integration converge.
-    !If it succeeds before maxLoops, we continue as normal, otherwise we'll call it a fail.
-    !Secondly, we check for stalls caused by the the solver loop reducing the targetTime to overcome difficulties.
-    !That reduction the possibility of the code "succeeding" by integrating tiny target times. We have a counter that resets each time
-    !the code integrates to the planned targetTime rather than a reduced one. If the counter reaches maxConsecutiveFailures, we end the code.
+        !Updates the abundances for the next time step, first updating chemical variables and reaction rate constants,
+        !then by solving the ODE system to obtain new abundances.
+        !Solving ODEs is complex so we have two checks to try to automatically overcome difficulties and end stalled models
+        !Firstly, the integration subroutine is called up to maxLoops times whilst adjusting variables to help integration converge.
+        !If it succeeds before maxLoops, we continue as normal, otherwise we'll call it a fail.
+        !Secondly, we check for stalls caused by the the solver loop reducing the targetTime to overcome difficulties.
+        !That reduction the possibility of the code "succeeding" by integrating tiny target times. We have a counter that resets each time
+        !the code integrates to the planned targetTime rather than a reduced one. If the counter reaches maxConsecutiveFailures, we end the code.
         !f2py integer, intent(aux) :: points
         integer, intent(out) :: successFlag
         real(dp), intent(inout), optional, dimension(:,:,:) :: statsarray
@@ -300,10 +300,10 @@ contains
 
             ! Postprocessed tracers have column densities provided
             if (lusecoldens) then
-               h2col = lnh2(tstep)
-               cocol = lnco(tstep)
-               ! ccol = lnc(dstep, tstep) ! TODO enable C column density support
-               ccol = lnh(tstep) * abund(nc,dstep)  ! No C column densities yet...
+                h2col = lnh2(tstep)
+                cocol = lnco(tstep)
+                ! ccol = lnc(dstep, tstep) ! TODO enable C column density support
+                ccol = lnh(tstep) * abund(nc,dstep)  ! No C column densities yet...
             end if
 
             !Reset surface and bulk values in case of integration error or sputtering
@@ -467,7 +467,7 @@ contains
         successFlag=0
         f_callback_error=0
 
-    !This subroutine calls DVODE (3rd party ODE solver) until it can reach targetTime with acceptable errors (reltol/abstol)
+        !This subroutine calls DVODE (3rd party ODE solver) until it can reach targetTime with acceptable errors (reltol/abstol)
         !reset parameters for DVODE
         ITASK=1  !try to integrate to targetTime
         if (solverMode == 0) then
@@ -574,52 +574,51 @@ contains
         end if
 
         select case(ISTATE)
-            case(-1)
-                !ISTATE -1 means the integrator can't break the problem into small enough steps
-                !We could increase MXSTEP but better to reduce targetTime and get to physics update
-                !physical conditions may be easier to solve as time goes by so better to get to that update
-                write(*,*) "ISTATE -1: Reducing time step"
-                !More steps required for this problem
-                !MXSTEP=MXSTEP*2
-                targetTime=currentTime+(targetTime-currentTime)*0.1_dp
-            case(-2)
-                !ISTATE -2 just needs an absol change so let's do that and try again
-                write(*,*) "ISTATE -2: Tolerances too small"
-                !Tolerances are too small for machine but successful to current currentTime
-                abstol_factor=abstol_factor*10.0_dp
-                abstol_ice_factor=abstol_ice_factor*10.0_dp
-                reltol_phys=MIN(reltol_phys*10.0_dp, 1e-1_dp)
-            case(-3)
-                !ISTATE -3 is unrecoverable so just bail on integration
-                write(*,*) "DVODE found invalid inputs"
-                write(*,*) "abstol:"
-                write(*,*) abstol
-                successFlag=INT_UNRECOVERABLE_ERROR
-                return
-            case(-4)
-                !Successful as far as currentTime but many errors.
-                !Make targetTime smaller and just go again
-                write(*,*) "ISTATE -4 - shortening step"
-                write(*,*) "  worst-converging component (IMXER): ", &
-                    TRIM(component_name(dvode_istats(16)))
-                targetTime=currentTime+(targetTime-currentTime)*0.1_dp
-            case(-5)
-                write(*,*) "ISTATE -5 - shortening step at time", timeInYears,"years"
-                write(*,*) "  worst-converging component (IMXER): ", &
-                    TRIM(component_name(dvode_istats(16)))
-                targetTime=currentTime+(targetTime-currentTime)*0.1_dp
-            case default
-                ! Success: MXSTEP stays at whatever param_dict set (do not reset to hardcoded 10000)
+        case(-1)
+            !ISTATE -1 means the integrator can't break the problem into small enough steps
+            !We could increase MXSTEP but better to reduce targetTime and get to physics update
+            !physical conditions may be easier to solve as time goes by so better to get to that update
+            write(*,*) "ISTATE -1: Reducing time step"
+            !More steps required for this problem
+            !MXSTEP=MXSTEP*2
+            targetTime=currentTime+(targetTime-currentTime)*0.1_dp
+        case(-2)
+            !ISTATE -2 just needs an absol change so let's do that and try again
+            write(*,*) "ISTATE -2: Tolerances too small"
+            !Tolerances are too small for machine but successful to current currentTime
+            abstol_factor=abstol_factor*10.0_dp
+            abstol_ice_factor=abstol_ice_factor*10.0_dp
+            reltol_phys=MIN(reltol_phys*10.0_dp, 1e-1_dp)
+        case(-3)
+            !ISTATE -3 is unrecoverable so just bail on integration
+            write(*,*) "DVODE found invalid inputs"
+            write(*,*) "abstol:"
+            write(*,*) abstol
+            successFlag=INT_UNRECOVERABLE_ERROR
+            return
+        case(-4)
+            !Successful as far as currentTime but many errors.
+            !Make targetTime smaller and just go again
+            write(*,*) "ISTATE -4 - shortening step"
+            write(*,*) "  worst-converging component (IMXER): ", &
+                TRIM(component_name(dvode_istats(16)))
+            targetTime=currentTime+(targetTime-currentTime)*0.1_dp
+        case(-5)
+            write(*,*) "ISTATE -5 - shortening step at time", timeInYears,"years"
+            write(*,*) "  worst-converging component (IMXER): ", &
+                TRIM(component_name(dvode_istats(16)))
+            targetTime=currentTime+(targetTime-currentTime)*0.1_dp
+        case default
+            ! Success: MXSTEP stays at whatever param_dict set (do not reset to hardcoded 10000)
         end select
 
-    if (enforceChargeConservation) then
-        ! REALLY ensure charge is always conserved (also after integrating)
-        abund(nelec,dstep) = sum(abund(ionlist(1:nion),dstep))
-    end if
+        if (enforceChargeConservation) then
+            ! REALLY ensure charge is always conserved (also after integrating)
+            abund(nelec,dstep) = sum(abund(ionlist(1:nion),dstep))
+        end if
     end subroutine integrateODESystem
 
     subroutine F (NEQUATIONS, T, Y, YDOT)
-        use ODES, only: GETYDOT
         integer, parameter :: WP = KIND(1.0D0)
 
         integer, intent(in)  :: NEQUATIONS

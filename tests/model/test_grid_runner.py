@@ -86,7 +86,7 @@ def test_grid_runner_create_grid(temperatures, densities):
         assert param_dict["param_dict"]["initialDensity"] in densities
 
 
-def test_invalid_model_name_raises():
+def test_invalid_model_name_raises(tmp_path):
     dictionaries = {
         "param_dict": {
             "initialTemp": [10, 20, 30],
@@ -99,6 +99,7 @@ def test_invalid_model_name_raises():
             "UNKNOWN_MODEL",
             dictionaries,
             delay_run=True,
+            grid_file=tmp_path,
         )
 
 

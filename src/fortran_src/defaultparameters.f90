@@ -35,8 +35,8 @@ module DEFAULTPARAMETERS
     real(dp) :: density_power_index=2.0  !Power-law index for density profile: n(r) = n0/(1 + (r/density_scale_radius)^density_power_index)
     !Luminosity source for hotcore in 1D model
     real(dp) :: lum_star=1.00e6_dp  !unit of Lsun, bolometric luminosity of the central source
-    real(dp) :: temp_star=4.50d4 !unit of K, temperature of the central source
-    real(dp) :: gas_dust_mass_ratio=100.0 !Gas-to-dust mass ratio by mass.
+    real(dp) :: temp_star=4.50e4_dp  !unit of K, temperature of the central source
+    real(dp) :: gas_dust_mass_ratio=100.0_dp  !Gas-to-dust mass ratio by mass.
     !
     !## Behavioral Controls
     !*The following parameters generally turn on or off features of the model. If a parameter is set to `True`, then it is turned on. If it is set to `False`, then it is turned off.*

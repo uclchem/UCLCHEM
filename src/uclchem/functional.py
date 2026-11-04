@@ -76,7 +76,6 @@ Usage Patterns
 
 """
 
-from collections.abc import Iterable
 from collections.abc import Sequence
 from typing import Any
 
@@ -176,7 +175,7 @@ def _write_column_file(
 
 def __functional_return__(
     model_object: AbstractModel,
-    out_species: Sequence[str] = DEFAULT_ELEMENTS_TO_CHECK,
+    out_species: Sequence[str] | None = DEFAULT_ELEMENTS_TO_CHECK,
     *,
     return_array: bool = False,
     return_dataframe: bool = False,
@@ -193,7 +192,7 @@ def __functional_return__(
     model_object : AbstractModel
         model_object of a class that inherited from AbstractModel,
         from which the results should be returned.
-    out_species : Sequence[str]
+    out_species : Sequence[str] | None
         List of species names to return abundances for.
         Default = :data:`uclchem.constants.DEFAULT_ELEMENTS_TO_CHECK`.
     return_array : bool
@@ -481,7 +480,7 @@ def cloud(
 def collapse(
     collapse: str,
     param_dict: dict | None = None,
-    out_species: Sequence[str] | None = ELEMENTS_TO_CHECK,
+    out_species: Sequence[str] | None = DEFAULT_ELEMENTS_TO_CHECK,
     starting_chemistry: np.ndarray | None = None,
     timepoints: int = TIMEPOINTS,
     *,
@@ -504,7 +503,7 @@ def collapse(
     out_species : Sequence[str] | None
         A list of species for which final abundance will be returned.
         If None, no abundances will be returned.
-        Defaults to `uclchem.constants.ELEMENTS_TO_CHECK`.
+        Defaults to `uclchem.constants.DEFAULT_ELEMENTS_TO_CHECK`.
     starting_chemistry : np.ndarray | None
         Array containing the starting chemical abundances
         needed by UCLCHEM. (Default value = None)
@@ -599,7 +598,7 @@ def prestellar_core(
     temp_index: int = 1,
     max_temperature: float = 300.0,
     param_dict: dict | None = None,
-    out_species: Sequence[str] | None = ELEMENTS_TO_CHECK,
+    out_species: Sequence[str] | None = DEFAULT_ELEMENTS_TO_CHECK,
     starting_chemistry: np.ndarray | None = None,
     timepoints: int = TIMEPOINTS,
     *,
@@ -626,7 +625,7 @@ def prestellar_core(
     out_species : Sequence[str] | None
         A list of species for which final abundance will be returned.
         If None, no abundances will be returned.
-        Defaults to `uclchem.constants.ELEMENTS_TO_CHECK`.
+        Defaults to `uclchem.constants.DEFAULT_ELEMENTS_TO_CHECK`.
     starting_chemistry : np.ndarray | None
         Array containing the starting chemical abundances
         needed by uclchem (Default value = None)
@@ -723,7 +722,7 @@ def cshock(
     timestep_factor: float = 0.01,
     minimum_temperature: float = 0.0,
     param_dict: dict | None = None,
-    out_species: Sequence[str] | None = ELEMENTS_TO_CHECK,
+    out_species: Sequence[str] | None = DEFAULT_ELEMENTS_TO_CHECK,
     starting_chemistry: np.ndarray | None = None,
     timepoints: int = TIMEPOINTS,
     *,
@@ -752,7 +751,7 @@ def cshock(
     out_species : Sequence[str] | None
         A list of species for which final
         abundance will be returned. If None, no abundances will be returned.
-        Default = `uclchem.constants.ELEMENTS_TO_CHECK`.
+        Default = `uclchem.constants.DEFAULT_ELEMENTS_TO_CHECK`.
     starting_chemistry : np.ndarray | None
         np.ndarray containing the starting chemical abundances needed
         by UCLCHEM. (Default value = None)
@@ -848,7 +847,7 @@ def cshock(
 def jshock(
     shock_vel: float,
     param_dict: dict | None = None,
-    out_species: Sequence[str] | None = ELEMENTS_TO_CHECK,
+    out_species: Sequence[str] | None = DEFAULT_ELEMENTS_TO_CHECK,
     starting_chemistry: np.ndarray | None = None,
     timepoints: int = TIMEPOINTS,
     *,
@@ -870,7 +869,7 @@ def jshock(
     out_species : Sequence[str] | None
         A list of species for which final abundance will be returned.
         If None, no abundances will be returned.
-        Default = :data:`uclchem.constants.ELEMENTS_TO_CHECK`.
+        Default = :data:`uclchem.constants.DEFAULT_ELEMENTS_TO_CHECK`.
     starting_chemistry : np.ndarray | None
         np.ndarray containing the starting
         chemical abundances needed by UCLCHEM. Default = None.

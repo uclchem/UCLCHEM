@@ -169,7 +169,7 @@ contains
         end if
     end subroutine updateTargetTime
 
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !This is called every time/depth step from main.f90                               !
     !Update the density, temperature and av to their values at currentTime            !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -194,10 +194,10 @@ contains
             maxTemp=maximum_Temp(dstep)  !set the local variable in this routine
         end if
 
-         if (gasTemp(dstep) < maxTemp) then
-        !Below we include temperature profiles for hot cores, selected using tempindx
-        !They are taken from Viti et al. 2004 with an additional distance dependence from Nomura and Millar 2004.
-        !It takes the form T=A(t^B)*[(d/R)^-0.5], where A and B are given below for various stellar masses
+        if (gasTemp(dstep) < maxTemp) then
+            !Below we include temperature profiles for hot cores, selected using tempindx
+            !They are taken from Viti et al. 2004 with an additional distance dependence from Nomura and Millar 2004.
+            !It takes the form T=A(t^B)*[(d/R)^-0.5], where A and B are given below for various stellar masses
             gasTemp(dstep)=parcelRadius(dstep)/rout
             gasTemp(dstep)=sqrt(1_dp/gasTemp(dstep))
             gasTemp(dstep)=initialTemp + ((tempa(tempindx)*(currentTime/SECONDS_PER_YEAR)**tempb(tempindx))*gasTemp(dstep))
@@ -243,28 +243,28 @@ contains
         integer, intent(in) :: lpoints
         real(dp), intent(inout) :: abund(nspec+1,lpoints)
 
-            if (sum(abund(iceList,dstep)) > MIN_ABUND) then
-                !Solid Evap
-                if (solidflag == 1) then
-                    call partialSublimation(solidFractions,abund, lpoints)
-                    solidflag=2
-                end if
-
-                !monotonic evaporation at binding energy of species
-                call bindingEnergyEvap(abund, lpoints)
-
-                !Volcanic evap
-                if (volcflag == 1) then
-                    call partialSublimation(volcanicFractions,abund, lpoints)
-                    volcflag=2  !Set flag to 2 to stop it being recalled
-                end if
-
-                !Co-desorption
-                if (coflag == 1) then
-                    call totalSublimation(abund, lpoints)
-                    coflag=2
-                end if
+        if (sum(abund(iceList,dstep)) > MIN_ABUND) then
+            !Solid Evap
+            if (solidflag == 1) then
+                call partialSublimation(solidFractions,abund, lpoints)
+                solidflag=2
             end if
+
+            !monotonic evaporation at binding energy of species
+            call bindingEnergyEvap(abund, lpoints)
+
+            !Volcanic evap
+            if (volcflag == 1) then
+                call partialSublimation(volcanicFractions,abund, lpoints)
+                volcflag=2  !Set flag to 2 to stop it being recalled
+            end if
+
+            !Co-desorption
+            if (coflag == 1) then
+                call totalSublimation(abund, lpoints)
+                coflag=2
+            end if
+        end if
     end subroutine thermalEvaporation
 
     subroutine partialSublimation(fractions, abund, lpoints)

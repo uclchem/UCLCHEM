@@ -26,5 +26,8 @@ def test_1d_cloud_correct_av(run_type):
 
     # Should be sorted in reverse order, because 1 is core, N is edge.
     gradient = np.diff(av)
+
+    print(av)
+    print(gradient)
     assert np.all(gradient < 0)  # Monotonically decreasing
     assert np.allclose(gradient, gradient[0])  # With constant spacing between each point

@@ -1021,7 +1021,7 @@ class NetworkBuilder:
                 else:
                     branching_reactions[reactant_string] = reaction.get_alpha()
 
-        if any(val != 1.0 for val in branching_reactions.values()):
+        if any(val != 1 for val in branching_reactions.values()):
             _logger.warning(
                 "Some of the branching ratios do not sum to 1.0, correcting those that do not"
             )
@@ -1036,14 +1036,14 @@ class NetworkBuilder:
                         reactant_string in branching_reactions
                         and branching_reactions[reactant_string] != 1
                     ):
-                        if branching_reactions[reactant_string] == 0.0:
+                        if branching_reactions[reactant_string] == 0:
                             _logger.warning(
-                                f"Grain reaction {reaction} has a branching ratio of 0.0, removing the reaction altogether"
+                                f"Grain reaction {reaction} has a branching ratio of 0, removing the reaction altogether"
                             )
                             self.network.remove_reaction(reaction)
                             continue
 
-                        if branching_reactions[reactant_string] < 0.99:  # noqa: PLR2004
+                        if branching_reactions[reactant_string] < 0.99:  # ruff: ignore[magic-value-comparison]
                             _logger.warning(
                                 f"You have reaction {reaction} with a branching ratio {branching_reactions[reactant_string]} we are assuming you set this lower on purpose."
                             )
@@ -1105,13 +1105,19 @@ class NetworkBuilder:
 
         """
         exclude_ices = True
-        if not isinstance(enthalpy_reaction_types, list):
-            enthalpy_reaction_types = [enthalpy_reaction_types]
-        if enthalpy_reaction_types[0].upper() == "ALL":
+        if isinstance(enthalpy_reaction_types, str):
+            enthalpy_reaction_types = {enthalpy_reaction_types.upper()}
+        else:
+            enthalpy_reaction_types = {
+                reaction_type.upper() for reaction_type in enthalpy_reaction_types
+            }
+
+        if "ALL" in enthalpy_reaction_types:
             exclude_ices = False
-            enthalpy_reaction_types = list(REACTION_TYPES)
-        elif enthalpy_reaction_types[0].upper() == "GAS":
-            enthalpy_reaction_types = list(REACTION_TYPES)
+            enthalpy_reaction_types: frozenset[str] = REACTION_TYPES  # type: ignore[no-redef]
+        elif "GAS" in enthalpy_reaction_types:
+            enthalpy_reaction_types: frozenset[str] = REACTION_TYPES  # type: ignore[no-redef]
+
         for reaction in self.network.get_reaction_list():
             _logger.debug(f"Checking if we need to add enthalpy to {reaction}")
             if reaction.get_reaction_type() in enthalpy_reaction_types:
@@ -1247,7 +1253,6 @@ class NetworkBuilder:
 
         """
         _logger.info("\tPossible duplicate reactions for manual removal:")
-        duplicates_found = False
 
         # We could also pass `self.network.reactions.values()` to check_duplcicate_reactions,
         # but that would lead to n_reac*(n_reac-1)/2 comparisons,
@@ -1261,7 +1266,7 @@ class NetworkBuilder:
                 reaction1 = reactions[duplicate[0]]
                 reaction2 = reactions[duplicate[1]]
                 _logger.warning(
-                    "\tFound reactions that are possile duplicates\n\t\t"
+                    "\tFound reactions that are possible duplicates\n\t\t"
                     + str(reaction1)
                     + f" with temperature range [{reaction1.get_templow()}, {reaction1.get_temphigh()}] and source {reaction1.get_source()}"
                     + "\n\t\t"

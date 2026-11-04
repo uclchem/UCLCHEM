@@ -256,13 +256,8 @@ def test_network_has_minimum_content(network_name, settings_file):
 
 
 @pytest.mark.timeout(600)
-<<<<<<< HEAD:tests/install/test_install_custom_networks.py
-@pytest.mark.parametrize("network_name,settings_file", get_all_networks())
-def test_network_cloud_model_runs(uclchem_root, network_name, settings_file):
-=======
 @pytest.mark.parametrize(("network_name", "settings_file"), get_all_networks())
-def test_network_cloud_model_runs(network_name, settings_file):
->>>>>>> 327bba7 (Many more linting rules.):tests/test_install_custom_networks.py
+def test_network_cloud_model_runs(uclchem_root, network_name, settings_file):
     """Full integration test: makerates → pip install → run Cloud model.
 
     Workflow:

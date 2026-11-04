@@ -1,10 +1,9 @@
 import numpy as np
 import pytest
 
-from uclchem.utils import get_dtype, get_fuzzy_unknown_keys
-from uclchem.utils import get_dtype, would_overflow
 from uclchem.utils import (
     get_dtype,
+    get_fuzzy_unknown_keys,
     get_lowercase_copy,
     remove_keys_with_none,
     would_overflow,

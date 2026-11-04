@@ -41,16 +41,6 @@ module physicscore
     ! preserved without accessing a live coldens(dstep+1) that may not yet be computed.
     real(dp) :: outer_coldens_for_current_step = 0.0_dp
 
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !Grain surface parameters
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    real(dp), parameter :: GRAIN_RADIUS=1.0d-5, GRAIN_DENSITY = 3.0  ! Mass density of a dust grain
-
-    !reciprocal of fractional abundance of dust grains (we only divide by number density so better to store reciprocal)
-    !Derived from gas_dust_mass_ratio (DefaultParameters); kept in sync by RECOMPUTE_GAS_DUST_DENSITY_RATIO below.
-    !Not a PARAMETER, but do not set it directly. Initial value here matches the gas_dust_mass_ratio default (100.0).
-    real(dp) :: GAS_DUST_DENSITY_RATIO = (4.0*PI*(GRAIN_RADIUS**3)*GRAIN_DENSITY*100.0)/(3.0 * AMU)
-
     !Arrays for calculating rates
     !if ionModel = L use the L model coefficients, if = H use the H model
 
@@ -193,48 +183,48 @@ contains
     end subroutine coreUpdatePhysics
 
     pure function get_densdot(density) result(densdot)
-    ! Returns the time derivative of the density.
-    ! Analytical function taken from Rawlings et al. 1992
-    ! Called from chemistry.f90, density integrated with abundances so this gives ydot
-    ! Uses initialDens_array(dstep) as the per-point reference density so that
-    ! multi-point radial-profile models (enable_radiative_transfer=T) undergo
-    ! freefall correctly from each parcel's own starting density.
-    real(dp), intent(in) :: density
-    real(dp) :: densdot
-    real(dp) :: n0_pt   ! per-point initial density for this dstep
-    n0_pt = initialDens_array(dstep)
-    !Rawlings et al. 1992 freefall collapse. With freefallFactor for B-field etc
-    if ((density < finalDens) .and. (freefall) .and. (density > n0_pt)) then
-        densdot=freefallFactor*(density**4.0_dp/n0_pt)**0.33_dp*&
-        &sqrt(8.4e-30_dp*n0_pt*((density/n0_pt)**0.33_dp-1.0_dp))
-    else
-        densdot=0.0
-    end if
+        ! Returns the time derivative of the density.
+        ! Analytical function taken from Rawlings et al. 1992
+        ! Called from chemistry.f90, density integrated with abundances so this gives ydot
+        ! Uses initialDens_array(dstep) as the per-point reference density so that
+        ! multi-point radial-profile models (enable_radiative_transfer=T) undergo
+        ! freefall correctly from each parcel's own starting density.
+        real(dp), intent(in) :: density
+        real(dp) :: densdot
+        real(dp) :: n0_pt   ! per-point initial density for this dstep
+        n0_pt = initialDens_array(dstep)
+        !Rawlings et al. 1992 freefall collapse. With freefallFactor for B-field etc
+        if ((density < finalDens) .and. (freefall) .and. (density > n0_pt)) then
+            densdot=freefallFactor*(density**4.0_dp/n0_pt)**0.33_dp*&
+            &sqrt(8.4e-30_dp*n0_pt*((density/n0_pt)**0.33_dp-1.0_dp))
+        else
+            densdot=0.0
+        end if
     end function get_densdot
 
-    elemental function get_av(baseAv, coldens) result(av)
+    elemental function get_av(baseAv, coldens) result(calculated_av)
         !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
         real(dp), intent(in) :: baseAv
         real(dp), intent(in) :: coldens
 
-        real(dp) :: av
+        real(dp) :: calculated_av
 
-        av = baseAv + coldens/1.6e21_dp
+        calculated_av = baseAv + coldens/1.6e21_dp
     end function get_av
 
     pure function getDByDnDensdot(density) result(dByDnDensdot)
-    !Defunct function which provides the necessary derivative d(dn/dt)/dn
-    !in the case one uses a Jacobian.
-    real(dp), intent(in) :: density
-    real(dp) :: dByDnDensdot
-    !Rawlings et al. 1992 freefall collapse. With freefallFactor for B-field etc
-    if (density < finalDens) then
-        dByDnDensdot=freefallFactor*8.4e-30_dp*(density**3)*((9.0_dp*((density/initialDens)**0.33_dp))-8.0_dp)
-        dByDnDensdot=dByDnDensdot/(6.0_dp*(((density**4)/initialDens)**0.66_dp))
-        dByDnDensdot=dByDnDensdot/sqrt(initialDens*8.4e-30_dp*(((density/initialDens)**0.33_dp))-1.0_dp)
-    else
-        dByDnDensdot=0.0_dp
-    end if
+        !Defunct function which provides the necessary derivative d(dn/dt)/dn
+        !in the case one uses a Jacobian.
+        real(dp), intent(in) :: density
+        real(dp) :: dByDnDensdot
+        !Rawlings et al. 1992 freefall collapse. With freefallFactor for B-field etc
+        if (density < finalDens) then
+            dByDnDensdot=freefallFactor*8.4e-30_dp*(density**3)*((9.0_dp*((density/initialDens)**0.33_dp))-8.0_dp)
+            dByDnDensdot=dByDnDensdot/(6.0_dp*(((density**4)/initialDens)**0.66_dp))
+            dByDnDensdot=dByDnDensdot/sqrt(initialDens*8.4e-30_dp*(((density/initialDens)**0.33_dp))-1.0_dp)
+        else
+            dByDnDensdot=0.0_dp
+        end if
     end function getDByDnDensdot
 
     subroutine ionizationDependency
@@ -242,13 +232,13 @@ contains
 
         !Attenuate CR by column density
         select case (ionModel)
-            case ("L")
-                zSum = evaluate_polynomial(ckLIon, log10(coldens(dstep)))
-            case ("H")
-                zSum = evaluate_polynomial(ckHIon, log10(coldens(dstep)))
-            case default
-                write(*,*) "WARNING: ionModel switch must be 'L' or 'H'"
-                stop 1
+        case ("L")
+            zSum = evaluate_polynomial(ckLIon, log10(coldens(dstep)))
+        case ("H")
+            zSum = evaluate_polynomial(ckHIon, log10(coldens(dstep)))
+        case default
+            write(*,*) "WARNING: ionModel switch must be 'L' or 'H'"
+            stop 1
         end select
         ! update/overwrite zeta with attenuated value
         zeta = ((10**zSum)/ZETA_0)* zetaScale
@@ -256,13 +246,13 @@ contains
         !rate calculation for H2 dissociation
         if (improvedH2CRPDissociation) then
             select case (ionModel)
-                case ("L")
-                    dissSum = evaluate_polynomial(ckLDiss, log10(coldens(dstep)))
-                case ("H")
-                    dissSum = evaluate_polynomial(ckHDiss, log10(coldens(dstep)))
-                case default
-                    write(*,*) "WARNING: ionModel switch must be 'L' or 'H'"
-                    stop 1
+            case ("L")
+                dissSum = evaluate_polynomial(ckLDiss, log10(coldens(dstep)))
+            case ("H")
+                dissSum = evaluate_polynomial(ckHDiss, log10(coldens(dstep)))
+            case default
+                write(*,*) "WARNING: ionModel switch must be 'L' or 'H'"
+                stop 1
             end select
             h2CRPRateConstant=(10**dissSum)*zetaScale
         end if
@@ -271,15 +261,15 @@ contains
 
     ! Analytical column density from center (r=0) to r [cm^-2].
     pure subroutine findcoldens_core2edge(coldens,rho0,density_scale_radius,density_power_index,r)
-      real(dp),intent(in) :: r,rho0,density_scale_radius,density_power_index
-      real(dp),intent(out) :: coldens
+        real(dp),intent(in) :: r,rho0,density_scale_radius,density_power_index
+        real(dp),intent(out) :: coldens
 
-      if (r <= density_scale_radius) then
-          coldens = rho0 * r * pc
-      else
-          coldens = rho0*density_scale_radius*pc * (1.0_dp + (1.0_dp/(density_power_index-1.0_dp)) * &
-              & (1.0_dp - (r/density_scale_radius)**(1.0_dp-density_power_index)))
-      end if
+        if (r <= density_scale_radius) then
+            coldens = rho0 * r * pc
+        else
+            coldens = rho0*density_scale_radius*pc * (1.0_dp + (1.0_dp/(density_power_index-1.0_dp)) * &
+                & (1.0_dp - (r/density_scale_radius)**(1.0_dp-density_power_index)))
+        end if
 
     end subroutine findcoldens_core2edge
 
@@ -314,10 +304,10 @@ contains
     ! The profile of the gas volume density
     ! REAL(dp) FUNCTION rhofit(r,rho0,r0,a)
     pure function get_ngas_r(r,rho0,density_scale_radius,density_power_index) result(ngas_r)
-      real(dp), intent(in) :: r,rho0,density_scale_radius,density_power_index
-      real(dp) :: ngas_r
-      ! [r] in pc, [density_scale_radius] in pc
-      ngas_r = rho0/(1.0_dp + (r/density_scale_radius)**density_power_index)
+        real(dp), intent(in) :: r,rho0,density_scale_radius,density_power_index
+        real(dp) :: ngas_r
+        ! [r] in pc, [density_scale_radius] in pc
+        ngas_r = rho0/(1.0_dp + (r/density_scale_radius)**density_power_index)
 
     end function get_ngas_r
 
@@ -507,6 +497,6 @@ contains
     !
     !-----------------------------------------------------------------------
     subroutine RECOMPUTE_GAS_DUST_DENSITY_RATIO()
-      GAS_DUST_DENSITY_RATIO = (4.0_dp*PI*(GRAIN_RADIUS**3)*GRAIN_DENSITY*gas_dust_mass_ratio)/(3.0_dp * AMU)
+        GAS_DUST_DENSITY_RATIO = (4.0_dp*PI*(GRAIN_RADIUS**3)*GRAIN_DENSITY*gas_dust_mass_ratio)/(3.0_dp * AMU)
     end subroutine RECOMPUTE_GAS_DUST_DENSITY_RATIO
 end module physicscore
