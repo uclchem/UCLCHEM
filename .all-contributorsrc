@@ -117,8 +117,18 @@
       "contributions": [
         "bug"
       ]
+    },
+    {
+      "login": "elkogerville",
+      "name": "Elko Gerville-Reache",
+      "avatar_url": "https://avatars.githubusercontent.com/u/129769199?v=4",
+      "profile": "https://github.com/elkogerville",
+      "contributions": [
+        "ideas"
+      ]
     }
   ],
   "contributorsPerLine": 7,
-  "linkToUsage": true
+  "linkToUsage": true,
+  "commitType": "docs"
 }
