@@ -22,7 +22,7 @@ jobs:
     if: github.event.pull_request.user.login != 'allcontributors[bot]'
     name: Install (Foundation)
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
+    if: ${{ github.event.pull_request.user.login != 'allcontributors[bot]' && (github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request') }}
 
     steps:
       - uses: actions/checkout@v6
@@ -49,7 +49,7 @@ jobs:
     name: Test (Core Functionality)
     runs-on: ubuntu-latest
     needs: install
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
+    if: ${{ github.event.pull_request.user.login != 'allcontributors[bot]' && (github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request') }}
 
     steps:
       - uses: actions/checkout@v6
@@ -62,8 +62,7 @@ jobs:
     name: Test (Doctests)
     runs-on: ubuntu-latest
     needs: install
-    # disable doctest for rc4 for now
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
+    if: ${{ github.event.pull_request.user.login != 'allcontributors[bot]' && (github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request') }}
 
     steps:
       - uses: actions/checkout@v6
@@ -93,7 +92,7 @@ jobs:
     name: Test (Heating/Cooling Features)
     runs-on: ubuntu-latest
     needs: install
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
+    if: ${{ github.event.pull_request.user.login != 'allcontributors[bot]' && (github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request') }}
 
     steps:
       - uses: actions/checkout@v6
@@ -108,10 +107,11 @@ jobs:
     name: Test (Notebooks)
     runs-on: ubuntu-latest
     needs: install
-    # Only run on main branch (expensive operation)
+    # Only run on main branch (expensive operation), skip allcontributors bot PRs
     if: |
+      github.event.pull_request.user.login != 'allcontributors[bot]' &&
       (github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request') &&
-      github.ref_name == 'main'
+      github.ref_name == 'main'#
 
     steps:
       - uses: actions/checkout@v6
@@ -136,7 +136,7 @@ jobs:
     name: Test (Custom Networks)
     runs-on: ubuntu-latest
     needs: install
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
+    if: ${{ github.event.pull_request.user.login != 'allcontributors[bot]' && (github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request') }}
 
     steps:
       - uses: actions/checkout@v6
