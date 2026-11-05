@@ -98,8 +98,10 @@ contains
         end do
     end subroutine get_ion_indices
 
-    function get_initial_abundances() result(initial_abundances)
+    function get_initial_abundances(ionIndices) result(initial_abundances)
+        integer, dimension(:), intent(in) :: ionIndices
         real(dp), dimension(nSpec) :: initial_abundances
+
 
         !ensure abund is initially zero
         initial_abundances = MIN_ABUND
@@ -142,6 +144,7 @@ contains
         if (n13C /= SPECIES_NOT_PRESENT) initial_abundances(n13C) = f13C
 
         initial_abundances = initial_abundances * metallicity
+        initial_abundances(nElec) = sum(initial_abundances(ionIndices))
 
         !Total H nuclei is always 1 so put fh into H and whatever is left over in H2
         if (nH /= SPECIES_NOT_PRESENT) then
@@ -155,6 +158,9 @@ contains
     subroutine initializeChemistry(readAbunds, successFlag)
         logical, intent(in) :: readAbunds
         integer, intent(inout) :: successFlag
+
+        integer :: point_idx
+
         !f2py integer, intent(aux) :: points
 
         ! Sets variables at the start of every run.
@@ -169,8 +175,9 @@ contains
 
         if (.NOT. readAbunds) then
             !Set abundances to initial elemental if not reading them in.
-            abund(nSpec, :) = get_initial_abundances()
-            abund(nElec, :) = sum(abund(ionList(1:nion), :))
+            do point_idx = 1, points
+                abund(1:nSpec, point_idx) = get_initial_abundances(ionList(1:nion))
+            end do
         end if
         abund(nSpec+2,:)=density    ! Gas density
         abund(nSpec+1,:)=gasTemp    ! Gas temperature
