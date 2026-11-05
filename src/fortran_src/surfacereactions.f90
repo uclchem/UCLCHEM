@@ -57,18 +57,19 @@ module SurfaceReactions
   logical, parameter :: useCustomReducedMass=.true.  ! Use custom predicted reduced mass for tunneling
   real(dp), parameter :: CHEMICAL_BARRIER_THICKNESS = 1.40e-8_dp  ! Parameter used to compute the probability for a surface reaction with
   !! activation energy to occur through quantum tunneling (Hasegawa et al. Eq 6 (1992).)
-  real(dp), parameter :: SURFACE_SITE_DENSITY = 1.5e15_dp  ! site density on one grain [cm-2]
-  real(dp), parameter :: VDIFF_PREFACTOR=2.0_dp*K_BOLTZ*SURFACE_SITE_DENSITY/PI/PI/AMU
-  real(dp), parameter :: NUM_SITES_PER_GRAIN = SURFACE_SITE_DENSITY * (4.0_dp*PI*GRAIN_RADIUS**2)
-  real(dp), parameter :: EFFECTIVE_SURFACE_MASS = 120.0_dp  ! Effective mass of grain surface in Dalton
 
+  real(dp), parameter :: SURFACE_SITE_DENSITY = 1.5d15 ! site density on one grain [cm-2]
+  real(dp), parameter :: NUM_SITES_PER_GRAIN = GRAIN_RADIUS*GRAIN_RADIUS*SURFACE_SITE_DENSITY*4.0*PI
+  real(dp), parameter :: EFFECTIVE_SURFACE_MASS = 120.0_dp ! Mass of surface for chemical desorption probability
+
+  
   ! TST prefactor constants
-  real(dp), parameter :: HH_VDES_PREFACTOR=2.0_dp*K_BOLTZ_SI*SURFACE_SITE_DENSITY*1.0e4_dp/(PI*PI*AMU)
-  real(dp), parameter :: TST_VDES_PREFACTOR = 2.0_dp*PI*K_BOLTZ_SI**2*AMU/ &
-    (SURFACE_SITE_DENSITY*1.0e4_dp*(HP_SI**3)*1.0e3_dp)
-
-  ! Encounter desorption constants
-  real(dp), parameter :: H2_ON_H2_BINDING_ENERGY=23.0_dp  ! K
+  real(dp), parameter :: HH_VDES_PREFACTOR=2.0_dp*K_BOLTZ_SI*SURFACE_SITE_DENSITY*1.0e4_dp/(PI**2*AMU*1e-3_dp)
+  real(dp), parameter :: TST_VDES_PREFACTOR = 2.0_dp*PI*K_BOLTZ_SI**2*AMU*1e-3_dp/ &
+    (SURFACE_SITE_DENSITY*1.0e4_dp*(HP_SI**3))
+  
+  ! encounter desorption constants
+  real(dp), parameter :: H2_ON_H2_BINDING_ENERGY=23.0_dp ! K
   real(dp), parameter :: H_ON_H2_BINDING_ENERGY=45.0_dp  ! K
 
   real(dp), parameter :: MIN_SURFACE_ABUND=1.0e-20_dp
@@ -685,7 +686,7 @@ contains
       do i=1,nIce
         j = iceList(i)
         ! Original treatment by Hasegawa et al, 1992
-        vdes(i) = sqrt(HH_VDES_PREFACTOR*bindingEnergy(i)*mass(j))
+        vdes(i) = sqrt(HH_VDES_PREFACTOR*bindingEnergy(i)/mass(j))
         vdiff(i) = vdes(i)
       end do
     else
@@ -720,7 +721,7 @@ contains
                 (3.0_dp/2.0_dp)*estimatedInertiaProduct
           else
             ! Diatomic - use HH as fallback
-            vdes(i) = sqrt(HH_VDES_PREFACTOR*bindingEnergy(i)*mass(j))
+            vdes(i) = sqrt(HH_VDES_PREFACTOR*bindingEnergy(i)/mass(j))
           end if
         end if
       end do
