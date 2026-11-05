@@ -98,6 +98,60 @@ contains
         end do
     end subroutine get_ion_indices
 
+    function get_initial_abundances() result(initial_abundances)
+        real(dp), dimension(nSpec) :: initial_abundances
+
+        !ensure abund is initially zero
+        initial_abundances = MIN_ABUND
+
+        !Start by filling all metallicity scaling elements
+        !neutral atoms
+        if (nO /= SPECIES_NOT_PRESENT) initial_abundances(nO) = fO
+        if (nN /= SPECIES_NOT_PRESENT) initial_abundances(nN) = fN
+        if (nMg /= SPECIES_NOT_PRESENT) initial_abundances(nMg) = fMg
+        if (nP /= SPECIES_NOT_PRESENT) initial_abundances(nP) = fP
+        if (nF /= SPECIES_NOT_PRESENT) initial_abundances(nF) = fF
+        if (nNa /= SPECIES_NOT_PRESENT) initial_abundances(nNa) = fNa
+        if (nLi /= SPECIES_NOT_PRESENT) initial_abundances(nLi) = fLi
+        if (nPAH /= SPECIES_NOT_PRESENT) initial_abundances(nPAH) = fPAH
+        !default to ions
+        if (nSx /= SPECIES_NOT_PRESENT) initial_abundances(nSx) = fS
+        if (nSix /= SPECIES_NOT_PRESENT) initial_abundances(nSix) = fSi
+        if (nClx /= SPECIES_NOT_PRESENT) initial_abundances(nClx) = fCl
+
+        !Decide how much carbon is initially ionized
+        select case (ion)
+        case(0)
+            initial_abundances(nC)  = fC
+            initial_abundances(nCx) = MIN_ABUND
+        case(1)
+            initial_abundances(nC)  = fC*0.5_dp
+            initial_abundances(nCx) = fC*0.5_dp
+        case(2)
+            initial_abundances(nC)  = MIN_ABUND
+            initial_abundances(nCx) = fC
+        case default
+            write(*, *) "ERROR: Invalid value for 'ion':", ion
+            write(*, *) "Valid values are: 0, 1, or 2."
+            stop 1
+        end select
+
+        !isotopes
+        if (n18O /= SPECIES_NOT_PRESENT) initial_abundances(n18O) = f18O
+        if (n15N /= SPECIES_NOT_PRESENT) initial_abundances(n15N) = f15N
+        if (n13C /= SPECIES_NOT_PRESENT) initial_abundances(n13C) = f13C
+
+        initial_abundances = initial_abundances * metallicity
+
+        !Total H nuclei is always 1 so put fh into H and whatever is left over in H2
+        if (nH /= SPECIES_NOT_PRESENT) then
+            initial_abundances(nH) = fH
+            initial_abundances(nH2) = 0.5_dp*(1.0_dp-fH)
+        end if
+        if (nD /= SPECIES_NOT_PRESENT) initial_abundances(nD) = fD
+        if (nHe /= SPECIES_NOT_PRESENT) initial_abundances(nHe) = fHe
+    end function get_initial_abundances
+
     subroutine initializeChemistry(readAbunds, successFlag)
         logical, intent(in) :: readAbunds
         integer, intent(inout) :: successFlag
@@ -110,64 +164,16 @@ contains
         if (ALLOCATED(abund)) deallocate(abund,vdiff,vdes)
         if (ALLOCATED(reltol_vec)) deallocate(reltol_vec)
         allocate(abund(NEQ,points),vdiff(N_ICE_SPECIES),vdes(N_ICE_SPECIES))
+
         call get_ion_indices(ionList, nIon)
-        !Set abundances to initial elemental if not reading them in.
+
         if (.NOT. readAbunds) then
-            !ensure abund is initially zero
-            ! abund= MIN_ABUND
-            abund(1:nSpec,:)=MIN_ABUND
-
-            !Start by filling all metallicity scaling elements
-            !neutral atoms
-            if (nO /= SPECIES_NOT_PRESENT) abund(nO, :) = fO
-            if (nN /= SPECIES_NOT_PRESENT) abund(nN, :) = fN
-            if (nMg /= SPECIES_NOT_PRESENT) abund(nMg, :) = fMg
-            if (nP /= SPECIES_NOT_PRESENT) abund(nP, :) = fP
-            if (nF /= SPECIES_NOT_PRESENT) abund(nF, :) = fF
-            if (nNa /= SPECIES_NOT_PRESENT) abund(nNa, :) = fNa
-            if (nLi /= SPECIES_NOT_PRESENT) abund(nLi, :) = fLi
-            if (nPAH /= SPECIES_NOT_PRESENT) abund(nPAH, :) = fPAH
-            !default to ions
-            if (nSx /= SPECIES_NOT_PRESENT) abund(nSx, :) = fS
-            if (nSix /= SPECIES_NOT_PRESENT) abund(nSix, :) = fSi
-            if (nClx /= SPECIES_NOT_PRESENT) abund(nClx, :) = fCl
-
-            !Decide how much carbon is initially ionized
-            select case (ion)
-            case(0)
-                abund(nc,:)=fc
-                abund(ncx,:)=1.0e-10_dp
-            case(1)
-                abund(nc,:)=fc*0.5_dp
-                abund(ncx,:)=fc*0.5_dp
-            case(2)
-                abund(nc,:)=1.0e-10_dp
-                abund(ncx,:)=fc
-            case default
-                write(*, *) "ERROR: Invalid value for 'ion':", ion
-                write(*, *) "Valid values are: 0, 1, or 2."
-                stop 1
-            end select
-
-            !isotopes
-            if (n18O /= SPECIES_NOT_PRESENT) abund(n18O, :) = f18O
-            if (n15N /= SPECIES_NOT_PRESENT) abund(n15N, :) = f15N
-            if (n13C /= SPECIES_NOT_PRESENT) abund(n13C, :) = f13C
-
-            abund(nElec, :)=sum(abund(ionList(1:nion), :))
-
-            abund=abund*metallicity
-
-            !Total H nuclei is always 1 so put fh into H and whatever is left over in H2
-            if (nH /= SPECIES_NOT_PRESENT) then
-                abund(nH,:) = fH
-                abund(nH2,:) = 0.5_dp*(1.0_dp-fH)
-            end if
-            if (nD /= SPECIES_NOT_PRESENT) abund(nD, :) = fD
-            if (nHe /= SPECIES_NOT_PRESENT) abund(nHe, :) = fHe
+            !Set abundances to initial elemental if not reading them in.
+            abund(nSpec, :) = get_initial_abundances()
+            abund(nElec, :) = sum(abund(ionList(1:nion), :))
         end if
-        abund(nSpec+2,:)=density      !Gas density
-        abund(nSpec+1,:)=gasTemp    !Gas temperature
+        abund(nSpec+2,:)=density    ! Gas density
+        abund(nSpec+1,:)=gasTemp    ! Gas temperature
         !Initial calculations of diffusion and desorption frequencies
         !Uses updateVdiffAndVdes which supports both HH1992 and TST treatments
         call updateVdiffAndVdes(dustTemp(1), N_ICE_SPECIES, vdiff, vdes)
