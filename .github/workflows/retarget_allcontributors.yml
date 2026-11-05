@@ -1,0 +1,15 @@
+on:
+  pull_request_target:
+    types: [opened]
+    branches: [main]
+
+jobs:
+  retarget:
+    if: github.event.pull_request.user.login == 'allcontributors[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - run: gh pr edit ${{ github.event.pull_request.number }} --base develop --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
