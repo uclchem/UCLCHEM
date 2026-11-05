@@ -276,7 +276,6 @@ fortran_parameters:
   - tst_vdes_prefactor
   - usecustomreducedmass
   - usegarrod2011transfer
-  - vdiff_prefactor
 internal_parameters:
   physicscore:
   - currenttimeold

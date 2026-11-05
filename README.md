@@ -9,7 +9,7 @@
 [![MIT License](https://img.shields.io/github/license/uclchem/UCLCHEM?style=for-the-badge)](https://github.com/uclchem/UCLCHEM/LICENSE.txt)
 [![ty](https://img.shields.io/badge/-ty-gray?style=for-the-badge&logo=ty&logoColor=%2346ebe1&labelColor=gray&color=%2330173d)](https://github.com/astral-sh/ty)
 [![ruff](https://img.shields.io/badge/-ruff-gray?style=for-the-badge&logo=ruff&logoColor=%2346ebe1&labelColor=gray&color=%2330173d)](https://github.com/astral-sh/ruff)
-[![All Contributors](https://img.shields.io/github/all-contributors/uclchem/UCLCHEM?style=for-the-badge)](#contributors-✨)
+[![All Contributors](https://img.shields.io/github/all-contributors/uclchem/UCLCHEM?color=ee8449&style=for-the-badge)](#contributors-✨)
 
 <div align="center">
   <img src="https://raw.githubusercontent.com/uclchem/uclchem/main/images/uclchem.svg" width="200">
