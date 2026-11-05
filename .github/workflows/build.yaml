@@ -10,6 +10,7 @@ permissions: {}
 
 jobs:
   build:
+    if: github.event.pull_request.user.login != 'allcontributors[bot]'
     runs-on: ${{ matrix.os }}
 
     defaults:

@@ -19,6 +19,7 @@ jobs:
   # TIER 1: FOUNDATION - Installation (must pass before all other tests)
   # ============================================================================
   install:
+    if: github.event.pull_request.user.login != 'allcontributors[bot]'
     name: Install (Foundation)
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
@@ -44,6 +45,7 @@ jobs:
   # ============================================================================
 
   test-functional:
+    if: github.event.pull_request.user.login != 'allcontributors[bot]'
     name: Test (Core Functionality)
     runs-on: ubuntu-latest
     needs: install
@@ -56,6 +58,7 @@ jobs:
         run: pytest -n auto tests/ --ignore=tests/install/test_install_custom_networks.py -k "not install and not heating_cooling"
 
   test-doctests:
+    if: github.event.pull_request.user.login != 'allcontributors[bot]'
     name: Test (Doctests)
     runs-on: ubuntu-latest
     needs: install
@@ -86,6 +89,7 @@ jobs:
             --ignore=utils/run_notebooks.py
 
   test-heating-cooling:
+    if: github.event.pull_request.user.login != 'allcontributors[bot]'
     name: Test (Heating/Cooling Features)
     runs-on: ubuntu-latest
     needs: install
@@ -100,6 +104,7 @@ jobs:
         run: pytest tests/install/test_heating_cooling_install.py -v
 
   test-notebooks:
+    if: github.event.pull_request.user.login != 'allcontributors[bot]'
     name: Test (Notebooks)
     runs-on: ubuntu-latest
     needs: install
@@ -127,6 +132,7 @@ jobs:
           pytest -n auto --nbmake --nbmake-timeout=2400 --nbmake-kernel=python3 notebooks
 
   test-networks:
+    if: github.event.pull_request.user.login != 'allcontributors[bot]'
     name: Test (Custom Networks)
     runs-on: ubuntu-latest
     needs: install
