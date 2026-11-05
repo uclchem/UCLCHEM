@@ -627,11 +627,18 @@ contains
   end function getDesorptionFractionFullCoverage
 
 
+  !---------------------------------------------------------------------
+  ! Calculate the Hasegawa-Herbst prefactor
+  ! bindingEnergy in K
+  ! mass in AMU
+  ! prefactor in s^-1
+  !---------------------------------------------------------------------
   elemental function calculate_HH_prefactor(bindingEnergy, mass) result(prefactor)
-      real(dp), intent(in) :: bindingEnergy, mass
-      real(dp) :: prefactor
+    ! Corresponds to sqrt(2*n_sites*k_B*E_bind/(pi**2*m))
+    real(dp), intent(in) :: bindingEnergy, mass
+    real(dp) :: prefactor
 
-      prefactor = sqrt(HH_VDES_PREFACTOR * bindingEnergy / mass)
+    prefactor = sqrt(HH_VDES_PREFACTOR * bindingEnergy / mass)
   end function calculate_HH_prefactor
 
   ! ---------------------------------------------------------------------
