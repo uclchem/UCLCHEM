@@ -4615,12 +4615,46 @@ def _run_grid_model(
 # The following parameters from various chemical models, cannot be used as grid parameters.
 NO_GRID_PARAMETERS = frozenset(
     [
-        "starting_chemistry",
         "debug",
         "read_file",
         "run_type",
     ]
 )
+
+# Constructor arguments whose *individual values are arrays*. These can only be gridded
+# by passing a list with one array per model, e.g. ``starting_chemistry=[arr1, arr2]``.
+# A bare ndarray is kept as a constant for every model (it may be 2D, one row per point,
+# so it cannot be read as a list of per-model values).
+_ARRAY_VALUED_GRID_PARAMETERS = frozenset(["starting_chemistry"])
+
+# Grid keys that are constructor arguments rather than ``param_dict`` entries, mapped to
+# the model attribute that stores their value (used to report grid values per model).
+_GRID_KWARG_ATTRIBUTES = MappingProxyType(
+    {"starting_chemistry": "starting_chemistry_array"}
+)
+
+
+def _get_grid_parameter_value(model: AbstractModel, key: str) -> Any:
+    """Get the value a grid parameter took in a model.
+
+    Parameters
+    ----------
+    model : AbstractModel
+        Model that was run as part of the grid.
+    key : str
+        Grid parameter name.
+
+    Returns
+    -------
+    Any
+        The value from the model's parameter dictionary, or from the model attribute
+        for constructor arguments that are not ``param_dict`` entries.
+
+    """
+    param_key = key.lower()
+    if param_key not in model._param_dict and key in _GRID_KWARG_ATTRIBUTES:
+        return getattr(model, _GRID_KWARG_ATTRIBUTES[key])
+    return model._param_dict[param_key]
 
 
 class _NoDaemonProcess(mp.Process):
@@ -4660,22 +4694,26 @@ def get_number_of_grid_workers(max_workers: int = -1) -> int:
 
     """
     cpu_count = os.cpu_count()
-    if cpu_count is None:
-        if max_workers == -1:
+    if max_workers == -1:
+        if cpu_count is None:
             msg = "Could not determine number of CPU cores, but max_workers was -1. Provide max_workers instead."
             raise RuntimeError(msg)
+        return cpu_count - 1
+
+    if cpu_count is None:
         warnings.warn(
             f"Could not determine number of CPU cores. Using {max_workers} workers.",
             stacklevel=2,
         )
         return max_workers
-    if max_workers >= cpu_count:
-        warnings.warn(
-            f"max_workers was given as {max_workers}, which is higher than the number of physical CPU cores on the system ({cpu_count}). Using {cpu_count - 1} instead.",
-            stacklevel=2,
-        )
-        return cpu_count - 1
-    return max_workers
+    if max_workers < cpu_count:
+        return max_workers
+
+    warnings.warn(
+        f"max_workers was given as {max_workers}, which is higher than the number of physical CPU cores on the system ({cpu_count}). Using {cpu_count - 1} instead.",
+        stacklevel=2,
+    )
+    return cpu_count - 1
 
 
 class GridRunner:
@@ -4810,28 +4848,10 @@ class GridRunner:
                 else:
                     self._define_grid(k, v)
 
-        if create_grid:
-            grids = np.meshgrid(*self.parameters_to_grid.values(), indexing="xy")
-            self.flat_grids = np.reshape(
-                grids,
-                (
-                    len(self.parameters_to_grid),
-                    int(np.prod(np.shape(grids)) / len(self.parameters_to_grid)),
-                ),
-            )
-        else:
-            array_lengths = [len(v) for v in self.parameters_to_grid.values()]
-            if len(set(array_lengths)) != 1:
-                msg = "Not all arrays for the grid of the GridRunner are the same length."
-                raise ValueError(msg)
-            self.flat_grids = np.array(
-                [
-                    [p[i] for p in self.parameters_to_grid.values()]
-                    for i in range(array_lengths[0])
-                ]
-            ).T
-        if self.model_type == "Postprocess" and len(self.flat_grids.shape) == 3:  # ruff: ignore[magic-value-comparison]
-            self.flat_grids = np.moveaxis(self.flat_grids, [0, 1, 2], [2, 0, 1])
+        self.flat_grids = self._flatten_object_grid(
+            list(self.parameters_to_grid.values()),
+            create_grid=create_grid,
+        )
 
         # Optional subset of model indices (0-based column in flat_grids) to run.
         # None means run all. Accepts any iterable; stored as a frozenset for O(1) lookup.
@@ -4843,9 +4863,62 @@ class GridRunner:
         if not delay_run:
             self.run()
 
+    @staticmethod
+    def _flatten_object_grid(axes: list[np.ndarray], *, create_grid: bool) -> np.ndarray:
+        """Build ``flat_grids``, an object array whose cells may hold arrays.
+
+        Object cells allow rows that mix scalars and arrays (e.g. ``finalTime`` and
+        ``starting_chemistry``), which numpy cannot stack into a regular array.
+        ``flat_grids[j][i]`` is the value of grid parameter ``j`` for model ``i``.
+
+        Parameters
+        ----------
+        axes : list[np.ndarray]
+            One 1D object array per grid parameter.
+        create_grid : bool
+            If True, use the cartesian product of the axes (same ordering as
+            ``np.meshgrid(..., indexing="xy")``). If False, the axes are zipped
+            and must all be the same length.
+
+        Returns
+        -------
+        flat : np.ndarray
+            Object array of shape ``(n_parameters, n_models)``.
+
+        Raises
+        ------
+        ValueError
+            If ``create_grid`` is False and the axes differ in length.
+
+        """
+        if create_grid:
+            columns = [axis.ravel() for axis in np.meshgrid(*axes, indexing="xy")]
+        else:
+            if len({len(axis) for axis in axes}) != 1:
+                msg = "Not all arrays for the grid of the GridRunner are the same length."
+                raise ValueError(msg)
+            columns = axes
+        flat = np.empty((len(columns), len(columns[0])), dtype=object)
+        for j, column in enumerate(columns):
+            for i, cell in enumerate(column):
+                flat[j, i] = cell  # element-wise, so array cells are stored as objects
+        return flat
+
     def _define_grid(self, key: str, value: Any, model_count: int | None = None) -> None:
         prefix: str = "" if model_count is None else f"{model_count}_"
-        if isinstance(value, list) and key not in NO_GRID_PARAMETERS:
+        if (
+            key in _ARRAY_VALUED_GRID_PARAMETERS
+            and isinstance(value, list)
+            and len(value) > 0
+            and all(isinstance(v, np.ndarray) for v in value)
+        ):
+            # 1D object axis with one array per model. np.array(value, dtype=object)
+            # would instead stack equal-length arrays into a 2D array.
+            axis = np.empty(len(value), dtype=object)
+            for i, v in enumerate(value):
+                axis[i] = v
+            self.parameters_to_grid[prefix + key] = axis
+        elif isinstance(value, list) and key not in NO_GRID_PARAMETERS:
             self.parameters_to_grid[prefix + key] = np.array(value, dtype=object)
         elif (
             isinstance(value, (np.ndarray, np.generic)) and key not in NO_GRID_PARAMETERS
@@ -5058,12 +5131,11 @@ class GridRunner:
                         )
         else:
             for model_id, model in enumerate(self.get_models()):
-                loaded_dict = model._param_dict
                 if not isinstance(model, Postprocess):
                     self.models[model_id] = {
                         **self.models[model_id],
                         **{
-                            k: loaded_dict[k.lower()]
+                            k: _get_grid_parameter_value(model, k)
                             for k in list(self.parameters_to_grid.keys())
                         },
                     }
@@ -5073,7 +5145,7 @@ class GridRunner:
                         **{
                             k: getattr(model, _postprocess_kwarg_by_init_kwarg[k])
                             if k in _postprocess_kwarg_by_init_kwarg
-                            else loaded_dict[k.lower()]
+                            else _get_grid_parameter_value(model, k)
                             for k in list(self.parameters_to_grid.keys())
                         },
                     }

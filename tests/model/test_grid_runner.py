@@ -196,3 +196,81 @@ def test_grid_runner_postprocessing(tmp_path):
     for grid_model, model in zip(grid_models, models, strict=True):
         assert np.allclose(grid_model.physics_array, model.physics_array)
         assert np.allclose(grid_model.chemical_abun_array, grid_model.chemical_abun_array)
+
+
+def test_grid_runner_starting_chemistry(tmp_path):
+    num_models = 3
+    final_time = 1e2
+
+    num_species = len(uclchem.model.get_species())
+
+    rng = np.random.default_rng()
+    starting_chemistries = [rng.random(num_species) for _ in range(num_models)]
+
+    grid = uclchem.model.GridRunner(
+        model_type="Cloud",
+        full_parameters={
+            "param_dict": {"finalTime": [final_time] * num_models},
+            "starting_chemistry": starting_chemistries,
+        },
+        delay_run=True,
+        max_workers=3,
+        create_grid=False,
+        grid_file=tmp_path / "grid.h5",
+    )
+
+    assert grid.num_models == num_models
+
+    grid.run()
+
+    for _model_idx, starting_chemistry, grid_model in zip(
+        range(num_models), starting_chemistries, grid.get_models(), strict=True
+    ):
+        model = uclchem.model.Cloud(
+            {"finalTime": final_time},
+            starting_chemistry=starting_chemistry,
+        )
+
+        assert model.get_joined_dataframes().equals(grid_model.get_joined_dataframes())
+
+
+def test_grid_runner_starting_chemistry_cartesian(tmp_path):
+    num_starting_chemistries = 2
+
+    num_species = len(uclchem.model.get_species())
+    initial_densities = [1e2, 1e3]
+    final_time = 1e2
+
+    rng = np.random.default_rng()
+    starting_chemistries = [
+        rng.random(num_species) for _ in range(num_starting_chemistries)
+    ]
+
+    grid = uclchem.model.GridRunner(
+        model_type="Cloud",
+        full_parameters={
+            "param_dict": {"initialDens": initial_densities, "finalTime": [final_time]},
+            "starting_chemistry": starting_chemistries,
+        },
+        delay_run=True,
+        max_workers=2,
+        create_grid=True,
+        grid_file=tmp_path / "grid.h5",
+    )
+
+    expected_num_models = num_starting_chemistries * len(initial_densities)
+    assert grid.num_models == expected_num_models
+
+    grid.run()
+
+    grid_models = grid.get_models()
+    for density in initial_densities:
+        for starting_chemistry in starting_chemistries:
+            model = uclchem.model.Cloud(
+                {"finalTime": final_time, "initialDens": density},
+                starting_chemistry=starting_chemistry,
+            )
+
+            assert model.get_joined_dataframes().equals(
+                next(grid_models).get_joined_dataframes()
+            )
