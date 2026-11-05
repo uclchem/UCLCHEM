@@ -196,7 +196,7 @@ def test_grid_runner_postprocessing(uclchem_root, tmp_path):
         assert np.allclose(grid_model.chemical_abun_array, grid_model.chemical_abun_array)
 
 
-def test_grid_runner_starting_chemistry():
+def test_grid_runner_starting_chemistry(tmp_path):
     num_models = 3
     final_time = 1e2
 
@@ -213,6 +213,7 @@ def test_grid_runner_starting_chemistry():
         delay_run=True,
         max_workers=3,
         create_grid=False,
+        grid_file=tmp_path / "grid.h5",
     )
 
     assert grid.num_models == num_models
@@ -230,7 +231,7 @@ def test_grid_runner_starting_chemistry():
         assert model.get_joined_dataframes().equals(grid_model.get_joined_dataframes())
 
 
-def test_grid_runner_starting_chemistry_cartesian():
+def test_grid_runner_starting_chemistry_cartesian(tmp_path):
     num_starting_chemistries = 2
 
     num_species = len(uclchem.model.get_species())
@@ -250,6 +251,7 @@ def test_grid_runner_starting_chemistry_cartesian():
         delay_run=True,
         max_workers=2,
         create_grid=True,
+        grid_file=tmp_path / "grid.h5",
     )
 
     expected_num_models = num_starting_chemistries * len(initial_densities)
