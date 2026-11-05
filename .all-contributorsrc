@@ -6,7 +6,7 @@
   "files": [
     "README.md"
   ],
-  "badgeTemplate": "[![All Contributors](https://img.shields.io/github/all-contributors/uclchem/UCLCHEM?style=for-the-badge)](#contributors)",
+  "badgeTemplate": "[![All Contributors](https://img.shields.io/github/all-contributors/uclchem/UCLCHEM?style=for-the-badge)](#contributors-✨)",
   "imageSize": 100,
   "commitConvention": "angular",
   "contributors": [
