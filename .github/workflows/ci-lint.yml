@@ -16,6 +16,7 @@ concurrency:
 
 jobs:
   lint:
+    if: github.event.pull_request.user.login != 'allcontributors[bot]'
     runs-on: ubuntu-latest
     # Skip if the commit was made by github-actions bot to prevent loops
     if: github.actor != 'github-actions[bot]'

@@ -31,6 +31,7 @@ permissions:
 
 jobs:
   precompute:
+    if: github.event.pull_request.user.login != 'allcontributors[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: "[setup:vcs] Checkout UCLCHEM repo"
