@@ -53,13 +53,12 @@ MODULE SurfaceReactions
   REAL(dp), PARAMETER :: CHEMICAL_BARRIER_THICKNESS = 1.40d-8! Parameter used to compute the probability for a surface reaction with 
   !! activation energy to occur through quantum tunneling (Hasegawa et al. Eq 6 (1992).)
   REAL(dp), PARAMETER :: SURFACE_SITE_DENSITY = 1.5d15 ! site density on one grain [cm-2]
-  REAL(dp), PARAMETER :: VDIFF_PREFACTOR=2.0*K_BOLTZ*SURFACE_SITE_DENSITY/PI/PI/AMU
   REAL(dp), PARAMETER :: NUM_SITES_PER_GRAIN = GRAIN_RADIUS*GRAIN_RADIUS*SURFACE_SITE_DENSITY*4.0*PI
   
   ! TST prefactor constants
-  REAL(dp), PARAMETER :: HH_VDES_PREFACTOR=2.0D0*K_BOLTZ_SI*SURFACE_SITE_DENSITY*1.0D4/(PI*PI*AMU)
-  REAL(dp), PARAMETER :: TST_VDES_PREFACTOR = 2.0d0*PI*K_BOLTZ_SI**2*AMU/ &
-    (SURFACE_SITE_DENSITY*1.0d4*(HP_SI**3)*1.0d3)
+  REAL(dp), PARAMETER :: HH_VDES_PREFACTOR=2.0D0*K_BOLTZ_SI*SURFACE_SITE_DENSITY*1.0D4/(PI**2*AMU*1e-3_dp)
+  REAL(dp), PARAMETER :: TST_VDES_PREFACTOR = 2.0d0*PI*K_BOLTZ_SI**2*AMU*1e-3_dp/ &
+    (SURFACE_SITE_DENSITY*1.0d4*(HP_SI**3))
   
   ! Encounter desorption constants
   REAL(dp), PARAMETER :: H2_ON_H2_BINDING_ENERGY=23.0D0 ! K
@@ -668,7 +667,7 @@ SUBROUTINE updateVdiffAndVdes(gasTemp, dustTemp, nIce, vdiff, vdes)
         DO i=1,nIce
             j = iceList(i)
             ! Original treatment by Hasegawa et al, 1992
-            vdes(i) = SQRT(HH_VDES_PREFACTOR*bindingEnergy(i)*mass(j))
+            vdes(i) = SQRT(HH_VDES_PREFACTOR*bindingEnergy(i)/mass(j))
             vdiff(i) = vdes(i)
         END DO
     ELSE
