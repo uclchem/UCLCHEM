@@ -106,7 +106,7 @@ jobs:
     if: |
       github.event.pull_request.user.login != 'allcontributors[bot]' &&
       (github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request') &&
-      github.ref_name == 'main'#
+      github.ref_name == 'main'
 
     steps:
       - uses: actions/checkout@v6
