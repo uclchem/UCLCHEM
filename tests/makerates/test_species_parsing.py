@@ -12,6 +12,12 @@ test_sodium_norway_problem_data = [
     pd.Series(
         {"NAME": "NAN", "MASS": 14}
     ),  # Not taken as NaN by pandas (because we also capitalize the "a")
+    pd.Series(
+        {"NAME": "#NA", "MASS": 14}
+    ),  # Not taken as NaN by pandas (because we also capitalize the "a")
+    pd.Series(
+        {"NAME": "#NAN", "MASS": 14}
+    ),  # Not taken as NaN by pandas (because we also capitalize the "a")
 ]
 
 
@@ -62,7 +68,7 @@ def add_dummy_values(series: pd.Series) -> pd.Series:
 
 
 @pytest.mark.parametrize(
-    "series, expected_constituents, expected_mass, expected_linear", test_data
+    ("series", "expected_constituents", "expected_mass", "expected_linear"), test_data
 )
 def test_species_class_parsing(
     series, expected_constituents, expected_mass, expected_linear
@@ -76,7 +82,3 @@ def test_species_class_parsing(
 
     assert spec.mass == expected_mass
     assert spec.is_linear() == expected_linear
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v", "-s"])

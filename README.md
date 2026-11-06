@@ -56,8 +56,8 @@ import matplotlib.pyplot as plt
 if __name__ == "__main__":
     param_dict = {
         "initialDens": 1e5,  # Initial density of the cloud
-        "initialTemp": 10,   # Temperature
-        "finalTime": 1e6,    # Duration of the model in years
+        "initialTemp": 10,  # Temperature
+        "finalTime": 1e6,  # Duration of the model in years
     }
     model = uclchem.model.Cloud(param_dict)
     model.check_error()
@@ -144,13 +144,14 @@ This might introduce some weird behavior with fortran .mod files lingering if yo
 
 ### Python
 - Use [Ruff](https://docs.astral.sh/ruff/) to format your code.
-- snake_case variables and functions with self-explanatory names
+- snake_case variables and functions with self-explanatory names.
 - Docstrings for all functions (verified using [pymend](https://github.com/JanEricNitschke/pymend), they're used to produce the online docs!
 
 ### Fortran
-- camelCase variable and subroutines names that are self-explanatory where possible 
-- CAPITALIZED fortran built in functions to make code structure apparent.
-- Modularization, related subroutines should be added as modules. Small tweaks should be inserted into relevant module
+- camelCase variable and subroutines names that are self-explanatory where possible.
+- Lowercase fortran built in functions, according to the [modern fortran style guide](https://fortran-lang.org/learn/best_practices/style_guide/).
+- The style is checked using [fortitude](https://fortitude.readthedocs.io/en/stable/).
+- Modularization, related subroutines should be added as modules. Small tweaks should be inserted into relevant module.
 
 After adding or renaming Fortran `PARAMETER` declarations, regenerate `src/uclchem/advanced/fortran_metadata.yaml` by running `uclchem-generate-metadata` (or `--dry-run` to preview changes). The CI workflow `check-fortran-metadata.yml` will fail on pull requests if the file is out of date.
 

@@ -44,10 +44,8 @@ def test_get_final_abundances_for_species(basic_cloud):
 
     assert len(final_abundances) == len(species)
 
-    phys_df, chem_df = basic_cloud.get_dataframes(joined=False)
-    final_abundances_from_df = []
-    for _index, spec in enumerate(species):
-        final_abundances_from_df.append(chem_df[spec].iloc[-1])
+    _, chem_df = basic_cloud.get_split_dataframes()
+    final_abundances_from_df = [chem_df[spec].iloc[-1] for spec in species]
     assert np.all(final_abundances_from_df == final_abundances)
 
 
@@ -60,7 +58,7 @@ def test_unknown_parameter_raises_temp():
     with pytest.raises(
         UnknownParameterError,
         match=re.compile(
-            "Unknown parameter 'initialtemperature', did you mean 'initialtemp'?",
+            r"Unknown parameter 'initialtemperature', did you mean 'initialtemp'?",
             flags=re.IGNORECASE,
         ),
     ):

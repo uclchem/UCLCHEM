@@ -220,9 +220,7 @@ shock_vel = 10.0
 param_dict["abundLoadFile"] = "output_2a/shockstart.dat"
 param_dict["outputFile"] = "output_2a/jshock.dat"
 
-jshock = uclchem.model.JShock(
-    shock_vel=shock_vel, param_dict=param_dict, timepoints=1500
-)
+jshock = uclchem.model.JShock(shock_vel=shock_vel, param_dict=param_dict, timepoints=1500)
 # For file reading demonstration purposes, we will now delete the object.
 del jshock
 # -

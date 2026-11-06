@@ -11,7 +11,7 @@ and optionally to a per-model log file on disk in real time.
 import os
 import sys
 import threading
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -75,7 +75,7 @@ def _reader_thread(
                 )
                 if log_handle is not None:
                     log_handle.write(f"{line}\n")
-    except Exception:  # noqa: S110
+    except Exception:  # ruff: ignore[try-except-pass]
         pass
     finally:
         os.close(read_fd)
@@ -86,7 +86,7 @@ def _reader_thread(
 @contextmanager
 def capture_fortran_output(
     label: str = "", log_file: str | Path | None = None
-) -> Iterator[None]:
+) -> Generator[None]:
     """Capture Fortran output, stream to terminal and file.
 
     Redirects OS-level file descriptors 1 and 2 to a pipe.

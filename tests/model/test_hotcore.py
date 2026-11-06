@@ -16,6 +16,7 @@ import pytest
 uclchem_imported = importlib.util.find_spec("uclchem") is not None
 pytestmark = pytest.mark.skipif(not uclchem_imported, reason="uclchem not installed")
 
+
 # Expected coefficient arrays from hotcore.f90 initializePhysics
 TEMPA_0D = np.array([1.927e-1, 4.8560e-2, 7.8470e-3, 9.6966e-4, 1.706e-4, 4.74e-7])
 TEMPB_0D = np.array([0.5339, 0.6255, 0.8395, 1.085, 1.289, 1.98])
@@ -113,4 +114,25 @@ class TestTempCoefficients1D:
         _, tempb = coefficients
         np.testing.assert_allclose(
             tempb, TEMPB_1D, rtol=1e-4, err_msg="tempb does not match expected 1D values"
+        )
+
+
+def test_all_prestellar_core_mass_all_enum_values_valid():
+    """Test that all enum values of `uclchem.utils.PrestellarCoreMass` are valid.
+
+    Valid means that it does not cause an error in ``hotcore.f90``.
+
+    """
+    import uclchem
+
+    for option in uclchem.utils.PrestellarCoreMass:
+        uclchem.model.PrestellarCore(
+            temp_indx=option,
+            max_temperature=300,
+            param_dict={
+                **BASE_PARAMS,
+                "finalTime": 1.0,
+                "enable_radiative_transfer": False,
+                "points": 1,
+            },
         )

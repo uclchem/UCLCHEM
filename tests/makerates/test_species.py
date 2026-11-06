@@ -1,0 +1,134 @@
+from collections import Counter
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from uclchem.makerates.species import (
+    Species,
+    calculate_element_counts_per_species,
+    determine_charge,
+    determine_molecular_mass,
+)
+from uclchem.utils import get_species_table
+
+test_sodium_norway_problem_data = [
+    pd.Series({"NAME": "NA", "MASS": 14}),  # Usually taken as NaN by pandas
+    pd.Series(
+        {"NAME": "NAN", "MASS": 14}
+    ),  # Not taken as NaN by pandas (because we also capitalize the "a")
+    pd.Series(
+        {"NAME": "#NA", "MASS": 14}
+    ),  # Not taken as NaN by pandas (because we also capitalize the "a")
+    pd.Series(
+        {"NAME": "#NAN", "MASS": 14}
+    ),  # Not taken as NaN by pandas (because we also capitalize the "a")
+]
+
+
+@pytest.mark.parametrize("series", test_sodium_norway_problem_data)
+def test_sodium_norway_problem(series, tmp_path):
+    series = add_dummy_values(series)
+    df = pd.DataFrame([series])
+    with (tmp_path / "species.csv").open(mode="w+") as file:
+        df.to_csv(file, index=False)
+        file.flush()
+        read_df = get_species_table(file=file.name)
+        assert all(read_df.notna())
+    assert df.equals(read_df)
+
+
+test_data = [
+    (
+        pd.Series({"NAME": "H", "MASS": 1}),
+        Counter("H"),
+        1,
+        False,
+    ),
+    (pd.Series({"NAME": "#H", "MASS": 1}), Counter("H"), 1, False),
+    (pd.Series({"NAME": "#H2", "MASS": 2}), Counter("HH"), 2, True),
+    (pd.Series({"NAME": "CH4", "MASS": 16}), Counter({"C": 1, "H": 4}), 16, False),
+    (pd.Series({"NAME": "(C)60", "MASS": 12 * 60}), Counter({"C": 60}), 12 * 60, False),
+]
+
+
+def add_dummy_values(series: pd.Series) -> pd.Series:
+    new_columns = {
+        "BINDING_ENERGY": 0,
+        "SOLID_FRACTION": 0,
+        "MONO_FRACTION": 0,
+        "VOLCANO_FRACTION": 0,
+        "ENTHALPY": 0,
+        "DESORPTION_PREF": 0,
+        "DIFFUSION_BARRIER": 0,
+        "DIFFUSION_PREF": 0,
+        "IX": 0,
+        "IY": 0,
+        "IZ": 0,
+        "SYMMETRY_NUMBER": 0,
+    }
+    dct = series.to_dict()
+    dct.update(new_columns)
+    return pd.Series(data=dct)
+
+
+@pytest.mark.parametrize(
+    ("series", "expected_constituents", "expected_mass", "expected_linear"), test_data
+)
+def test_species_class_parsing(
+    series, expected_constituents, expected_mass, expected_linear
+):
+    spec = Species(add_dummy_values(series))
+
+    assert series["NAME"] == spec.name
+
+    constituents = spec.find_constituents()
+    assert constituents == expected_constituents
+
+    assert spec.mass == expected_mass
+    assert spec.is_linear() == expected_linear
+
+
+element_counts_data = [
+    ([Species(["H", *[0] * 11])], ("H",), np.array([[1]])),
+    ([Species(["H2", *[0] * 11])], ("H",), np.array([[2]])),
+    ([Species(["H2O", *[0] * 11])], ("H", "O"), np.array([[2, 1]])),
+    (
+        [Species(["H2O", *[0] * 11]), Species(["O", *[0] * 11])],
+        ("H", "O"),
+        np.array([[2, 1], [0, 1]]),
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("species_list", "expected_elements", "expected_counts"), element_counts_data
+)
+def test_get_element_counts_per_species(species_list, expected_elements, expected_counts):
+
+    elements, counts = calculate_element_counts_per_species(species_list)
+    assert elements == expected_elements
+    assert np.all(counts == expected_counts)
+
+
+mass_data = [(Counter("H"), 1), (Counter("HH"), 2), (Counter("HHO"), 18)]
+
+
+@pytest.mark.parametrize(("constituents", "expected_mass"), mass_data)
+def test_determine_molecular_mass(constituents, expected_mass):
+    assert determine_molecular_mass(constituents) == expected_mass
+
+
+charge_data = [
+    ("H2", 0),
+    ("H2+", 1),
+    ("H2-", -1),
+    ("o-H2", 0),
+    ("o-H2+", 1),
+    ("o-H2-", -1),
+]
+
+
+@pytest.mark.parametrize(("formula", "expected_charge"), charge_data)
+def test_determine_charge(formula, expected_charge):
+    assert determine_charge(formula) == expected_charge

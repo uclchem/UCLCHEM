@@ -6,8 +6,8 @@ databases or custom CSV files with various units.
 """
 
 import logging
-import re
 from pathlib import Path
+from types import MappingProxyType
 
 import pandas as pd
 
@@ -31,21 +31,25 @@ ERG_TO_ERG = 1.0
 _UNIT_CACHE: dict[str, float] = {}
 
 # Base unit mappings
-_BASE_UNITS = {
-    "ev": EV_TO_ERG,
-    "joule": JOULE_TO_ERG,
-    "j": JOULE_TO_ERG,
-    "kj": JOULE_TO_ERG * 1e3,
-    "cal": CALORIE_TO_JOULE,
-    "kcal": KCAL_TO_ERG,
-    "erg": ERG_TO_ERG,
-}
+_BASE_UNITS = MappingProxyType(
+    {
+        "ev": EV_TO_ERG,
+        "joule": JOULE_TO_ERG,
+        "j": JOULE_TO_ERG,
+        "kj": JOULE_TO_ERG * 1e3,
+        "cal": CALORIE_TO_JOULE,
+        "kcal": KCAL_TO_ERG,
+        "erg": ERG_TO_ERG,
+    }
+)
 
 # Denominator mappings
-_DENOMINATORS = {
-    "reaction": 1.0,
-    "mol": 1.0 / AVOGADRO_NUMBER,
-}
+_DENOMINATORS = MappingProxyType(
+    {
+        "reaction": 1.0,
+        "mol": 1.0 / AVOGADRO_NUMBER,
+    }
+)
 
 
 def parse_species_from_row(row: pd.Series, prefix: str) -> list[str]:
@@ -73,7 +77,7 @@ def parse_species_from_row(row: pd.Series, prefix: str) -> list[str]:
         else:
             species.append(str(val).strip().upper())
         idx += 1
-    return species if species else ["NAN"]
+    return species or ["NAN"]
 
 
 def _parse_unit(unit: str) -> float:
@@ -105,7 +109,7 @@ def _parse_unit(unit: str) -> float:
 
     # Split by separators (/ or _per_)
     # Replace _per_ with / for uniform handling
-    normalized = re.sub(r"_per_", "/", unit_lower)
+    normalized = unit_lower.replace(r"_per_", "/")
     parts = normalized.split("/")
     if len(parts) == 1:
         # Just a base unit (e.g., "ev", "joule")
@@ -116,7 +120,7 @@ def _parse_unit(unit: str) -> float:
         factor = _BASE_UNITS[base]
         # Default to per reaction
         factor *= _DENOMINATORS["reaction"]
-    elif len(parts) == 2:  # noqa: PLR2004
+    elif len(parts) == 2:  # ruff: ignore[magic-value-comparison]
         # Unit with denominator (e.g., "ev/reaction", "kcal/mol")
         base = parts[0].strip()
         denom = parts[1].strip()
@@ -233,7 +237,7 @@ def load_custom_exothermicities(csv_path: str | Path) -> pd.DataFrame:
 
 
 def set_custom_exothermicities(
-    reactions: list[Reaction], csv_path: str | Path, overwrite: bool = True
+    reactions: list[Reaction], csv_path: str | Path, *, overwrite: bool = True
 ) -> tuple[int, int]:
     """Set reaction exothermicities from custom CSV.
 
@@ -272,7 +276,7 @@ def set_custom_exothermicities(
         reaction = match_reaction(reactants, products, reactions)
 
         if reaction:
-            if overwrite or reaction.get_exothermicity() == 0.0:
+            if overwrite or reaction.get_exothermicity() == 0:
                 reaction.set_exothermicity(exo_erg)
                 matched += 1
         else:

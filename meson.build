@@ -43,7 +43,7 @@ version_file = vcs_tag(
 # Generate _project_root.py containing the source directory baked in at install time.
 # This lets makerates find src/uclchem and src/fortran_src at runtime for local installs.
 _root_conf = configuration_data()
-_root_conf.set('MESON_SOURCE_ROOT', meson.source_root())
+_root_conf.set('MESON_SOURCE_ROOT', meson.project_source_root())
 
 _project_root_file = configure_file(
   input  : 'src/uclchem/_project_root.py.in',
@@ -90,6 +90,7 @@ dvode_lib = static_library('dvode', dvode_sources,
 
 uclchemwrap_source = files(fsource_dir / 'constants.f90',
                      fsource_dir / 'defaultparameters.f90',
+                     fsource_dir / 'numerics.f90',
                      fsource_dir / 'extinction.f90',
                      fsource_dir / 'f2py_constants.f90',
                      fsource_dir / 'physics-core.f90',
@@ -107,7 +108,6 @@ uclchemwrap_source = files(fsource_dir / 'constants.f90',
                      fsource_dir / 'odes.f90',
                      fsource_dir / 'heating.f90',
                      fsource_dir / 'coolant_module.f90',
-                     fsource_dir / 'swap_function.f90',
                      fsource_dir / 'chemistry.f90',
                      fsource_dir / 'io.f90',
                      fsource_dir / 'wrap.f90'
@@ -133,7 +133,7 @@ py.extension_module('uclchemwrap',
                      ],
                      link_with : dvode_lib,
                      # fortran_args: ['-O3', '-fPIC', '-ffree-line-length-0'],
-                     fortran_args: ['-fPIC', '-ffree-line-length-0'],
+                     fortran_args: ['-fPIC'],
                      install : true)
 
 endif  # End of Fortran compilation section
@@ -145,6 +145,7 @@ py.install_sources([
   usource / 'makerates' / '__init__.py',
   usource / 'makerates' / 'cli.py',
   usource / 'makerates' / 'config.py',
+  usource / 'makerates' / 'utils.py',
   usource / 'makerates' / 'io_functions.py',
   usource / 'makerates' / 'makerates.py',
   usource / 'makerates' / 'network.py',
@@ -177,7 +178,6 @@ py.install_sources([
   usource / 'tests.py',
   usource / 'utils.py',
   usource / 'py.typed',
-  usource / 'style.py'
   # advanced.py replaced by advanced package modules
 ], subdir:'uclchem')
 
@@ -198,6 +198,7 @@ py.install_sources([
 py.install_sources([
   usource / 'plot' / '__init__.py',
   usource / 'plot' / '_helpers.py',
+  usource / 'plot' / 'style.py',
   usource / 'plot' / 'panels.py',
   usource / 'plot' / 'compositions.py',
 ], subdir: 'uclchem' / 'plot')

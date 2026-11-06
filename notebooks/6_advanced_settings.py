@@ -74,7 +74,9 @@ try:
     settings.defaultparameters.freq_rel_tol = 0.1  # type: ignore[attr-defined]
     print(f"Set freq_rel_tol to: {settings.defaultparameters.freq_rel_tol.get()}")
 except Exception:
-    print("Note: freq_rel_tol not available until Fortran modules are rebuilt; see README.")
+    print(
+        "Note: freq_rel_tol not available until Fortran modules are rebuilt; see README."
+    )
 # ---
 
 # %% [markdown]

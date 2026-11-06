@@ -1,6 +1,5 @@
 import logging
 import sys
-import tempfile
 
 import uclchem
 
@@ -28,10 +27,12 @@ def test_configure_stdout_logging(caplog, capsys):
     assert caplog.text, "Expected output, but did not get anything in caplog"
 
 
-def test_configure_file_logging(caplog):
+def test_configure_file_logging(caplog, tmp_path):
+
+    tmp_logfile = tmp_path / "uclchem.log"
     with (
         caplog.at_level("DEBUG", logger="uclchem"),
-        tempfile.NamedTemporaryFile(mode="w+") as file,
+        tmp_logfile.open(mode="w+") as file,
     ):
         uclchem.utils.configure_logging(level="DEBUG", stream=file.name)
         uclchem_logger = logging.getLogger("uclchem")
@@ -45,14 +46,16 @@ def test_configure_file_logging(caplog):
     assert lines
 
 
-def test_configure_logging_levels():
+def test_configure_logging_levels(tmp_path):
     level_names_mapping = logging.getLevelNamesMapping()
     level_names_mapping.pop("NOTSET")
     level_names_mapping.pop("WARN")
 
     for message_level in level_names_mapping:
         for logger_level in level_names_mapping:
-            with tempfile.NamedTemporaryFile(mode="w+") as file:
+            with (tmp_path / f"{message_level}_{logger_level}.txt").open(
+                mode="w+"
+            ) as file:
                 uclchem.utils.configure_logging(level=logger_level, stream=file.name)
                 uclchem_logger = logging.getLogger("uclchem")
                 log_method = getattr(uclchem_logger, message_level.lower())
@@ -70,21 +73,23 @@ def test_configure_logging_levels():
             )
 
 
-def test_model_logging():
-    with tempfile.NamedTemporaryFile(mode="w+") as file:
+def test_model_logging(tmp_path):
+    output_file = tmp_path / "test_model_logging_debug.dat"
+    with output_file.open(mode="w+") as file:
         uclchem.utils.configure_logging(level="DEBUG", stream=file.name)
-        model = uclchem.model.Cloud(param_dict={"finalTime": 1e3})
+        model = uclchem.model.Cloud()
         model.check_error(only_error=True)
 
         file.flush()
         lines = file.readlines()
     assert lines
+    output_file.unlink()
 
-    with tempfile.NamedTemporaryFile(mode="w+") as file:
+    output_file = tmp_path / "test_model_logging_warn.dat"
+    with output_file.open(mode="w+") as file:
         uclchem.utils.configure_logging(level="WARNING", stream=file.name)
         model = uclchem.model.Cloud(param_dict={"finalTime": 1e3})
         model.check_error(only_error=True)
 
-        file.flush()
         lines = file.readlines()
     assert not lines

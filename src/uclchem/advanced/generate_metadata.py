@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import functools
 import re
 import sys
 from pathlib import Path
@@ -24,7 +25,9 @@ from pathlib import Path
 import yaml
 
 from uclchem.advanced.worker_state import _MODULE_NAMES
-from uclchem.utils import UCLCHEM_ROOT_DIR
+from uclchem.utils import UCLCHEM_ROOT_DIR, strip_comment
+
+_safe_load = functools.partial(yaml.load, Loader=yaml.CSafeLoader)
 
 _FORTRAN_SRC = UCLCHEM_ROOT_DIR.parent / "fortran_src"
 _METADATA_PATH = Path(__file__).parent / "fortran_metadata.yaml"
@@ -43,34 +46,7 @@ _NEST_CLOSE = re.compile(r"^\s*END\s+(?:SUBROUTINE|FUNCTION)\b", re.IGNORECASE)
 # Fortran MODULE declaration
 _MODULE_RE = re.compile(r"^\s*MODULE\s+(\w+)\s*$", re.IGNORECASE)
 
-
-def _strip_comment(line: str) -> str:
-    """Remove Fortran inline comment (everything from ``!`` onward).
-
-    Parameters
-    ----------
-    line : str
-        A single line of Fortran source code.
-
-    Returns
-    -------
-    str
-        Line with comments stripped, respecting character literals.
-
-    """
-    # Respect character literals by scanning manually
-    in_str = False
-    quote = ""
-    for i, ch in enumerate(line):
-        if in_str:
-            if ch == quote:
-                in_str = False
-        elif ch in {"'", '"'}:
-            in_str = True
-            quote = ch
-        elif ch == "!":
-            return line[:i]
-    return line
+_KNOWN_MODULES = frozenset(_MODULE_NAMES)
 
 
 def _extract_param_names(rhs: str) -> list[str]:
@@ -119,10 +95,77 @@ def _extract_param_names(rhs: str) -> list[str]:
     return result
 
 
-def parse_fortran_parameters(src_dir: Path) -> dict[str, list[str]]:
-    """Parse all ``.f90`` files in *src_dir* and return module-scope PARAMETERs.
+def parse_fortran_parameters_from_file(filepath: Path) -> tuple[str | None, list[str]]:
+    """Parse a single ``.f90`` file and return module name and module-scope parameters.
 
     Handles Fortran continuation lines (ending with ``&`` and starting next line with ``&``).
+
+    Parameters
+    ----------
+    filepath : Path
+        Path to the file to be parsed.
+
+    Returns
+    -------
+    module_name : str | None
+        Name of the module, or None if it could not be determined.
+    params : list[str]
+        Sorted list of parameters
+
+    Notes
+    -----
+    The module must be in :data:`_KNOWN_MODULES` to be recognized.
+
+    """
+    module_name: str | None = None
+    params: list[str] = []
+    depth = 0  # nesting level; 0 = module scope
+    continuation = ""  # accumulated continuation lines
+
+    with filepath.open(encoding="utf-8", errors="replace") as fh:
+        for raw in fh:
+            line = strip_comment(raw).rstrip()
+
+            # Handle Fortran continuation: lines ending with & continue on next line
+            if continuation:
+                # Previous line ended with &, prepend it
+                line = continuation + line.lstrip().lstrip("&").lstrip()
+                continuation = ""
+
+            if line.endswith("&"):
+                # This line continues on the next; accumulate and skip processing
+                continuation = line[:-1].rstrip()
+                continue
+
+            # Detect MODULE declaration (must be depth 0, i.e. file scope)
+            if module_name is None:
+                m = _MODULE_RE.match(line)
+                if m:
+                    candidate = m.group(1).lower()
+                    if candidate in _KNOWN_MODULES:
+                        module_name = candidate
+
+            if module_name is None:
+                continue
+
+            # Track nesting so we only grab module-scope PARAMETERs
+            if _NEST_CLOSE.match(line):
+                depth = max(0, depth - 1)
+            elif _NEST_OPEN.match(line):
+                depth += 1
+
+            if depth > 0:
+                continue
+
+            m = _TYPE_RE.match(line)
+            if m:
+                params.extend(_extract_param_names(m.group(1)))
+
+    return module_name, sorted(set(params))
+
+
+def parse_fortran_parameters(src_dir: Path) -> dict[str, list[str]]:
+    """Parse all ``.f90`` files in `src_dir` and return module-scope PARAMETERs.
 
     Parameters
     ----------
@@ -131,78 +174,35 @@ def parse_fortran_parameters(src_dir: Path) -> dict[str, list[str]]:
 
     Returns
     -------
-    dict[str, list[str]]
+    result : dict[str, list[str]]
         Mapping of f2py module name (lowercase) to sorted list of PARAMETER names.
 
     """
-    known_modules = set(_MODULE_NAMES)
     result: dict[str, list[str]] = {}
 
     for f90 in sorted(src_dir.glob("*.f90")):
-        module_name: str | None = None
-        params: list[str] = []
-        depth = 0  # nesting level; 0 = module scope
-        continuation = ""  # accumulated continuation lines
-
-        with Path(f90).open(encoding="utf-8", errors="replace") as fh:
-            for raw in fh:
-                line = _strip_comment(raw).rstrip()
-
-                # Handle Fortran continuation: lines ending with & continue on next line
-                if continuation:
-                    # Previous line ended with &, prepend it
-                    line = continuation + line.lstrip("&").lstrip()
-                    continuation = ""
-
-                if line.endswith("&"):
-                    # This line continues on the next; accumulate and skip processing
-                    continuation = line[:-1].rstrip()
-                    continue
-
-                # Detect MODULE declaration (must be depth 0, i.e. file scope)
-                if module_name is None:
-                    m = _MODULE_RE.match(line)
-                    if m:
-                        candidate = m.group(1).lower()
-                        if candidate in known_modules:
-                            module_name = candidate
-
-                if module_name is None:
-                    continue
-
-                # Track nesting so we only grab module-scope PARAMETERs
-                if _NEST_CLOSE.match(line):
-                    depth = max(0, depth - 1)
-                elif _NEST_OPEN.match(line):
-                    depth += 1
-
-                if depth > 0:
-                    continue
-
-                m = _TYPE_RE.match(line)
-                if m:
-                    params.extend(_extract_param_names(m.group(1)))
+        module_name, params = parse_fortran_parameters_from_file(f90)
 
         if module_name and params:
-            result[module_name] = sorted(set(params))
-
+            result[module_name] = params
     return result
 
 
-def _load_yaml(path: Path) -> dict:
-    with Path(path).open() as f:
-        return yaml.safe_load(f) or {}
-
-
 def _dump_yaml(data: dict) -> str:
-    return yaml.dump(data, default_flow_style=False, sort_keys=False, allow_unicode=True)
+    return yaml.dump(
+        data,
+        default_flow_style=False,
+        sort_keys=False,
+        allow_unicode=True,
+        Dumper=yaml.CSafeDumper,
+    )
 
 
 def _merge(existing: dict, detected: dict[str, list[str]]) -> dict:
     """Merge *detected* into the ``fortran_parameters`` section of *existing*.
 
     The ``global`` key and any other hand-maintained keys not present in
-    *detected* are left untouched.  Auto-detected module keys are replaced.
+    `detected` are left untouched.  Auto-detected module keys are replaced.
 
     Parameters
     ----------
@@ -213,12 +213,12 @@ def _merge(existing: dict, detected: dict[str, list[str]]) -> dict:
 
     Returns
     -------
-    dict
+    merged : dict
         New merged dictionary.
 
     """
     merged = dict(existing)
-    fp: dict = dict(merged.get("fortran_parameters", {}))
+    fp = dict(merged.get("fortran_parameters", {}))
 
     fp.update(detected)
 
@@ -261,12 +261,13 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(
                 f"ERROR: Fortran source directory not found: {fortran_src}\n"
                 "Run this command from the repo root (the directory containing src/),\n"
-                "or use an editable install (pip install -e .)."
+                "or use an editable install (pip install --no-build-isolation -e .)."
             )
 
     detected = parse_fortran_parameters(fortran_src)
 
-    existing = _load_yaml(metadata_path)
+    with metadata_path.open() as file:
+        existing = _safe_load(file) or {}
     merged = _merge(existing, detected)
 
     old_text = _dump_yaml(existing)
@@ -288,8 +289,7 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(1)
         return
 
-    with Path(metadata_path).open("w") as f:
-        f.write(new_text)
+    Path(metadata_path).write_text(new_text)
     print(f"Updated {metadata_path}")
     for mod, names in sorted(detected.items()):
         print(f"  {mod}: {names}")

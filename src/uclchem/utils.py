@@ -55,9 +55,12 @@ import enum
 import logging
 from collections.abc import Iterable, Mapping
 from pathlib import Path
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Self
 
 import rapidfuzz
+
+from uclchem.constants import SOLAR_LUMINOSITY
 
 if TYPE_CHECKING:
     from uclchem.model import Collapse
@@ -65,51 +68,93 @@ if TYPE_CHECKING:
 import numpy as np
 import pandas as pd
 
-UCLCHEM_ROOT_DIR: Path = Path(__file__).parent.resolve().absolute()
+UCLCHEM_ROOT_DIR = Path(__file__).parent.resolve().absolute()
 """UCLCHEM root directory"""
 
-
-MISSING_VALUE_INTEGER: int = -1
+MISSING_VALUE_INTEGER = -1
 """Integer to indicate a missing value"""
 
-MISSING_VALUE_FLOAT: float = -1.0
+MISSING_VALUE_FLOAT = -1.0
 """Float to indicate a missing value"""
 
-NO_REACTANT_OR_PRODUCT: int = 9999
-"""Integer to indicate that there is no reactant or product."""
+NO_REACTANT_OR_PRODUCT = 9999
+"""Integer to indicate that this reaction does not have a reactant or product at this index."""
+
+REAC_NOT_PRESENT = 9998
+"""Integer to indicate that the reaction is not present in the network."""
+
+SPECIES_NOT_PRESENT = 9997
+"""Integer to indicate that this species is not present in the network."""
+
+DTYPE_MAPPING = MappingProxyType(
+    {
+        # np.float128 is only defined when the platform's C "long double" is
+        # actually 128-bit (e.g. x86_64 Linux); on arm64 macOS and on Windows
+        # long double is the same size as float64, so numpy doesn't expose
+        # np.float128 at all. np.longdouble always exists and is the closest
+        # platform-appropriate fallback (the highest-precision float numpy
+        # has available here), even though on those platforms it degrades to
+        # float64 precision.
+        "fp128": getattr(np, "float128", np.longdouble),
+        "fp64": np.float64,
+        "fp32": np.float32,
+        "fp16": np.float16,
+    }
+)
+"""Mapping from shorthand strings to numpy dtypes."""
 
 
-def get_dtype(dtype: str | type | np.dtype) -> type | np.dtype:
+def get_dtype(
+    dtype: str | type[np.dtype] | np.dtype | np.typing.DTypeLike,
+) -> np.typing.DTypeLike:
     """Convert a dtype shorthand string or numpy dtype to a numpy dtype.
 
     Parameters
     ----------
-    dtype : str | type | np.dtype
-        Either a shorthand string ("fp64", "fp32", "fp16") or a numpy dtype/type.
+    dtype : str | type[np.dtype] | np.dtype | np.typing.DTypeLike
+        Either a shorthand string ("fp128", "fp64", "fp32", "fp16") or a numpy dtype/type.
 
     Returns
     -------
-    type | np.dtype
+    np.typing.DTypeLike
         The corresponding numpy dtype or type.
 
     Raises
     ------
     ValueError
-        If ``dtype`` is a string not in ``{"fp64", "fp32", "fp16"}``.
+        If `dtype` is a string not in :data:`DTYPE_MAPPING`.
 
     """
     if isinstance(dtype, str):
-        _mapping = {"fp64": np.float64, "fp32": np.float32, "fp16": np.float16}
-        if dtype not in _mapping:
+        if dtype not in DTYPE_MAPPING:
             msg = f"Unknown dtype shorthand: {dtype!r}"
             raise ValueError(msg)
-        return _mapping[dtype]
-    return dtype
+        return np.dtype(DTYPE_MAPPING[dtype])
+    return np.dtype(dtype)
+
+
+def would_overflow(value: float, dtype: np.dtype) -> bool:
+    """Whether `value` would overflow (become ``np.inf``) if cast to `dtype`.
+
+    Parameters
+    ----------
+    value : float
+        Value to check
+    dtype : np.dtype
+        Dtype to cast to
+
+    Returns
+    -------
+    bool
+        Whether `value` would be ``np.inf`` if cast to `dtype`.
+
+    """
+    return np.abs(value) > np.finfo(dtype).max
 
 
 def configure_logging(
     level: str = "WARNING",
-    stream: "None | str | Any" = None,
+    stream: str | Any | None = None,
 ) -> None:
     """Configure the ``uclchem`` logger.
 
@@ -117,7 +162,7 @@ def configure_logging(
     ----------
     level : str
         Logging level name (e.g. ``"DEBUG"``, ``"WARNING"``). Default ``"WARNING"``.
-    stream : None | str | Any
+    stream : str | Any | None
         Where to send log output.
         ``None`` suppresses all output (no handlers, propagation disabled).
         A string is treated as a file path and a ``FileHandler`` is added.
@@ -147,7 +192,7 @@ def configure_logging(
 
 
 # Pandas default NA strings minus element symbols that collide ("NA" = sodium, "#NA")
-_NAN_STRINGS: list[str] = [
+_NAN_STRINGS = (
     "",
     "#N/A",
     "#N/A N/A",
@@ -165,33 +210,7 @@ _NAN_STRINGS: list[str] = [
     "n/a",
     "nan",
     "null",
-]
-
-
-def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
-    """Calculate the dissipation time of a C-type shock.
-
-    Use to obtain a useful timescale for your C-shock model runs.
-    Velocity of ions and neutrals equalizes at dissipation time and
-    full cooling takes a few dissipation times.
-
-    Parameters
-    ----------
-    shock_vel : float
-        Velocity of the shock in km/s
-    initial_dens : float
-        Preshock density of the gas in cm$^{-3}$
-
-    Returns
-    -------
-    float
-        The dissipation time of the shock in years
-
-    """
-    pc = 3.086e18  # parsec in cgs
-    SECONDS_PER_YEAR = 3.15569e7
-    dlength = 12.0 * pc * shock_vel / initial_dens
-    return (dlength * 1.0e-5 / shock_vel) / SECONDS_PER_YEAR
+)
 
 
 def get_species_table(file: str | Path | None = None) -> pd.DataFrame:
@@ -257,40 +276,20 @@ def get_reaction_table(file: str | Path | None = None) -> pd.DataFrame:
     return reactions
 
 
-def find_number_of_consecutive_digits(string: str, start: int) -> int:
-    """Determine the number of consecutive digits in a string, starting.
+@enum.unique
+class PrestellarCoreMass(enum.IntEnum):
+    """Index which indicates which index to use for heating in ``hotcore.f90``.
 
-    from some index `start`.
-
-    Parameters
-    ----------
-    string : str
-        the string
-    start : int
-        the starting index
-
-    Returns
-    -------
-    num_digits : int
-        the number of consecutive digits in the string
-        starting from "start".
-
-    Examples
-    --------
-    >>> find_number_of_consecutive_digits("Hello123", 0)
-    0
-    >>> find_number_of_consecutive_digits("Hello123", 5)
-    3
-    >>> find_number_of_consecutive_digits("Hello123", 6)
-    2
-    >>> find_number_of_consecutive_digits("He1llo23", 2)
-    1
+    The different values correspond to different solar masses of the prestellar core.
 
     """
-    num_digits = 0
-    while start + num_digits < len(string) and string[start + num_digits].isdigit():
-        num_digits += 1
-    return num_digits
+
+    M_SUN_1 = 1
+    M_SUN_5 = 2
+    M_SUN_10 = 3
+    M_SUN_15 = 4
+    M_SUN_25 = 5
+    M_SUN_60 = 6
 
 
 # ---------------------------------------------------------------------------
@@ -305,6 +304,30 @@ _G = 6.67e-8  # gravitational constant in cgs
 _SECONDS_PER_YEAR = 3.15569e7
 _RHO0_FILAMENT = 2.2e4  # reference density for filament/ambipolar (cm^-3)
 _TWO_PI_G = 2.0 * np.pi * _G
+
+
+def cshock_dissipation_time(shock_vel: float, initial_dens: float) -> float:
+    """Calculate the dissipation time of a C-type shock.
+
+    Use to obtain a useful timescale for your C-shock model runs.
+    Velocity of ions and neutrals equalizes at dissipation time and
+    full cooling takes a few dissipation times.
+
+    Parameters
+    ----------
+    shock_vel : float
+        Velocity of the shock in km/s
+    initial_dens : float
+        Preshock density of the gas in cm$^{-3}$
+
+    Returns
+    -------
+    float
+        The dissipation time of the shock in years
+
+    """
+    dlength = 12.0 * _PC * shock_vel / initial_dens
+    return (dlength * 1.0e-5 / shock_vel) / _SECONDS_PER_YEAR
 
 
 @enum.unique
@@ -352,217 +375,14 @@ def get_collapse_mode(mode: str | int | CollapseMode) -> CollapseMode:
     mode = mode.lower()
     if mode == "be1.1":
         return CollapseMode.BE1_1
-    elif mode == "be4":
+    if mode == "be4":
         return CollapseMode.BE4
-    elif mode == "filament":
+    if mode == "filament":
         return CollapseMode.FILAMENT
-    elif mode == "ambipolar":
+    if mode == "ambipolar":
         return CollapseMode.AMBIPOLAR
-    else:
-        msg = f"If 'mode' is a string, it should be one of ['BE1.1', 'BE4', 'filament', 'ambipolar'], but got {mode}"
-        raise ValueError(msg)
-
-
-def _filament_units():
-    """Return (unitr_pc, unitt_yr) for filament (mode 3) collapse.
-
-    Returns
-    -------
-    tuple[float, float]
-        Unit conversion factors ``(unitr_pc, unitt_yr)``.
-
-    """
-    two_pi_g_rho0_mh = _TWO_PI_G * _RHO0_FILAMENT * _MH
-    cs = np.sqrt(_KB * 10.0 / (2.0 * _MH))  # sound speed at 10 K
-    unitr = cs * two_pi_g_rho0_mh ** (-0.5) / _PC  # in pc
-    unitt = two_pi_g_rho0_mh ** (-0.5) / _SECONDS_PER_YEAR  # in yr
-    return unitr, unitt
-
-
-def _rminfit(t_yr: float, mode: CollapseMode) -> float:
-    """Fit to time evolution of the radius of minimum velocity.
-
-    Parameters
-    ----------
-    t_yr : float
-        Time in years.
-    mode : CollapseMode
-        Collapse mode. One of ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
-
-    Returns
-    -------
-    float
-        Radius of minimum velocity (pc for mode 3, normalized units for mode 4).
-
-    Raises
-    ------
-    ValueError
-        If ``mode`` is not one of
-        ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
-
-    """
-    if mode == CollapseMode.FILAMENT:
-        _, unitt = _filament_units()
-        tnew = t_yr / unitt
-        if tnew == 0.0:
-            return 7.2
-        elif np.log(tnew) < 1.6:  # noqa: PLR2004
-            return -1.149 * tnew + 7.2
-        elif np.log(tnew) < 1.674:  # noqa: PLR2004
-            return -9.2 * np.log(tnew) + 16.25
-        else:
-            return -22.0 * np.log(tnew) + 37.65
-    elif mode == CollapseMode.AMBIPOLAR:
-        t6 = 1e-6 * t_yr
-        if t6 <= 10.2:  # noqa: PLR2004
-            return -0.0039 * t6 + 0.49
-        elif t6 <= 15.1:  # noqa: PLR2004
-            return -0.0306 * (t6 - 10.2) + 0.45
-        else:
-            return -0.282 * (t6 - 15.1) + 0.3
-    else:
-        msg = "mode was not one of CollapseMode.FILAMENT or CollapseMode.AMBIPOLAR."
-        raise ValueError(msg)
-
-
-def _vminfit(t_yr: float, mode: CollapseMode) -> float:
-    """Fit to time evolution of minimum velocity (dimensionless units).
-
-    Parameters
-    ----------
-    t_yr : float
-        Time in years.
-    mode : CollapseMode
-        Collapse mode. One of ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
-
-    Returns
-    -------
-    float
-        Minimum velocity in dimensionless units.
-
-    Raises
-    ------
-    ValueError
-        If ``mode`` is not one of
-        ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
-
-    """
-    if mode == CollapseMode.FILAMENT:
-        _, unitt = _filament_units()
-        tnew = t_yr / unitt
-        if tnew == 0.0:
-            return 0.0
-        elif np.log(tnew) < 1.6:  # noqa: PLR2004
-            return 0.0891 * tnew
-        elif np.log(tnew) < 1.674:  # noqa: PLR2004
-            return 5.5 * np.log(tnew) - 8.37
-        else:
-            return 18.9 * np.log(tnew) - 30.8
-    elif mode == CollapseMode.AMBIPOLAR:
-        t6 = 1e-6 * t_yr
-        return 3.44 * (16.138 - t6) ** (-0.35) - 0.7
-    else:
-        msg = "mode was not one of CollapseMode.FILAMENT or CollapseMode.AMBIPOLAR."
-        raise ValueError(msg)
-
-
-def _avfit(t_yr: float, mode: CollapseMode) -> float:
-    """Fit to velocity a-parameter (mode 4) or velocity at r=0.5 (mode 3).
-
-    Parameters
-    ----------
-    t_yr : float
-        Time in years.
-    mode : CollapseMode
-        Collapse mode. One of ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
-
-    Returns
-    -------
-    float
-        Velocity a-parameter (mode 4) or velocity at r=0.5 (mode 3).
-
-    Raises
-    ------
-    ValueError
-        If ``mode`` is not one of
-        ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
-
-    """
-    if mode == CollapseMode.FILAMENT:
-        _, unitt = _filament_units()
-        tnew = t_yr / unitt
-        if tnew == 0.0:
-            return 0.4
-        elif np.log(tnew) < 1.6:  # noqa: PLR2004
-            return 0.0101 * tnew + 0.4
-        elif np.log(tnew) < 1.674:  # noqa: PLR2004
-            return 0.695 * np.log(tnew) - 0.663
-        else:
-            return 2.69 * np.log(tnew) - 4.0
-    elif mode == CollapseMode.AMBIPOLAR:
-        t6 = 1e-6 * t_yr
-        if t6 <= 10.2:  # noqa: PLR2004
-            return 0.143 * t6
-        else:
-            return 0.217 * (t6 - 10.2) + 1.46
-    else:
-        msg = "mode was not one of CollapseMode.FILAMENT or CollapseMode.AMBIPOLAR."
-        raise ValueError(msg)
-
-
-def _vrfit(r_pc: float, rmin: float, vmin: float, av: float, mode: CollapseMode) -> float:
-    """Radial velocity fit in cm/s (Priestley et al. 2018).
-
-    Modes 3 (filament) and 4 (ambipolar) only.
-
-    Parameters
-    ----------
-    r_pc : float
-        Radius in pc.
-    rmin : float
-        Radius of minimum velocity in the same units as the fit.
-    vmin : float
-        Minimum velocity in dimensionless units.
-    av : float
-        Velocity amplitude parameter for the outer profile fit.
-    mode : CollapseMode
-        Collapse mode. One of ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
-
-    Returns
-    -------
-    float
-        Radial velocity in cm/s.
-
-    Raises
-    ------
-    ValueError
-        If ``mode`` is not one of
-        ``CollapseMode.FILAMENT`` or ``CollapseMode.AMBIPOLAR``.
-
-    """
-    if mode == CollapseMode.FILAMENT:
-        unitr, _ = _filament_units()
-        cs = np.sqrt(_KB * 10.0 / (2.0 * _MH))
-        new_r = r_pc / unitr - rmin
-        if new_r < 0.0:
-            vr = vmin * ((new_r / rmin) ** 2 - 1.0)
-        else:
-            vr = vmin * (np.exp(-2.0 * av * new_r) - 2.0 * np.exp(-av * new_r))
-        return cs * vr
-    elif mode == CollapseMode.AMBIPOLAR:
-        rmid = 0.5
-        r75 = r_pc / 0.75
-        new_r = r75 - rmin
-        if r75 < rmin:
-            vr = vmin * ((new_r / rmin) ** 2 - 1.0)
-        elif r75 <= rmid:
-            vr = (vmin - av) * (new_r / (rmid - rmin)) ** 0.3 - vmin
-        else:
-            vr = av / (1.0 - rmid) * (r75 - rmid) - av
-        return 1e3 * vr  # convert from 1e-2 km/s to cm/s
-    else:
-        msg = "mode was not one of CollapseMode.FILAMENT or CollapseMode.AMBIPOLAR."
-        raise ValueError(msg)
+    msg = f"If 'mode' is a string, it should be one of ['BE1.1', 'BE4', 'filament', 'ambipolar'], but got {mode}"
+    raise ValueError(msg)
 
 
 def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
@@ -589,39 +409,25 @@ def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
         Radial velocity in cm s⁻¹, indexed by time in years.
         Negative values indicate infall.
 
-    Raises
-    ------
-    TypeError
-        If *model* is not a Collapse model instance.
-    TypeError
-        If ``model.collapse`` is not an instance of class:`CollapseMode`.
-
     """
-    from uclchem.model import (  # noqa: PLC0415 — avoid circular import at module level
-        Collapse,
-    )
+    from uclchemwrap import collapse_mod  # ruff: ignore[import-outside-top-level]
 
-    if not isinstance(model, Collapse):
-        msg = f"model must be a Collapse instance, got {type(model).__name__}"
-        raise TypeError(msg)
-
-    df_result = model.get_dataframes(point=point)
-    # get_dataframes with joined=True returns a single DataFrame (the return type
-    # annotation is overly broad; cast to narrow for mypy)
-    df: pd.DataFrame = df_result  # type: ignore[assignment]
-    t_yr: np.ndarray = np.asarray(df["Time"].values)
-    r_pc: np.ndarray = np.asarray(df["parcel_radius"].values)
-    mode = model.collapse  # CollapseMode
-
-    if not isinstance(mode, CollapseMode):
-        msg = f"Expected 'model.collapse' to be an instance of CollapseMode, but got type {type(mode)}"
-        raise TypeError(msg)
+    df = model.get_joined_dataframes(point=point)
+    t_yr = df["Time"].to_numpy()
+    r_pc = df["parcel_radius"].to_numpy()
+    mode = model.collapse
 
     if mode in {CollapseMode.FILAMENT, CollapseMode.AMBIPOLAR}:
         vr = np.array(
             [
-                _vrfit(r, _rminfit(t, mode), _vminfit(t, mode), _avfit(t, mode), mode)
-                for t, r in zip(t_yr, r_pc, strict=False)
+                collapse_mod.get_vrfit(
+                    r,
+                    collapse_mod.get_rminfit(t, mode.value),
+                    collapse_mod.get_vminfit(t, mode.value),
+                    collapse_mod.get_avfit(t, mode.value),
+                    mode.value,
+                )
+                for t, r in zip(t_yr, r_pc, strict=True)
             ]
         )
     else:
@@ -634,15 +440,11 @@ def collapse_radial_velocity(model: "Collapse", point: int = 0) -> pd.Series:
     return pd.Series(vr, index=t_yr, name="radial_velocity_cm_s")
 
 
-@enum.verify(enum.UNIQUE)
+@enum.unique
 class SuccessFlag(enum.IntEnum):
-    """SuccessFlag indicates whether the model failed or ran successfully,.
+    """SuccessFlag indicates whether the model failed or ran successfully, and if it failed how."""
 
-    and if it failed how.
-
-    """
-
-    def __new__(cls, value: int, docstring: str) -> Self:  # noqa: D102
+    def __new__(cls, value: int, docstring: str) -> Self:  # ruff: ignore[undocumented-public-method]
         member = int.__new__(cls, value)
 
         member._value_ = value
@@ -650,7 +452,6 @@ class SuccessFlag(enum.IntEnum):
 
         return member
 
-    # Zen line two: Explicit is better than implicit.
     SUCCESS = 0, "Model ran successfully"
     PARAMETER_READ_ERROR = -1, "Parameter read failed."
     PHYSICS_INIT_ERROR = -2, "Physics initialization failed."
@@ -678,7 +479,7 @@ class SuccessFlag(enum.IntEnum):
     )
 
     def check_error(
-        self, only_error: bool = False, raise_on_error: bool = True
+        self, *, only_error: bool = False, raise_on_error: bool = True
     ) -> str | None:
         """Convert the UCLCHEM integer result flag to a message explaining what went wrong.
 
@@ -706,48 +507,49 @@ class SuccessFlag(enum.IntEnum):
             if not only_error:
                 print("Model ran successfully")
             return None
-        error_msg_dict = {
-            SuccessFlag.PARAMETER_READ_ERROR: "Parameter read failed. Likely due to a misspelled parameter name, compare your dictionary to the parameters docs.",
-            SuccessFlag.PHYSICS_INIT_ERROR: "Physics initialization failed. Often due to user choosing unacceptable parameters such as hot core masses or collapse modes that don't exist. Check the docs for your model function.",
-            SuccessFlag.CHEM_INIT_ERROR: "Chemistry initialization failed.",
-            SuccessFlag.INT_UNRECOVERABLE_ERROR: "Unrecoverable integrator error, DVODE failed to integrate the ODEs in a way that UCLCHEM could not fix. Run UCLCHEM tests to check your network works at all then try to see if bad parameter combination is at play.",
-            SuccessFlag.INT_TOO_MANY_FAILS_ERROR: "Too many integrator fails. DVODE failed to integrate the ODE and UCLCHEM repeatedly altered settings to try to make it pass but tried too many times without success so code aborted to stop infinite loop.",
-            SuccessFlag.NOT_ENOUGH_TIMEPOINTS_ERROR: "The model was stopped because there are not enough time points allocated in the time array. Increase the number of time points in the time array in constants.py and try again.",
-            SuccessFlag.PHYSICS_UPDATE_ERROR: "Physics update error during integration.",
-            SuccessFlag.SOLVER_STATS_OVERFLOW_ERROR: "Solver statistics array overflows, add more timepoints",
-            SuccessFlag.COOLANT_FILE_ERROR: "Coolant data file could not be opened. Check that coolant data files exist in the expected directory.",
-            SuccessFlag.COOLANT_DATA_ERROR: "Coolant data file has invalid format (bad NLEVEL, invalid partner ID, or too many temperature values).",
-            SuccessFlag.COOLANT_FREQ_TOL_ERROR: "Frequency tolerance exceeded: the deviation between energy-level-computed and LAMDA-file frequencies exceeds freq_rel_tol. Increase freq_rel_tol or check your coolant data files.",
-            SuccessFlag.COOLANT_POP_TOL_ERROR: "LTE population sum tolerance exceeded: level populations do not sum to total density within pop_rel_tol.",
-            SuccessFlag.COOLANT_SOLVER_ERROR: "Coolant solver numerical error (NaN in matrix, singular matrix, or negative populations). The statistical equilibrium solver failed for a coolant species.",
-            SuccessFlag.COOLANT_CONFIG_ERROR: "Coolant configuration error: parent species not found in network, or unphysical abundance detected.",
-            SuccessFlag.NEGATIVE_ABUNDANCE_ERROR: "Negative abundance detected. That exceeds solver tolerances, consider adjusting the negative_abundance_tol parameter in param_dict to a larger magnitude",
-            SuccessFlag.CONSERVATION_ERROR: "Runtime conservation check failed: an element changed by more than runtime_conservation_tolerance. This usually indicates a severe integrator error or network bug. Set runtime_conservation_tolerance to a negative value to disable the check.",
-            SuccessFlag.ZERO_INNER_RADIUS_ERROR: "rin must be > 0 when enable_radiative_transfer=True with multiple points. The innermost parcel would be placed at r=0, causing division by zero in G0_internal_at_r. Set rin to a small positive value (e.g. rout/100).",
-            SuccessFlag.MISSING_START_ABUNDANCE_ERROR: "Starting abundances were requested (givestartabund) but the abundanceStart array was missing, had fewer rows than points, or had an all-zero row. Without this check the model would silently start every species at the abundance floor. Check that starting_chemistry/previous_model provides one row of abundances per point.",
-        }
 
-        msg = error_msg_dict[self]
+        msg = _ERROR_MESSAGES[self]
         if raise_on_error:
             error_msg = f"UCLCHEM error (code {self.name}, {self.value}): {msg}"
             raise RuntimeError(error_msg)
         return msg
 
 
+_ERROR_MESSAGES = MappingProxyType(
+    {
+        SuccessFlag.PARAMETER_READ_ERROR: "Parameter read failed. Likely due to a misspelled parameter name, compare your dictionary to the parameters docs.",
+        SuccessFlag.PHYSICS_INIT_ERROR: "Physics initialization failed. Often due to user choosing unacceptable parameters such as hot core masses or collapse modes that don't exist. Check the docs for your model function.",
+        SuccessFlag.CHEM_INIT_ERROR: "Chemistry initialization failed.",
+        SuccessFlag.INT_UNRECOVERABLE_ERROR: "Unrecoverable integrator error, DVODE failed to integrate the ODEs in a way that UCLCHEM could not fix. Run UCLCHEM tests to check your network works at all then try to see if bad parameter combination is at play.",
+        SuccessFlag.INT_TOO_MANY_FAILS_ERROR: "Too many integrator fails. DVODE failed to integrate the ODE and UCLCHEM repeatedly altered settings to try to make it pass but tried too many times without success so code aborted to stop infinite loop.",
+        SuccessFlag.NOT_ENOUGH_TIMEPOINTS_ERROR: "The model was stopped because there are not enough time points allocated in the time array. Increase the number of time points in the time array in constants.py and try again.",
+        SuccessFlag.PHYSICS_UPDATE_ERROR: "Physics update error during integration.",
+        SuccessFlag.SOLVER_STATS_OVERFLOW_ERROR: "Solver statistics array overflows, add more timepoints",
+        SuccessFlag.COOLANT_FILE_ERROR: "Coolant data file could not be opened. Check that coolant data files exist in the expected directory.",
+        SuccessFlag.COOLANT_DATA_ERROR: "Coolant data file has invalid format (bad NLEVEL, invalid partner ID, or too many temperature values).",
+        SuccessFlag.COOLANT_FREQ_TOL_ERROR: "Frequency tolerance exceeded: the deviation between energy-level-computed and LAMDA-file frequencies exceeds freq_rel_tol. Increase freq_rel_tol or check your coolant data files.",
+        SuccessFlag.COOLANT_POP_TOL_ERROR: "LTE population sum tolerance exceeded: level populations do not sum to total density within pop_rel_tol.",
+        SuccessFlag.COOLANT_SOLVER_ERROR: "Coolant solver numerical error (NaN in matrix, singular matrix, or negative populations). The statistical equilibrium solver failed for a coolant species.",
+        SuccessFlag.COOLANT_CONFIG_ERROR: "Coolant configuration error: parent species not found in network, or unphysical abundance detected.",
+        SuccessFlag.NEGATIVE_ABUNDANCE_ERROR: "Negative abundance detected. That exceeds solver tolerances, consider adjusting the negative_abundance_tol parameter in param_dict to a larger magnitude",
+        SuccessFlag.CONSERVATION_ERROR: "Runtime conservation check failed: an element changed by more than runtime_conservation_tolerance. This usually indicates a severe integrator error or network bug. Set runtime_conservation_tolerance to a negative value to disable the check.",
+        SuccessFlag.ZERO_INNER_RADIUS_ERROR: "rin must be > 0 when enable_radiative_transfer=True with multiple points. The innermost parcel would be placed at r=0, causing division by zero in G0_internal_at_r. Set rin to a small positive value (e.g. rout/100).",
+        SuccessFlag.MISSING_START_ABUNDANCE_ERROR: "Starting abundances were requested (givestartabund) but the abundanceStart array was missing, had fewer rows than points, or had an all-zero row. Without this check the model would silently start every species at the abundance floor. Check that starting_chemistry/previous_model provides one row of abundances per point.",
+    }
+)
+
 # -------------------------------------------------------------------------------
 # 1D hot core helper routines:
 # -------------------------------------------------------------------------------
-
-L_SUN: float = 3.828e26  # W — IAU 2015 nominal solar luminosity
 
 
 class TempMode(enum.Enum):
     """Interpolation scheme for :func:`get_protostellar_Teff`."""
 
-    BINS = "bins"  # discrete stepwise lookup,   1 – 1e6  L_sun
-    SMOOTH = "smooth"  # global power-law fit,       1 – 1e6  L_sun
-    SMOOTH_LOW = "smooth_low"  # power-law fit to bins 1–3,  1 – 1e4  L_sun
-    SMOOTH_HIGH = "smooth_high"  # power-law fit to bins 4–7,  1e3 – 1e6 L_sun
+    BINS = "bins"  # discrete stepwise lookup,   1 to 1e6  L_sun
+    SMOOTH = "smooth"  # global power-law fit,       1 to 1e6  L_sun
+    SMOOTH_LOW = "smooth_low"  # power-law fit to bins 1 to 3,  1 to 1e4  L_sun
+    SMOOTH_HIGH = "smooth_high"  # power-law fit to bins 4 to 7,  1e3 to 1e6 L_sun
     SMOOTH_CUSTOM = "smooth_custom"  # user-provided fit parameters;
 
 
@@ -764,9 +566,9 @@ _BINS: tuple[tuple[float, float], ...] = (
 
 # Least-squares power-law fits in log-log space on bin geometric midpoints.
 # Fit form: T_eff = T0 * (L_star / L_sun) ** alpha
-_FIT_SMOOTH = (4_788.72, 0.156034)  # all 7 bins,  valid 1 – 1e6  L_sun
-_FIT_SMOOTH_LOW = (5_337.78, 0.110924)  # bins 1–3,    valid 1 – 1e4  L_sun
-_FIT_SMOOTH_HIGH = (7_343.74, 0.120552)  # bins 4–7,    valid 1e3 – 1e6 L_sun
+_FIT_SMOOTH = (4_788.72, 0.156034)  # all 7 bins,  valid 1 to 1e6  L_sun
+_FIT_SMOOTH_LOW = (5_337.78, 0.110924)  # bins 1 to 3,    valid 1 to 1e4  L_sun
+_FIT_SMOOTH_HIGH = (7_343.74, 0.120552)  # bins 4 to 7,    valid 1e3 to 1e6 L_sun
 
 # Valid luminosity ranges [L_sun] per mode
 _RANGES: dict[TempMode, tuple[float, float]] = {
@@ -799,12 +601,12 @@ def get_protostellar_Teff(
         Interpolation scheme:
 
         - :attr:`TempMode.SMOOTH` (default) — global power-law fit to all
-          seven bins, valid 1 – 1e6 L_sun.
-        - :attr:`TempMode.BINS` — discrete stepwise lookup, valid 1 – 1e6 L_sun.
-        - :attr:`TempMode.SMOOTH_LOW` — power-law fit to bins 1–3,
-          valid 1 – 1e4 L_sun.
-        - :attr:`TempMode.SMOOTH_HIGH` — power-law fit to bins 4–7,
-          valid 1e3 – 1e6 L_sun.
+          seven bins, valid 1 to 1e6 L_sun.
+        - :attr:`TempMode.BINS` — discrete stepwise lookup, valid 1 to 1e6 L_sun.
+        - :attr:`TempMode.SMOOTH_LOW` — power-law fit to bins 1 to 3,
+          valid 1 to 1e4 L_sun.
+        - :attr:`TempMode.SMOOTH_HIGH` — power-law fit to bins 4 to 7,
+          valid 1e3 to 1e6 L_sun.
 
         Defaults to ``TempMode.BINS``.
     custom_T0 : float | None
@@ -854,7 +656,7 @@ def get_protostellar_Teff(
         raise ValueError(msg)
 
     # Work in L_sun units throughout
-    l_star_lsun: float = L_star / L_SUN if L_star_unit == "W" else L_star
+    l_star_lsun: float = L_star / SOLAR_LUMINOSITY if L_star_unit == "W" else L_star
     L_min, L_max = _RANGES[mode]
 
     if not (L_min <= l_star_lsun <= L_max):
@@ -908,23 +710,22 @@ def get_protostellar_model_index(L_star: float) -> int:
         If the stellar luminosity is below the minimum valid value.
 
     """
-    if L_star >= 1.0e6:  # noqa: PLR2004
+    if L_star >= 1.0e6:  # ruff: ignore[magic-value-comparison]
         return 6
-    elif L_star >= 1.0e5:  # noqa: PLR2004
+    if L_star >= 1.0e5:  # ruff: ignore[magic-value-comparison]
         return 5
-    elif L_star >= 1.0e4:  # noqa: PLR2004
+    if L_star >= 1.0e4:  # ruff: ignore[magic-value-comparison]
         return 4
-    elif L_star >= 1.0e3:  # noqa: PLR2004
+    if L_star >= 1.0e3:  # ruff: ignore[magic-value-comparison]
         return 3
-    elif L_star >= 1.0e2:  # noqa: PLR2004
+    if L_star >= 1.0e2:  # ruff: ignore[magic-value-comparison]
         return 2
-    elif L_star >= 1.0e1:  # noqa: PLR2004
+    if L_star >= 1.0e1:  # ruff: ignore[magic-value-comparison]
         return 1
-    elif L_star >= 1.0e0:
+    if L_star >= 1.0e0:
         return 0
-    else:
-        msg = f"L_star = {L_star:.3e} W is below the minimum of 1 L_sun = {L_SUN:.3e} W."
-        raise ValueError(msg)
+    msg = f"L_star = {L_star:.3e} W is below the minimum of 1 L_sun = {SOLAR_LUMINOSITY:.3e} W."
+    raise ValueError(msg)
 
 
 def get_fuzzy_unknown_keys(
@@ -959,6 +760,30 @@ def get_fuzzy_unknown_keys(
     return unknown_keys
 
 
+def remove_keys_with_none(dct: dict[str, Any]) -> dict[str, Any]:
+    """Remove keys with None values from the dictionary, modified in-place.
+
+    Parameters
+    ----------
+    dct : dict[str, Any]
+        Dictionary
+
+    Returns
+    -------
+    dict[str, Any]
+        `dct`, but with any keys that had ``None`` as value removed.
+
+    Examples
+    --------
+    >>> dct = {'key_a': 'a', 'key_b': None}
+    >>> updated_dct = remove_keys_with_none(dct)
+    >>> updated_dct
+    {'key_a': 'a'}
+
+    """
+    return {k: v for k, v in dct.items() if v is not None}
+
+
 def get_lowercase_copy(dct: Mapping[str, Any]) -> dict[str, Any]:
     """Get a copy of a dictionary where the keys have been replaced by lowercase keys.
 
@@ -991,3 +816,86 @@ def get_lowercase_copy(dct: Mapping[str, Any]) -> dict[str, Any]:
             raise ValueError(msg)
         new_dct[k.lower()] = v
     return new_dct
+
+
+def pad_to_length(array: np.ndarray, length: int, **kwargs) -> np.ndarray:
+    """Pad an array to a specific length.
+
+    Parameters
+    ----------
+    array : np.ndarray
+        Array to pad
+    length : int
+        Padded length
+    **kwargs : dict[str, Any]
+        Keyword arguments passed to :func:`np.pad`.
+
+    Returns
+    -------
+    np.ndarray
+        Array padded to a length of `length`.
+
+    Raises
+    ------
+    ValueError
+        If the length of `array` is larger than `length`.
+
+    Examples
+    --------
+    >>> pad_to_length(np.array([1, 2]), 4)
+    array([1, 2, 0, 0])
+    >>> # Takes same dtype as input array (by default)
+    >>> pad_to_length(np.array([1., 2.]), 4)
+    array([1., 2., 0., 0.])
+    >>> # Custom padding values can be specified by passing a kwarg
+    >>> pad_to_length(np.array([1., 2.]), 4, mode='symmetric')
+    array([1., 2., 2., 1.])
+
+    """
+    if len(array) > length:
+        msg = f"Tried padding array, but already had length ({len(array)}) larger than desired padded length ({length})"
+        raise ValueError(msg)
+    return np.pad(array, (0, length - len(array)), **kwargs)
+
+
+def strip_comment(string: str, comment_char: str = "!") -> str:
+    """Remove inline comment (everything from `comment_char` onward).
+
+    Parameters
+    ----------
+    string : str
+        A single line of code.
+    comment_char : str
+        Character that indicates the beginning of a comment. Default = "!".
+
+    Returns
+    -------
+    str
+        Line with comments stripped, respecting character literals.
+
+    Examples
+    --------
+    >>> strip_comment('This is code ! This is a comment')
+    'This is code'
+    >>> # Returns the string unchanged if there is no comment
+    >>> strip_comment('This does not have a comment')
+    'This does not have a comment'
+    >>> # Ensures that string literal comment chars are not comments
+    >>> strip_comment('This "!" is not a comment')
+    'This "!" is not a comment'
+    >>> strip_comment("Removes trailing whitespace ! Comment")
+    'Removes trailing whitespace'
+
+    """
+    in_str = False
+    quote = ""
+    for i, ch in enumerate(string):
+        if in_str:
+            if ch == quote:
+                in_str = False
+        elif ch in {"'", '"'}:
+            in_str = True
+            quote = ch
+        elif ch == comment_char:
+            return string[:i].strip()
+    return string.strip()

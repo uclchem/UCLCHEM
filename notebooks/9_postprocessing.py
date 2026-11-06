@@ -26,25 +26,27 @@ import uclchem
 from uclchem.constants import SECONDS_PER_YEAR
 
 
-def plot_postprocess_models(models: Iterable[uclchem.model.Postprocess]) -> list[plt.Axes]:
+def plot_postprocess_models(  # ruff: ignore[undocumented-public-function]
+    models: Iterable[uclchem.model.AbstractModel],
+) -> list[plt.Axes]:
     max_time = 0.0
     _fig, axs = plt.subplots(3, 1, sharex=True, sharey=False)
     for model in models:
         model_df = model.get_joined_dataframes()
-        axs[0].plot(model_df['Time'], model_df['CO'])
-        axs[1].plot(model_df['Time'], model_df['Density'])
-        axs[2].plot(model_df['Time'], model_df['gasTemp'])
+        axs[0].plot(model_df["Time"], model_df["CO"])
+        axs[1].plot(model_df["Time"], model_df["Density"])
+        axs[2].plot(model_df["Time"], model_df["gasTemp"])
 
-        max_time = max(max_time, model_df['Time'].max())
+        max_time = max(max_time, model_df["Time"].max())
     axs[0].set_ylabel("CO abund (w.r.t. H)")
     axs[1].set_ylabel(r"$n_{\mathrm{H}}$ (cm$^{-3}$)")
     axs[2].set_ylabel(r"$T_{\mathrm{gas}}$ (K)")
 
     axs[0].set_xlim([1e4, max_time])
     axs[0].set_ylim([1e-14, 1e-2])
-    axs[0].set_xscale('log')
-    axs[0].set_yscale('log')
-    axs[1].set_yscale('log')
+    axs[0].set_xscale("log")
+    axs[0].set_yscale("log")
+    axs[1].set_yscale("log")
     axs[2].set_xlabel("Time (years)")
 
     return axs
@@ -74,7 +76,7 @@ df = pd.read_csv(
     dtype=np.float64,
 )
 df.columns = NEATH_COLUMNS
-df['time'] /= SECONDS_PER_YEAR  # Convert time to years
+df["time"] /= SECONDS_PER_YEAR  # Convert time to years
 df["particle_id"] = (df["time"] == 0).astype(int).cumsum()
 particle_ids = df["particle_id"].unique()
 df.head()
@@ -113,12 +115,15 @@ plt.show()
 # %% [markdown]
 # We can also make use of `uclchem.model.GridRunner` to instead run the models in parallel, if we do just a bit more work.
 
+
 # %%
-def create_parameter_dictionary(dataframes: list[pd.DataFrame]) -> dict[str, list[np.ndarray]]:
+def create_parameter_dictionary(  # ruff: ignore[undocumented-public-function]
+    dataframes: list[pd.DataFrame],
+) -> dict[str, list[np.ndarray]]:
     param_dict = defaultdict(list)
     for df in dataframes:
-        ones = np.full(df['time'].to_numpy().shape, 1.0)
-        zeros = np.full(df['time'].to_numpy().shape, 0.0)
+        ones = np.full(df["time"].to_numpy().shape, 1.0)
+        zeros = np.full(df["time"].to_numpy().shape, 0.0)
 
         param_dict["time_array"].append(df["time"].to_numpy())
         param_dict["density_array"].append(df["density"].to_numpy())
@@ -137,7 +142,7 @@ param_dict = create_parameter_dictionary(
     [df.query(f"particle_id == {particle_id}") for particle_id in particle_ids]
 )
 
-output_dir = Path('output_9')
+output_dir = Path("output_9")
 if not output_dir.is_dir():
     output_dir.mkdir()
 

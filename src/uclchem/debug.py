@@ -5,7 +5,7 @@ from pathlib import Path
 from uclchemwrap import uclchemwrap as wrap
 
 
-def get_f2py_signature(write: bool = False) -> str:
+def get_f2py_signature(*, write: bool = False) -> str:
     """Get the signature of the UCLCHEM fortran code.
 
     Parameters
@@ -21,6 +21,5 @@ def get_f2py_signature(write: bool = False) -> str:
     """
     signature = wrap.__doc__
     if write:
-        with Path("signature_file.txt").open("w") as fh:
-            fh.write(signature)
+        Path("signature_file.txt").write_text(signature)
     return signature

@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 import uclchem
+from tests.constants import UCLCHEM_ROOT_DIR
 from uclchem.constants import SECONDS_PER_YEAR
 
 grid_runner_test_data = list(product(("", "prefix"), (False, True)))
@@ -86,7 +87,7 @@ def test_grid_runner_create_grid(temperatures, densities):
         assert param_dict["param_dict"]["initialDensity"] in densities
 
 
-def test_invalid_model_name_raises():
+def test_invalid_model_name_raises(tmp_path):
     dictionaries = {
         "param_dict": {
             "initialTemp": [10, 20, 30],
@@ -99,6 +100,7 @@ def test_invalid_model_name_raises():
             "UNKNOWN_MODEL",
             dictionaries,
             delay_run=True,
+            grid_file=tmp_path,
         )
 
 
@@ -120,9 +122,9 @@ NEATH_COLUMNS = [
 ]
 
 
-def test_grid_runner_postprocessing(uclchem_root, tmp_path):
+def test_grid_runner_postprocessing(tmp_path):
     df = pd.read_csv(
-        uclchem_root / "examples/fortran_cli/neath_small_data.out",
+        UCLCHEM_ROOT_DIR / "examples/fortran_cli/neath_small_data.out",
         sep=r"\s+",
         header=None,
         dtype=np.float64,
@@ -202,7 +204,8 @@ def test_grid_runner_starting_chemistry(tmp_path):
 
     num_species = len(uclchem.model.get_species())
 
-    starting_chemistries = [np.random.rand(num_species) for _ in range(num_models)]
+    rng = np.random.default_rng()
+    starting_chemistries = [rng.random(num_species) for _ in range(num_models)]
 
     grid = uclchem.model.GridRunner(
         model_type="Cloud",
@@ -238,8 +241,9 @@ def test_grid_runner_starting_chemistry_cartesian(tmp_path):
     initial_densities = [1e2, 1e3]
     final_time = 1e2
 
+    rng = np.random.default_rng()
     starting_chemistries = [
-        np.random.rand(num_species) for _ in range(num_starting_chemistries)
+        rng.random(num_species) for _ in range(num_starting_chemistries)
     ]
 
     grid = uclchem.model.GridRunner(

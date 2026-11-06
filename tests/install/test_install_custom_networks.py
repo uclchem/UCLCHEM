@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from tests.constants import UCLCHEM_ROOT_DIR
 from uclchem.makerates.makerates import run_makerates
 
 NETWORKS_DIR = Path(__file__).parent / "networks"
@@ -185,7 +186,7 @@ def get_all_networks():
     return networks
 
 
-@pytest.mark.parametrize("network_name,settings_file", get_all_networks())
+@pytest.mark.parametrize(("network_name", "settings_file"), get_all_networks())
 def test_network_installable(network_name, settings_file):
     """Test that each custom network can be installed with makerates.
 
@@ -224,7 +225,7 @@ def test_network_installable(network_name, settings_file):
     )
 
 
-@pytest.mark.parametrize("network_name,settings_file", get_all_networks())
+@pytest.mark.parametrize(("network_name", "settings_file"), get_all_networks())
 def test_network_has_minimum_content(network_name, settings_file):
     """Test that each custom network has minimum expected content.
 
@@ -256,8 +257,8 @@ def test_network_has_minimum_content(network_name, settings_file):
 
 
 @pytest.mark.timeout(600)
-@pytest.mark.parametrize("network_name,settings_file", get_all_networks())
-def test_network_cloud_model_runs(uclchem_root, network_name, settings_file):
+@pytest.mark.parametrize(("network_name", "settings_file"), get_all_networks())
+def test_network_cloud_model_runs(network_name, settings_file):
     """Full integration test: makerates → pip install → run Cloud model.
 
     Workflow:
@@ -277,7 +278,7 @@ def test_network_cloud_model_runs(uclchem_root, network_name, settings_file):
         shell=True,
         text=True,
         capture_output=True,
-        cwd=str(uclchem_root),
+        cwd=str(UCLCHEM_ROOT_DIR),
         timeout=300,
     )
     assert result.returncode == 0, (

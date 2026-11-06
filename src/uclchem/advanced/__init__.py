@@ -22,9 +22,9 @@ from .runtime_network import RuntimeNetwork
 from .worker_state import create_snapshot, restore_snapshot
 
 __all__ = [
+    "GeneralSettings",
     "HeatingSettings",
     "NetworkState",
-    "GeneralSettings",
     "RuntimeNetwork",
     "create_snapshot",
     "restore_snapshot",

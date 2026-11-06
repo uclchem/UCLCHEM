@@ -15,10 +15,8 @@ reinstall UCLCHEM for these constants to update:
 
 from types import MappingProxyType
 
-# Import canonical values from compiled Fortran module
-from uclchemwrap import f2py_constants
+from uclchemwrap import constants, f2py_constants
 
-# Read canonical values from Fortran
 n_species = int(f2py_constants.nspec)
 n_reactions = int(f2py_constants.nreac)
 N_PHYSICAL_PARAMETERS = int(f2py_constants.n_physics_params)
@@ -26,11 +24,14 @@ NCOOLANTS = int(f2py_constants.ncoolants)
 N_DVODE_STATS = int(f2py_constants.n_dvode_stats)
 N_TOTAL_LEVELS = int(f2py_constants.n_total_levels)
 N_SE_STATS_PER_COOLANT = int(f2py_constants.n_se_stats_per_coolant)
+ZETA_0 = float(constants.zeta_0)  # Standard cosmic ray ionization rate (1.3e-17 s-1)
+
+SOLAR_LUMINOSITY = 3.828e26  # W — IAU 2015 nominal solar luminosity
 
 
 # Canonical definition of physical parameters
 # This list defines the physical parameter array passed to Fortran
-PHYSICAL_PARAMETERS = [
+PHYSICAL_PARAMETERS = (
     "Time",
     "Density",
     "gasTemp",
@@ -42,10 +43,8 @@ PHYSICAL_PARAMETERS = [
     "parcel_radius",
     "av_internal",
     "radfield_internal",
-]
+)
 
-
-ZETA_0 = 1.36e-17  # Standard cosmic ray ionization rate (1.3e-17 s-1)
 
 CENTIMETERS_PER_PARSEC = 3.086e18  # parsec in cgs
 SECONDS_PER_YEAR = 3.15569e7
@@ -60,7 +59,7 @@ GRAVITATIONAL_CONSTANT_CGS = 6.67e-8  # gravitational constant in cgs
 # DVODE solver statistics names
 # Note: Stats are now written for EVERY solver attempt (including retries)
 # TRAJECTORY_INDEX links solver stats to trajectory timesteps
-DVODE_STAT_NAMES = [
+DVODE_STAT_NAMES = (
     "TRAJECTORY_INDEX",  # Links to trajectory timestep (dtime)
     "ISTATE",
     "HU",
@@ -80,18 +79,19 @@ DVODE_STAT_NAMES = [
     "NCFN",
     "NETF",
     "CPU_TIME",
-]
+)
 
 # SE solver statistics names (per coolant: convergence flag, iterations, max relative change)
-SE_STAT_NAMES = []
+_se_stat_names_list = []
 for i in range(NCOOLANTS):
-    SE_STAT_NAMES.extend(
+    _se_stat_names_list.extend(
         [
             f"COOLANT_{i:02d}_CONVERGED",
             f"COOLANT_{i:02d}_ITERATIONS",
             f"COOLANT_{i:02d}_MAX_REL_CHANGE",
         ]
     )
+SE_STAT_NAMES = tuple(_se_stat_names_list)
 
 # Validate consistency
 if len(PHYSICAL_PARAMETERS) != N_PHYSICAL_PARAMETERS:
@@ -130,6 +130,7 @@ DEFAULT_PARAMETER_DICTIONARY = MappingProxyType(
         "CRDesorb": True,
         "UVDesorb": True,
         "thermDesorb": True,
+        "chemDesorb": True,
         "instantSublimation": False,
         "cosmicRayAttenuation": False,
         "ionModel": "L",
@@ -141,6 +142,7 @@ DEFAULT_PARAMETER_DICTIONARY = MappingProxyType(
         "heatingFile": None,
         "heatingFlag": False,
         "writeStep": 1,
+        "writeTimeStepInfo": False,
         "abundSaveFile": None,
         "abundLoadFile": None,
         "metallicity": 1.0,
