@@ -144,7 +144,7 @@ jobs:
   test-makefile:
     name: Test (Makefile)
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request' }}
+    if: ${{ github.event.pull_request.user.login != 'allcontributors[bot]' && (github.event.workflow_run.conclusion == 'success' || github.event_name == 'pull_request') }}
 
     steps:
       - uses: actions/checkout@v6
