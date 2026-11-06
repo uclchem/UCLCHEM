@@ -287,7 +287,7 @@ contains
     subroutine bindingEnergyEvap(abund, lpoints)
         integer, intent(in) :: lpoints
         real(dp), intent(inout) :: abund(nspec+1,lpoints)
-        real(dp), parameter :: SURFACE_SITE_DENSITY = 1.5e15_dp
+        real(dp), parameter :: SURFACE_SITE_DENSITY = 1.5e15_dp ! Surface site density in cm-2
         integer :: i
         !Subroutine to handle mono-evaporation. See viti 2004
         real(dp) :: en,newm,expdust,freq,kevap
@@ -298,7 +298,7 @@ contains
             en=bindingEnergy(i)*K_BOLTZ_SI
             expdust=bindingEnergy(i)/dustTemp(dstep)
             newm = mass(speci) * AMU / 1e3_dp
-            freq = sqrt((2*(SURFACE_SITE_DENSITY)*en)/((PI**2)*newm))
+            freq = sqrt((2*(SURFACE_SITE_DENSITY*1e4_dp)*en)/((PI**2)*newm))
             kevap=freq*exp(-expdust)
             if (kevap >= 0.99_dp) then
                 abund(gasIceList(i),dstep)=abund(gasIceList(i),dstep)+(monoFracCopy(i)*abund(speci,dstep))
