@@ -287,7 +287,7 @@ contains
     subroutine bindingEnergyEvap(abund, lpoints)
         integer, intent(in) :: lpoints
         real(dp), intent(inout) :: abund(nspec+1,lpoints)
-        real(dp), parameter :: SURFACE_SITE_DENSITY = 1.5e15_dp ! Surface site density in cm-2
+        real(dp), parameter :: SURFACE_SITE_DENSITY = 1.5e15_dp  ! Surface site density in cm-2
         integer :: i
         !Subroutine to handle mono-evaporation. See viti 2004
         real(dp) :: en,newm,expdust,freq,kevap
