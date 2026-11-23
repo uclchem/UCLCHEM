@@ -126,6 +126,15 @@
       "contributions": [
         "ideas"
       ]
+    },
+    {
+      "login": "jlipinski",
+      "name": "Jakub Lipiński",
+      "avatar_url": "https://avatars.githubusercontent.com/u/92013108?v=4",
+      "profile": "https://github.com/jlipinski",
+      "contributions": [
+        "bug"
+      ]
     }
   ],
   "contributorsPerLine": 7,
