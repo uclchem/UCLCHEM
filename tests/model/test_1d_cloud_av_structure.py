@@ -21,10 +21,14 @@ def test_1d_cloud_correct_av(run_type):
     if run_type == "external":
         cloud.run()
 
-    # time step 0, for all points, and show Av
-    av = cloud.physics_array[0, :, 4]
-
     # Should be sorted in reverse order, because 1 is core, N is edge.
-    gradient = np.diff(av)
-    assert np.all(gradient < 0)  # Monotonically decreasing
-    assert np.allclose(gradient, gradient[0])  # With constant spacing between each point
+    for timepoint in range(np.shape(cloud.physics_array)[0]):
+        time = cloud.physics_array[timepoint, 0, 0]
+        av = cloud.physics_array[timepoint, :, 4]
+        gradient = np.diff(av)
+        assert np.all(gradient < 0), (
+            f"av should be monotonically decreasing, but at {time=} years (idx {timepoint}) got {gradient=}"
+        )
+        assert np.allclose(gradient, gradient[0]), (
+            f"av should have consistent spacing, but at {time=} years (idx {timepoint}) got {gradient=}"
+        )

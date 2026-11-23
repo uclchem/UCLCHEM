@@ -150,10 +150,7 @@ CONTAINS
         IF (.NOT. (enable_radiative_transfer .AND. points.gt.1)) THEN
             !calculate column density. Remember dstep counts from core center to edge
             !and coldens should be amount of gas from edge to parcel.
-            coldens(dstep)=cloudSize/real(points)*density(dstep)
-
-            ! add previous column densities to current as we move into cloud to get total
-            IF (dstep .lt. points) coldens(dstep)=coldens(dstep)+coldens(dstep-1)
+            coldens(dstep)=real(points-dstep+1)*cloudSize/real(points)*density(dstep)
 
             !calculate the Av using an assumed extinction outside of core (baseAv), depth of point and density
             av(dstep)= baseAv + coldens(dstep)/1.6d21
