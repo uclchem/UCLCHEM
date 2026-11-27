@@ -12,7 +12,7 @@ import yaml
 from uclchem.utils import UCLCHEM_ROOT_DIR
 
 
-def _load_fortran_metadata() -> tuple[set[str], set[str], set[str]]:
+def _load_fortran_metadata() -> tuple[set[str], set[str], set[str], set[str]]:
     """Load Fortran parameter classifications from YAML file.
 
     Returns
@@ -23,6 +23,8 @@ def _load_fortran_metadata() -> tuple[set[str], set[str], set[str]]:
         lowercase internal parameters
     file_path_params : set[str]
         lowercase filepath parameters
+    fortran_modules : set[str]
+        lowercase fortran modules
 
     """
     yaml_path = UCLCHEM_ROOT_DIR / "advanced" / "fortran_metadata.yaml"
@@ -48,10 +50,21 @@ def _load_fortran_metadata() -> tuple[set[str], set[str], set[str]]:
                 p.lower() for p in module_params if isinstance(p, str)
             )
 
-    return fortran_params, internal_params, file_path_params
+    fortran_modules: set[str] = set()
+    for module_names in metadata.get("fortran_modules", []):
+        fortran_modules.add(module_names)
+
+    return fortran_params, internal_params, file_path_params, fortran_modules
 
 
 # Load metadata on module import
-FORTRAN_PARAMETERS, INTERNAL_PARAMETERS, FILE_PATH_PARAMETERS = _load_fortran_metadata()
+FORTRAN_PARAMETERS, INTERNAL_PARAMETERS, FILE_PATH_PARAMETERS, FORTRAN_MODULES = (
+    _load_fortran_metadata()
+)
 
-__all__ = ["FORTRAN_PARAMETERS", "INTERNAL_PARAMETERS", "FILE_PATH_PARAMETERS"]
+__all__ = [
+    "FORTRAN_PARAMETERS",
+    "INTERNAL_PARAMETERS",
+    "FILE_PATH_PARAMETERS",
+    "FORTRAN_MODULES",
+]
